@@ -6,3 +6,4 @@ build
 *.mem
 qemu-monitor-socket
 run_qemu.sh
+hints2.txt
