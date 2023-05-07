@@ -1,0 +1,96 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "GDB ATTACH QEMU",
+      "type": "gdb",
+      "request": "attach",
+      "target": "localhost:1234",
+      "remote": true,
+      "executable": "${workspaceRoot}/isodir/boot/myos.bin",
+      "gdbpath": "gdb",
+      "cwd": "${workspaceRoot}",
+      "valuesFormatting": "parseText",
+      "autorun": [
+        //"set sysroot ${workspaceRoot}"
+        "set substitute-path /os/ ${workspaceRoot}"
+      ],
+      "preLaunchTask": "Launch QEMU",
+      "postDebugTask": "Kill QEMU"
+    },
+
+    // this one doesn't work for me with tasks
+    {
+      "name": "Launch with GDB",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceRoot}/isodir/boot/myos.bin",
+      "cwd": "${workspaceRoot}",
+      "args": [],
+      "sourceFileMap": {
+        //was built in a docker container so the compile path is different 
+        "/os/": "${workspaceRoot}/"
+      },
+      "externalConsole": true,
+      "targetArchitecture": "x86",
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "miDebuggerArgs": "",
+      "customLaunchSetupCommands": [
+        {
+          "text": "target remote localhost:1234",
+          "description": "Connect to QEMU remote debugger"
+        }
+      ],
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        },
+        {
+          "text": "file /home/sergey/Desktop/os/isodir/boot/myos.bin",
+          "description": "Load binary."
+        },
+        {
+          "text": "break isr_handler",
+          "description": "Break on exception handler."
+        }
+      ],
+      "preLaunchTask": "Launch QEMU",
+      "postDebugTask": "Kill QEMU"
+    },
+    {
+      "name": "NOT WORKING (gdb) Attach",
+      "type": "cppdbg",
+      "request": "attach",
+      "program": "${workspaceRoot}/isodir/boot/myos.bin",
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "useExtendedRemote": true,
+      "targetArchitecture": "x86",
+      "visualizerFile": "${debugInfo.linuxNatvisPath}",
+      "showDisplayString": true,
+      "miDebuggerServerAddress": "localhost:1234",
+      "sourceFileMap": {
+        //was built in a docker container so the compile path is different 
+        "/os/": "${workspaceRoot}/"
+      },
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        },
+        {
+          "text": "file /home/sergey/Desktop/os/isodir/boot/myos.bin",
+          "description": "Load binary."
+        },
+        {
+          "text": "break isr_handler",
+          "description": "Break on exception handler."
+        }
+      ],
+    },
+  ]
+}

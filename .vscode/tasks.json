@@ -1,0 +1,23 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build",
+      "command": "sh",
+      "args":["./make.sh", "build"]
+    },
+    {
+      "label": "Kill QEMU",
+      "type": "shell",
+      "command": "kill -9 $(ps -ef | awk '/[q]emu-system-i386/{print $2}')",
+    },
+    {
+      "label": "Launch QEMU",
+      "command": "qemu-system-i386",
+      "args": ["-S", "-gdb", "tcp::1234", "-m", "128", "-daemonize", "-monitor", "unix:qemu-monitor-socket,server,nowait", "-boot", "d", "-kernel", "isodir/boot/myos.bin"],
+      "dependsOn": [
+        "Build"
+      ]
+    }
+  ]
+}
