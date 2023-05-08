@@ -12,6 +12,7 @@ static bool print(const char* data, size_t length) {
 			return false;
 	return true;
 }
+
  
 int printf(const char* restrict format, ...) {
 	va_list parameters;
@@ -62,7 +63,9 @@ int printf(const char* restrict format, ...) {
 			if (!print(str, len))
 				return -1;
 			written += len;
-		} else if (*format == 'd') {
+		} else if (*format == 'd' || *format == 'x') {
+      uint8_t base = *format == 'x'? 16 : 10;
+      bool isHex = base == 16;
       format++;
       int32_t value = va_arg(parameters, const int32_t);
       const bool is_neg = value < 0;
@@ -72,21 +75,27 @@ int printf(const char* restrict format, ...) {
       
       while (tmp != 0)
       {
-        tmp /= 10;
+        tmp /= base;
         ++len;
       }
 
       char str[len];
       for (uint32_t i = 0, tmp = value; i < len; ++i) {
-        uint8_t digit = tmp % 10;
-        str[len - i - 1] = (char)(digit + '0');
-        tmp /= 10;
+        uint8_t digit = tmp % base;
+        str[len - i - 1] = (char)(digit + (digit < 10? '0' : '7'));
+        tmp /= base;
       }
 
       if (is_neg) {
         written++;
 
         if (!print("-", 1))
+          return -1;
+      }
+
+      if (isHex && len != 0) {
+        written += 2;
+        if (!print("0x", 2))
           return -1;
       }
       

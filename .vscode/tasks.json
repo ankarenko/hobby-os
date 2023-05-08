@@ -14,7 +14,7 @@
     {
       "label": "Launch QEMU",
       "command": "qemu-system-i386",
-      "args": ["-S", "-gdb", "tcp::1234", "-m", "128", "-daemonize", "-monitor", "unix:qemu-monitor-socket,server,nowait", "-boot", "d", "-kernel", "isodir/boot/myos.bin"],
+      "args": ["-S", "-gdb", "tcp::1234", "-m", "16", "-daemonize", "-monitor", "unix:qemu-monitor-socket,server,nowait", "-boot", "d", "-kernel", "isodir/boot/myos.bin"],
       "dependsOn": [
         "Build"
       ]

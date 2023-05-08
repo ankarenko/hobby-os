@@ -45,10 +45,15 @@ _start:
 	movl $stack_top, %esp
 
 	# Call the global constructors.
-	call _init
+  # pushing Multiboot v1 params onto the stack
+  push %eax 
+  push %ebx
+  sub $0x8, %esp
+  call _init
 
-	# Init GDB and IDT tables and move to the protected mode
-  
+  # Init GDB and IDT tables and move to the protected mode
+  add $0x8, %esp
+	
   # Transfer control to the main kernel
 	call kernel_main
 
@@ -58,5 +63,6 @@ _start:
 1:	hlt
 	jmp 1b
 .size _start, . - _start
+.end .
 
 

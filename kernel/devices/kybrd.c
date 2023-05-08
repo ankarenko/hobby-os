@@ -14,8 +14,8 @@ unsigned char kbdus[128] =
   't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',	/* Enter key */
   0,			/* 29   - Control */
   'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';',	/* 39 */
- '\'', '`',   0,		/* Left shift */
- '\\', 'z', 'x', 'c', 'v', 'b', 'n',			/* 49 */
+  '\'', '`',   0,		/* Left shift */
+  '\\', 'z', 'x', 'c', 'v', 'b', 'n',			/* 49 */
   'm', ',', '.', '/',   0,				/* Right shift */
   '*',
   0,	/* Alt */
@@ -61,7 +61,15 @@ static void keyboard_handler(registers_t regs)
   }
   else
   {
-    putchar(kbdus[scancode]);
+    char c = kbdus[scancode];
+    switch (c) {
+      case '\b':
+        popchar();
+        break;
+      default: {
+        putchar(c);
+      }
+    }
   }
 }
 

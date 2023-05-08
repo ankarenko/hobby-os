@@ -1,9 +1,9 @@
 include ../rules/platform.mk
 include ../rules/variables.mk
 
-C_SOURCES = $(wildcard main.c cpu/*.c devices/*.c devices/**/*.c system/*.c)
+C_SOURCES = $(wildcard main.c cpu/*.c devices/*.c devices/**/*.c system/*.c memory/*.c)
 ASM_SOURCES = $(wildcard cpu/*.s)
-HEADERS = $(wildcard *.h include/*.h cpu/*.h devices/*.h devices/**/*.h system/*.h)
+HEADERS = $(wildcard *.h include/*.h cpu/*.h devices/*.h devices/**/*.h system/*.h memory/*.h)
 OBJ = \
 	crti.o \
 	crtbegin.o \
