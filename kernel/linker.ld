@@ -16,8 +16,10 @@ SECTIONS
 	   Next we'll put the .text section. */
 	.text BLOCK(4K) : ALIGN(4K)
 	{
+    kernel_text_start = .;
 		*(.multiboot)
 		*(.text)
+    kernel_text_end = .;
 	}
 
 	/* Read-only data. */
@@ -29,7 +31,9 @@ SECTIONS
 	/* Read-write data (initialized) */
 	.data BLOCK(4K) : ALIGN(4K)
 	{
+    kernel_data_start = .;
 		*(.data)
+    kernel_data_end = .;
 	}
 
 	/* Read-write data (uninitialized) and stack */
@@ -37,6 +41,9 @@ SECTIONS
 	{
 		*(COMMON)
 		*(.bss)
+    stack_bottom = .;
+    *(.stack)
+    stack_top = stack_bottom + 16384;
 	}
 
   kernel_end = .;

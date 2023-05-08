@@ -11,33 +11,19 @@
 #include "./multiboot.h"
 #include "./kernel/memory/kernel_info.h"
 
-void kernel_main(multiboot_info_t *mbd, uint32_t magic)
+void get_memory_info(multiboot_info_t *mbd, uint32_t magic)
 {
-  init_gdt();
-  init_idt();
-  /* Mandatory, because the PIC interrupts are maskable. */
-  enable_interrupts();
-  terminal_initialize();
-  init_keyboard();
-  // initialise_paging();
-
-  // terminal_writestring("Hello, paging world!\n");
-
-  // uint32_t *ptr = (uint32_t*)0xA0000000;
-  // uint32_t do_page_fault = *ptr;
-
-  // terminal_writestring("!!\n");
-
-  /* Make sure the magic number matches for memory mapping*/
   if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
   {
     printf("invalid magic number!");
+    return;
   }
 
   /* Check bit 6 to see if we have a valid memory map */
   if (!(mbd->flags >> 6 & 0x1))
   {
     printf("invalid memory map given by GRUB bootloader");
+    return;
   }
 
   /* Loop through the memory map and display the values */
@@ -62,8 +48,42 @@ void kernel_main(multiboot_info_t *mbd, uint32_t magic)
     }
   }
 
+}
+
+void print_data_layout() {
   printf("Kernel start: %x\n", KERNEL_START);
+  printf("Text start: %x\n", KERNEL_TEXT_START);
+  printf("Text end: %x\n", KERNEL_TEXT_END);
+  printf("Data start: %x\n", KERNEL_DATA_START);
+  printf("Data end: %x\n", KERNEL_DATA_END);
+  printf("Stack bottom %x\n", STACK_BOTTOM);
+  printf("Stack top: %x\n", STACK_TOP);
   printf("Kernel end: %x\n", KERNEL_END);
+}
+
+void kernel_main(multiboot_info_t *mbd, uint32_t magic)
+{
+
+  init_gdt();
+  init_idt();
+  /* Mandatory, because the PIC interrupts are maskable. */
+  enable_interrupts();
+  terminal_initialize();
+  
+  print_data_layout();
+  init_keyboard();
+  //initialise_paging();
+
+  // terminal_writestring("Hello, paging world!\n");
+
+  // uint32_t *ptr = (uint32_t*)0xA0000000;
+  // uint32_t do_page_fault = *ptr;
+
+  // terminal_writestring("!!\n");
+
+  /* Make sure the magic number matches for memory mapping*/
+  
+  // get_memory_info(mbd, magic);
 
   return 0;
 

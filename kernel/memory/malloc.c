@@ -1,9 +1,10 @@
 #include "malloc.h"
 #include <stdint.h>
+#include "kernel_info.h"
 
 // first 1MB is reserved for GRUB and BIOS
 // then goes your program, make sure you won't rewrite it 
-uint32_t placement_address = 0x300000;
+uint32_t placement_address = KERNEL_END;
 
 uint32_t
 kmalloc_int(uint32_t sz, int align, uint32_t *phys)
