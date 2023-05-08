@@ -113,8 +113,14 @@ int_callback interrupt_handlers[256];
 // This gets called from our ASM interrupt handler stub.
 void isr_handler(uint32_t esp)
 {
-  registers_t *regs = (registers_t *)esp;
-  printf("recieved interrupt: %d \n", regs->int_no);
+  interrupt_registers *regs = (interrupt_registers *)esp;
+
+  if (interrupt_handlers[regs->int_no] != 0)
+  {
+    int_callback handler = interrupt_handlers[regs->int_no];
+    handler(*regs);
+  }
+
 }
 
 void register_interrupt_handler(uint8_t n, int_callback handler)
@@ -125,7 +131,8 @@ void register_interrupt_handler(uint8_t n, int_callback handler)
 // This gets called from our ASM interrupt handler stub.
 void irq_handler(uint32_t esp)
 {
-  registers_t *regs = (registers_t *)esp;
+  interrupt_registers *regs = (interrupt_registers *)esp;
+
   // Send an EOI (end of interrupt) signal to the PICs.
   // If this interrupt involved the slave.
   if (regs->int_no >= 40)

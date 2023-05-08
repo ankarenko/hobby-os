@@ -45,7 +45,7 @@ unsigned char kbdus[128] =
   0,	/* All other keys are undefined */
 };	
 
-static void keyboard_handler(registers_t regs)
+static void keyboard_handler(interrupt_registers regs)
 {
   unsigned char scancode;
 

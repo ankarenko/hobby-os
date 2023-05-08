@@ -10,6 +10,7 @@
 #include "./kernel/memory/vmm.h"
 #include "./multiboot.h"
 #include "./kernel/memory/kernel_info.h"
+#include "./kernel/cpu/exception.h"
 
 void get_memory_info(multiboot_info_t *mbd, uint32_t magic)
 {
@@ -69,9 +70,21 @@ void kernel_main(multiboot_info_t *mbd, uint32_t magic)
   /* Mandatory, because the PIC interrupts are maskable. */
   enable_interrupts();
   terminal_initialize();
-  
   print_data_layout();
+  exception_init();  
+
+  uint8_t* a = 0x10000000;
+  uint8_t c = 10 / (*a);
+  
+  printf("%d", c);
+
   init_keyboard();
+
+  //asm volatile ("int $0x0");
+  
+
+  //printf("%d", c);
+  
   //initialise_paging();
 
   // terminal_writestring("Hello, paging world!\n");

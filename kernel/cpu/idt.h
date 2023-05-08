@@ -3,7 +3,8 @@
 //#include <common.h>
 
 #include <stdint.h>
-
+#define IRQ_HANDLER_CONTINUE 0
+#define IRQ_HANDLER_STOP 1
 
 typedef struct
 {
@@ -11,7 +12,7 @@ typedef struct
   uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
   uint32_t int_no, err_code;
   uint32_t eip, cs, eflags, useresp, ss;
-} __attribute__((packed)) registers_t;
+} __attribute__((packed)) interrupt_registers;
 
 // A few defines to make life a little easier
 #define IRQ0 32
@@ -31,7 +32,7 @@ typedef struct
 #define IRQ14 46
 #define IRQ15 47
 
-typedef void (*int_callback)(registers_t);
+typedef void (*int_callback)(interrupt_registers);
 extern void idt_flush(uint32_t);
 
 void init_idt();
