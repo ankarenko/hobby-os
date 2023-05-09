@@ -37,7 +37,6 @@ irq_common_stub:
   popa
 
   add $8, %esp     # Cleans up the pushed error code and pushed ISR number
-  sti
   iret
 
 IRQ   0,    32

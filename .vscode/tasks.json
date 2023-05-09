@@ -5,7 +5,7 @@
       "label": "Launch QEMU2",
       "type": "shell",
       //"command": "echo Hello",
-      "command": "qemu-system-i386 -S -gdb tcp::1234 -daemonize -boot d -kernel isodir/boot/myos.bin -m 16 || exit 0",
+      "command": "qemu-system-i386 -S -gdb tcp::1234 -no-reboot -daemonize -boot d -kernel isodir/boot/myos.bin -m 16 || exit 0",
       "dependsOn": [
         "Build"
       ]

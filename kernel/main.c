@@ -35,7 +35,7 @@ void get_memory_info(multiboot_info_t *mbd, uint32_t magic)
     multiboot_memory_map_t *mmmt =
         (multiboot_memory_map_t *)(mbd->mmap_addr + i);
 
-    printf("Start Addr: %x | Length: %d | Size: %d | Type: %d\n",
+    printf("Start Addr: %X | Length: %d | Size: %d | Type: %d\n",
            mmmt->addr_low, mmmt->len_low, mmmt->size, mmmt->type);
 
     if (mmmt->type == MULTIBOOT_MEMORY_AVAILABLE)
@@ -51,15 +51,22 @@ void get_memory_info(multiboot_info_t *mbd, uint32_t magic)
 
 }
 
+void a(uint32_t max) {
+  print_data_layout();
+  for (uint32_t i = 0; i < max; ++i) {
+    print_data_layout();
+  }
+}
+
 void print_data_layout() {
-  printf("Kernel start: %x\n", KERNEL_START);
-  printf("Text start: %x\n", KERNEL_TEXT_START);
-  printf("Text end: %x\n", KERNEL_TEXT_END);
-  printf("Data start: %x\n", KERNEL_DATA_START);
-  printf("Data end: %x\n", KERNEL_DATA_END);
-  printf("Stack bottom %x\n", STACK_BOTTOM);
-  printf("Stack top: %x\n", STACK_TOP);
-  printf("Kernel end: %x\n", KERNEL_END);
+  printf("Kernel start: %X\n", KERNEL_START);
+  printf("Text start: %X\n", KERNEL_TEXT_START);
+  printf("Text end: %X\n", KERNEL_TEXT_END);
+  printf("Data start: %X\n", KERNEL_DATA_START);
+  printf("Data end: %X\n", KERNEL_DATA_END);
+  printf("Stack bottom %X\n", STACK_BOTTOM);
+  printf("Stack top: %X\n", STACK_TOP);
+  printf("Kernel end: %X\n", KERNEL_END);
 }
 
 void kernel_main(multiboot_info_t *mbd, uint32_t magic)
@@ -70,16 +77,20 @@ void kernel_main(multiboot_info_t *mbd, uint32_t magic)
   /* Mandatory, because the PIC interrupts are maskable. */
   enable_interrupts();
   terminal_initialize();
+  init_keyboard();
+  //timer_create(10);
   print_data_layout();
   exception_init();  
-
-  uint8_t* a = 0x10000000;
-  uint8_t c = 10 / (*a);
+  initialise_paging();
   
-  printf("%d", c);
+  
+  uint32_t *ptr = (uint32_t*)0xA0000000;
+  uint32_t do_page_fault = *ptr;
+  
+  //a(_A);
 
-  init_keyboard();
-
+  printf("Hello world\n");
+  // printf("%d", as);
   //asm volatile ("int $0x0");
   
 

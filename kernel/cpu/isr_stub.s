@@ -50,7 +50,6 @@ isr_common_stub:
   popa
 
   add $8, %esp     # Cleans up the pushed error code and pushed ISR number
-  sti
   iret             # pops 5 things at once: CS, EIP, EFLAGS, SS, and ESP
 
 # Only interrupts 8, 10-14 push error codes onto the stack 

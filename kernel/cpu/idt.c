@@ -115,10 +115,13 @@ void isr_handler(uint32_t esp)
 {
   interrupt_registers *regs = (interrupt_registers *)esp;
 
+  printf("ISR interrupt: %d \n", regs->int_no);
+
   if (interrupt_handlers[regs->int_no] != 0)
   {
     int_callback handler = interrupt_handlers[regs->int_no];
-    handler(*regs);
+    if (handler(*regs) == IRQ_HANDLER_STOP)
+			return;
   }
 
 }

@@ -32,10 +32,12 @@
           "text": "file /home/sergey/Desktop/os/isodir/boot/myos.bin",
           "description": "Load binary."
         },
+        /*
         {
           "text": "break isr_handler",
           "description": "Break on exception handler."
         }
+        */
       ],
       "preLaunchTask": "Launch QEMU2",
       //"postDebugTask": "Kill QEMU"

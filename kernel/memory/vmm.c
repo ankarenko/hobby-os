@@ -1,5 +1,7 @@
+#include <stdio.h>
 #include "vmm.h"
 #include "../devices/tty.h"
+#include "../cpu/hal.h"
 
 // A bitset of frames - used or free.
 uint32_t *frames;
@@ -179,7 +181,9 @@ void page_fault(interrupt_registers regs)
   // A page fault has occurred.
   // The faulting address is stored in the CR2 register.
   uint32_t faulting_address;
-  asm volatile("mov %%cr2, %0" : "=r" (faulting_address));
+  __asm__ __volatile__("mov %%cr2, %%eax	\n"
+											 "mov %%eax, %0			\n"
+											 : "=r"(faulting_address));
 
   // The error code gives us details of what happened.
   int present   = !(regs.err_code & 0x1); // Page not present
@@ -194,9 +198,13 @@ void page_fault(interrupt_registers regs)
   if (rw) {terminal_writestring("read-only ");}
   if (us) {terminal_writestring("user-mode ");}
   if (reserved) {terminal_writestring("reserved ");}
-  terminal_writestring(") at 0x");
-  terminal_writestring(faulting_address); // TODO: hex writestring_hex
-  terminal_writestring("\n");
+  printf(") at %X\n", faulting_address); // TODO: hex writestring_hex
+  
+  disable_interrupts();
+  while (1);
+  
   PANIC("Page fault");
+  
+  
 }
 

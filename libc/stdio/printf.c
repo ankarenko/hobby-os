@@ -63,11 +63,52 @@ int printf(const char* restrict format, ...) {
 			if (!print(str, len))
 				return -1;
 			written += len;
-		} else if (*format == 'd' || *format == 'x') {
-      uint8_t base = *format == 'x'? 16 : 10;
-      bool isHex = base == 16;
+    } else if (*format == 'X' || *format == 'x') {
+      uint8_t base = 16;
+      bool isCapital = *format == 'X';
+      format++;
+      uint32_t value = va_arg(parameters, const uint32_t);
+
+      const bool is_neg = value < 0;
+      value *= is_neg? -1 : 1;
+      uint32_t len = value == 0? 1 : 0;
+      uint32_t tmp = value;
+      
+      while (tmp != 0)
+      {
+        tmp /= base;
+        ++len;
+      }
+
+      char str[len];
+      for (uint32_t i = 0, tmp = value; i < len; ++i) {
+        uint8_t digit = tmp % base;
+        str[len - i - 1] = (char)(digit + (digit < 10? '0' : isCapital? '7' : 'W'));
+        tmp /= base;
+      }
+
+      if (is_neg) {
+        written++;
+
+        if (!print("-", 1))
+          return -1;
+      }
+
+      if (len != 0) {
+        written += 2;
+        if (!print("0x", 2))
+          return -1;
+      }
+      
+      if (!print(str, len))
+				return -1;
+
+			written += len;
+    } else if (*format == 'd') {
+      uint8_t base = 10;
       format++;
       int32_t value = va_arg(parameters, const int32_t);
+
       const bool is_neg = value < 0;
       value *= is_neg? -1 : 1;
       uint32_t len = value == 0? 1 : 0;
@@ -90,12 +131,6 @@ int printf(const char* restrict format, ...) {
         written++;
 
         if (!print("-", 1))
-          return -1;
-      }
-
-      if (isHex && len != 0) {
-        written += 2;
-        if (!print("0x", 2))
           return -1;
       }
       

@@ -32,7 +32,7 @@ typedef struct
 #define IRQ14 46
 #define IRQ15 47
 
-typedef void (*int_callback)(interrupt_registers);
+typedef uint32_t (*int_callback)(interrupt_registers);
 extern void idt_flush(uint32_t);
 
 void init_idt();

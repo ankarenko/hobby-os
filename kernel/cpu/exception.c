@@ -6,7 +6,7 @@
 // #include <cdefs.h>
 //#include <utils/debug.h>
 
-#define kernel_panic(fmt, ...) ({ disable_interrupts(); terminal_writestring(fmt); /* __asm__ __volatile__("int $0x01"); */ })
+#define kernel_panic(fmt, ...) ({ disable_interrupts(); terminal_writestring(fmt); terminal_writestring("\n");  __asm__ __volatile__("int $0x01"); })
 
 static int32_t divide_by_zero_fault(struct interrupt_registers *regs)
 {
@@ -16,6 +16,8 @@ static int32_t divide_by_zero_fault(struct interrupt_registers *regs)
 
 static int32_t single_step_trap(struct interrupt_registers *regs)
 {
+  while (1);
+  
 	kernel_panic("Single step");
 	return IRQ_HANDLER_STOP;
 }
@@ -86,28 +88,6 @@ static int32_t general_protection_fault(struct interrupt_registers *regs)
 	return IRQ_HANDLER_STOP;
 }
 
-static int32_t page_fault(struct interrupt_registers *regs)
-{
-	// uint32_t faultAddr = 0;
-	// int error_code = regs->err_code;
-
-	// __asm__ __volatile__("mov %%cr2, %%eax	\n"
-	// 										 "mov %%eax, %0			\n"
-	// 										 : "=r"(faultAddr));
-
-	// DebugPrintf("\nPage Fault at 0x%x", faultAddr);
-	// DebugPrintf("\nReason: %s, %s, %s%s%s",
-	// 						error_code & 0b1 ? "protection violation" : "non-present page",
-	// 						error_code & 0b10 ? "write" : "read",
-	// 						error_code & 0b100 ? "user mode" : "supervisor mode",
-	// 						error_code & 0b1000 ? ", reserved" : "",
-	// 						error_code & 0b10000 ? ", instruction fetch" : "");
-
-	for (;;)
-		;
-	return IRQ_HANDLER_STOP;
-}
-
 static int32_t fpu_fault(struct interrupt_registers *regs)
 {
 	kernel_panic("FPU Fault");
@@ -132,6 +112,36 @@ static int32_t simd_fpu_fault(struct interrupt_registers *regs)
 	return IRQ_HANDLER_STOP;
 }
 
+/*
+static int32_t page_fault(interrupt_registers regs)
+{
+  // A page fault has occurred.
+  // The faulting address is stored in the CR2 register.
+  uint32_t faulting_address;
+  asm volatile("mov %%cr2, %0" : "=r" (faulting_address));
+
+  // The error code gives us details of what happened.
+  int present   = !(regs.err_code & 0x1); // Page not present
+  int rw = regs.err_code & 0x2;           // Write operation?
+  int us = regs.err_code & 0x4;           // Processor was in user-mode?
+  int reserved = regs.err_code & 0x8;     // Overwritten CPU-reserved bits of page entry?
+  int id = regs.err_code & 0x10;          // Caused by an instruction fetch?
+
+  // Output an error message.
+  terminal_writestring("Page fault! ( ");
+  if (present) {terminal_writestring("present ");}
+  if (rw) {terminal_writestring("read-only ");}
+  if (us) {terminal_writestring("user-mode ");}
+  if (reserved) {terminal_writestring("reserved ");}
+  terminal_writestring(") at 0x");
+  terminal_writestring(faulting_address); // TODO: hex writestring_hex
+  terminal_writestring("\n");
+  terminal_writestring("Page fault");
+  kernel_panic("Page Fault");
+	return IRQ_HANDLER_STOP;
+}
+*/
+
 void exception_init()
 {
 	terminal_writestring("Exception: Initializing\n");
@@ -149,7 +159,7 @@ void exception_init()
 	register_interrupt_handler(11, (int_callback)no_segment_fault);
 	register_interrupt_handler(12, (int_callback)stack_fault);
 	register_interrupt_handler(13, (int_callback)general_protection_fault);
-	register_interrupt_handler(14, (int_callback)page_fault);
+	//register_interrupt_handler(14, (int_callback)page_fault);
 	register_interrupt_handler(16, (int_callback)fpu_fault);
 	register_interrupt_handler(17, (int_callback)alignment_check_fault);
 	register_interrupt_handler(18, (int_callback)machine_check_abort);
