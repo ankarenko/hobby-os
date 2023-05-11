@@ -2,6 +2,7 @@
 // #include <stdint.h>
 // #include <string.h>
 // #include <timer.h>
+#include <ctype.h>
 #include "./devices/tty.h"
 #include "./kernel/cpu/idt.h"
 #include "./kernel/cpu/gdt.h"
@@ -11,6 +12,7 @@
 #include "./multiboot.h"
 #include "./kernel/memory/kernel_info.h"
 #include "./kernel/cpu/exception.h"
+
 
 void get_memory_info(multiboot_info_t *mbd, uint32_t magic)
 {
@@ -71,22 +73,22 @@ void print_data_layout() {
 
 void kernel_main(multiboot_info_t *mbd, uint32_t magic)
 {
-
-  init_gdt();
-  init_idt();
+  i86_gdt_initialize();
+  i86_idt_initialize(0x8);
+  //timer_create(10);
   /* Mandatory, because the PIC interrupts are maskable. */
   enable_interrupts();
   terminal_initialize();
   init_keyboard();
-  //timer_create(10);
   print_data_layout();
   exception_init();  
+  /*
   initialise_paging();
   
   
   uint32_t *ptr = (uint32_t*)0xA0000000;
   uint32_t do_page_fault = *ptr;
-  
+  */
   //a(_A);
 
   printf("Hello world\n");

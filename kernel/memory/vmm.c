@@ -2,10 +2,10 @@
 #include "vmm.h"
 #include "../devices/tty.h"
 #include "../cpu/hal.h"
+#include "./pmm.h"
 
-// A bitset of frames - used or free.
-uint32_t *frames;
-uint32_t nframes;
+extern uint32_t* frames;
+extern uint32_t nframes;
 
 page_directory_t* current_directory;
 page_directory_t* kernel_directory;
@@ -13,61 +13,8 @@ page_directory_t* kernel_directory;
 // Defined in kheap.c
 extern uint32_t placement_address;
 
-// Macros used in the bitset algorithms.
-#define INDEX_FROM_BIT(a) (a / 32)
-#define OFFSET_FROM_BIT(a) (a % 32)
-#define PAGE_SIZE 0x1000 // 4KB
-#define PHYSICAL_MEMORY 0x1000000//assume it is 16MB
+#define PHYSICAL_MEMORY 0x1000000 //assume it is 16MB
 #define PANIC(x) terminal_writestring(x)
-
-// Static function to set a bit in the frames bitset
-static void set_frame(uint32_t frame_addr)
-{
-  uint32_t frame = frame_addr / PAGE_SIZE;
-  uint32_t idx = INDEX_FROM_BIT(frame);
-  uint32_t off = OFFSET_FROM_BIT(frame);
-  frames[idx] |= (0x1 << off);
-}
-
-// Static function to clear a bit in the frames bitset
-static void clear_frame(uint32_t frame_addr)
-{
-  uint32_t frame = frame_addr / PAGE_SIZE;
-  uint32_t idx = INDEX_FROM_BIT(frame);
-  uint32_t off = OFFSET_FROM_BIT(frame);
-  frames[idx] &= ~(0x1 << off);
-}
-
-// Static function to test if a bit is set.
-static uint32_t test_frame(uint32_t frame_addr)
-{
-  uint32_t frame = frame_addr / PAGE_SIZE;
-  uint32_t idx = INDEX_FROM_BIT(frame);
-  uint32_t off = OFFSET_FROM_BIT(frame);
-  return (frames[idx] & (0x1 << off));
-}
-
-// Static function to find the first free frame.
-static uint32_t first_frame()
-{
-  uint32_t i, j;
-  for (i = 0; i < INDEX_FROM_BIT(nframes); i++)
-  {
-    if (frames[i] != 0xFFFFFFFF) // nothing free, exit early.
-    {
-      // at least one bit is free here.
-      for (j = 0; j < 32; j++)
-      {
-        uint32_t toTest = 0x1 << j;
-        if (!(frames[i] & toTest))
-        {
-          return i * 32 + j;
-        }
-      }
-    }
-  }
-  return UINT32_MAX;
-}
 
 // Function to allocate a frame.
 void alloc_frame(page_t *page, int is_kernel, int is_writeable)

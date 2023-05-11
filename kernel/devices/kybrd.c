@@ -1,4 +1,5 @@
 #include "../cpu/idt.h"
+#include "../cpu/hal.h"
 
 /* KBDUS means US Keyboard Layout. This is a scancode table
 *  used to layout a standard US keyboard. I have left some
@@ -50,7 +51,7 @@ static void keyboard_handler(interrupt_registers regs)
   unsigned char scancode;
 
   /* Read from the keyboard's data buffer */
-  scancode = inb(0x60);
+  scancode = inportb(0x60);
   
   /* If the top bit of the byte we read from the keyboard is
   *  set, that means that a key has just been released */

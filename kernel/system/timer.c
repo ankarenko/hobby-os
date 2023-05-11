@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include "../cpu/idt.h"
+#include "../cpu/hal.h"
 #include "timer.h"
 
 uint32_t tick = 0;
@@ -24,13 +25,13 @@ void timer_create(uint32_t frequency)
   uint16_t divisor = 1193180 / frequency;
 
   // Send the command byte.
-  outb(0x43, 0x36);
+  outportb(0x43, 0x36);
 
   // Divisor has to be sent byte-wise, so split here into upper/lower bytes.
   uint8_t l = (uint8_t)(divisor & 0xFF);
   uint8_t h = (uint8_t)((divisor >> 8) & 0xFF );
 
   // Send the frequency divisor.
-  outb(0x40, l);
-  outb(0x40, h);
+  outportb(0x40, l);
+  outportb(0x40, h);
 }

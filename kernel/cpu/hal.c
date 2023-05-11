@@ -3,22 +3,25 @@
 
 #include "hal.h"
 
-// Write a byte out to the specified port.
-void outb(uint16_t port, uint8_t value)
+
+char *i86_cpu_get_vender()
 {
-  asm volatile ("outb %1, %0" : : "dN" (port), "a" (value));
+	static char vender[32] = {0};
+	__asm__ __volatile__(
+		"mov $0, %%eax;				\n"
+		"cpuid;								\n"
+		"lea (%0), %%eax;			\n"
+		"mov %%ebx, (%%eax);		\n"
+		"mov %%edx, 0x4(%%eax);\n"
+		"mov %%ecx, 0x8(%%eax)	\n"
+		: "=m"(vender));
+	return vender;
 }
 
-uint8_t inb(uint16_t port)
+void cpuid(int code, uint32_t *a, uint32_t *d)
 {
-  uint8_t ret;
-  asm volatile("inb %1, %0" : "=a" (ret) : "dN" (port));
-  return ret;
-}
-
-uint16_t inw(uint16_t port)
-{
-  uint16_t ret;
-  asm volatile ("inw %1, %0" : "=a" (ret) : "dN" (port));
-  return ret;
+	asm volatile("cpuid"
+				 : "=a"(*a), "=d"(*d)
+				 : "a"(code)
+				 : "ecx", "ebx");
 }

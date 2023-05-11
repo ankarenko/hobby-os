@@ -1,156 +1,141 @@
 #include <stdint.h>
 #include <stdio.h>
+#include "../devices/tty.h"
 #include "idt.h"
+#include "pic.h"
 #include "hal.h"
 
-#define IDT_INIT_ISR(i) idt_set_gate(i, (uint32_t)isr ## i, 0x08, 0x8E)
-#define IDT_INIT_IRQ(i) idt_set_gate(i + 32, (uint32_t)irq ## i, 0x08, 0x8E)
-static void idt_set_gate(uint8_t,uint32_t,uint16_t,uint8_t);
+#define IDT_INIT_ISR(i, sel) i86_install_ir(i, (uint32_t)isr ## i, sel, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32)
+#define IDT_INIT_IRQ(i, sel) i86_install_ir(i + 32, (uint32_t)irq ## i, sel, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32)
 
 __attribute__((aligned(0x10)));
-idt_entry_t idt_entries[256];
-idt_ptr_t   idt_ptr;
+static idt_entry_t _idt_entries[I86_MAX_INTERRUPTS];
+static I86_IRQ_HANDLER _interrupt_handlers[I86_MAX_INTERRUPTS];
+static idt_ptr_t   _idt_ptr;
 
-/* Normally, IRQs 0 to 7 are mapped to entries 8 to 15. This
-*  is a problem in protected mode, because IDT entry 8 is a
-*  Double Fault! Without remapping, every time IRQ0 fires,
-*  you get a Double Fault Exception, which is NOT actually
-*  what's happening. We send commands to the Programmable
-*  Interrupt Controller (PICs - also called the 8259's) in
-*  order to make IRQ0 to 15 be remapped to IDT entries 32 to
-*  47 */
-void irq_remap(void)
-{
-  /* Remap the irq table. */
-  outb(PIC_MASTER_CMD, 0x11);
-  outb(PIC_SLAVE_CMD,  0x11);
-  outb(PIC_MASTER_DATA, 0x20);
-  outb(PIC_SLAVE_DATA,  0x28);
-  outb(PIC_MASTER_DATA, 0x04);
-  outb(PIC_SLAVE_DATA,  0x02);
-  outb(PIC_MASTER_DATA, 0x01);
-  outb(PIC_SLAVE_DATA,  0x01);
-  outb(PIC_MASTER_DATA, 0x00);
-  outb(PIC_SLAVE_DATA,  0x00);
+void i86_default_handler () {
+  disable_interrupts();
+
+  terminal_writestring("*** [i86 Hal] i86_default_handler: Unhandled Exception");
+	
+  for(;;);
 }
 
-void init_idt()
+
+uint32_t i86_idt_initialize(uint16_t sel)
 {
-  idt_ptr.limit = sizeof(idt_entry_t) * 256 -1;
-  idt_ptr.base  = (uint32_t)&idt_entries;
+  _idt_ptr.limit = sizeof(idt_entry_t) * I86_MAX_INTERRUPTS -1;
+  _idt_ptr.base  = (uint32_t)&_idt_entries;
 
-  memset(&idt_entries, 0, sizeof(idt_entry_t)*256);
+  memset(&_idt_entries, 0, sizeof(idt_entry_t)*I86_MAX_INTERRUPTS);
 
-  IDT_INIT_ISR(0);
-  IDT_INIT_ISR(1);
-  IDT_INIT_ISR(2);
-  IDT_INIT_ISR(3);
-  IDT_INIT_ISR(4);
-  IDT_INIT_ISR(5);
-  IDT_INIT_ISR(6);
-  IDT_INIT_ISR(7);
-  IDT_INIT_ISR(8);
-  IDT_INIT_ISR(9);
-  IDT_INIT_ISR(10);
-  IDT_INIT_ISR(11);
-  IDT_INIT_ISR(12);
-  IDT_INIT_ISR(13);
-  IDT_INIT_ISR(14);
-  IDT_INIT_ISR(15);
-  IDT_INIT_ISR(16);
-  IDT_INIT_ISR(17);
-  IDT_INIT_ISR(18);
-  IDT_INIT_ISR(19);
-  IDT_INIT_ISR(20);
-  IDT_INIT_ISR(21);
-  IDT_INIT_ISR(22);
-  IDT_INIT_ISR(23);
-  IDT_INIT_ISR(24);
-  IDT_INIT_ISR(25);
-  IDT_INIT_ISR(26);
-  IDT_INIT_ISR(27);
-  IDT_INIT_ISR(28);
-  IDT_INIT_ISR(29);
-  IDT_INIT_ISR(30);
-  IDT_INIT_ISR(31);
+  IDT_INIT_ISR(0, sel);
+  IDT_INIT_ISR(1, sel);
+  IDT_INIT_ISR(2, sel);
+  IDT_INIT_ISR(3, sel);
+  IDT_INIT_ISR(4, sel);
+  IDT_INIT_ISR(5, sel);
+  IDT_INIT_ISR(6, sel);
+  IDT_INIT_ISR(7, sel);
+  IDT_INIT_ISR(8, sel);
+  IDT_INIT_ISR(9, sel);
+  IDT_INIT_ISR(10, sel);
+  IDT_INIT_ISR(11, sel);
+  IDT_INIT_ISR(12, sel);
+  IDT_INIT_ISR(13, sel);
+  IDT_INIT_ISR(14, sel);
+  IDT_INIT_ISR(15, sel);
+  IDT_INIT_ISR(16, sel);
+  IDT_INIT_ISR(17, sel);
+  IDT_INIT_ISR(18, sel);
+  IDT_INIT_ISR(19, sel);
+  IDT_INIT_ISR(20, sel);
+  IDT_INIT_ISR(21, sel);
+  IDT_INIT_ISR(22, sel);
+  IDT_INIT_ISR(23, sel);
+  IDT_INIT_ISR(24, sel);
+  IDT_INIT_ISR(25, sel);
+  IDT_INIT_ISR(26, sel);
+  IDT_INIT_ISR(27, sel);
+  IDT_INIT_ISR(28, sel);
+  IDT_INIT_ISR(29, sel);
+  IDT_INIT_ISR(30, sel);
+  IDT_INIT_ISR(31, sel);
 
-  irq_remap();
+  pic_remap();
 
-  IDT_INIT_IRQ(0);
-  IDT_INIT_IRQ(1);
-  IDT_INIT_IRQ(2);
-  IDT_INIT_IRQ(3);
-  IDT_INIT_IRQ(4);
-  IDT_INIT_IRQ(5);
-  IDT_INIT_IRQ(6);
-  IDT_INIT_IRQ(7);
-  IDT_INIT_IRQ(8);
-  IDT_INIT_IRQ(9);
-  IDT_INIT_IRQ(10);
-  IDT_INIT_IRQ(11);
-  IDT_INIT_IRQ(12);
-  IDT_INIT_IRQ(13);
-  IDT_INIT_IRQ(14);
-  IDT_INIT_IRQ(15);
+  IDT_INIT_IRQ(0, sel);
+  IDT_INIT_IRQ(1, sel);
+  IDT_INIT_IRQ(2, sel);
+  IDT_INIT_IRQ(3, sel);
+  IDT_INIT_IRQ(4, sel);
+  IDT_INIT_IRQ(5, sel);
+  IDT_INIT_IRQ(6, sel);
+  IDT_INIT_IRQ(7, sel);
+  IDT_INIT_IRQ(8, sel);
+  IDT_INIT_IRQ(9, sel);
+  IDT_INIT_IRQ(10, sel);
+  IDT_INIT_IRQ(11, sel);
+  IDT_INIT_IRQ(12, sel);
+  IDT_INIT_IRQ(13, sel);
+  IDT_INIT_IRQ(14, sel);
+  IDT_INIT_IRQ(15, sel);
 
-  idt_flush((uint32_t)&idt_ptr);
+  for (uint32_t i = 0; i < I86_MAX_INTERRUPTS; ++i) {
+    if (i == IRQ0) { //except timer
+      continue;
+    }
+    register_interrupt_handler(i, i86_default_handler);
+  }
+
+  idt_flush((uint32_t)&_idt_ptr);
+  
+  return 0;
 }
 
-static void idt_set_gate(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags)
+int i86_install_ir(uint8_t i, uint32_t base, uint16_t sel, uint8_t flags)
 {
-  idt_entries[num].base_lo = base & 0xFFFF;
-  idt_entries[num].base_hi = (base >> 16) & 0xFFFF;
+  if (i > I86_MAX_INTERRUPTS)
+		return 0;
 
-  idt_entries[num].sel     = sel;
-  idt_entries[num].always0 = 0;
+  _idt_entries[i].base_lo = base & 0xFFFF;
+  _idt_entries[i].base_hi = (base >> 16) & 0xFFFF;
+
+  _idt_entries[i].sel = sel;
+  _idt_entries[i].always0 = 0;
   // We must uncomment the OR below when we get to using user-mode.
   // It sets the interrupt gate's privilege level to 3.
-  idt_entries[num].flags   = flags /* | 0x60 */;
+  _idt_entries[i].flags   = flags /* | 0x60 */;
+  return 0;
 }
 
-int_callback interrupt_handlers[256];
-
-// This gets called from our ASM interrupt handler stub.
-void isr_handler(uint32_t esp)
-{
-  interrupt_registers *regs = (interrupt_registers *)esp;
-
-  printf("ISR interrupt: %d \n", regs->int_no);
-
-  if (interrupt_handlers[regs->int_no] != 0)
+void handle_interrupt(interrupt_registers *regs) {
+  if (_interrupt_handlers[regs->int_no] != 0)
   {
-    int_callback handler = interrupt_handlers[regs->int_no];
-    if (handler(*regs) == IRQ_HANDLER_STOP)
+    I86_IRQ_HANDLER handler = _interrupt_handlers[regs->int_no];
+    if (handler(regs) == IRQ_HANDLER_STOP)
 			return;
   }
-
-}
-
-void register_interrupt_handler(uint8_t n, int_callback handler)
-{
-  interrupt_handlers[n] = handler;
 }
 
 // This gets called from our ASM interrupt handler stub.
-void irq_handler(uint32_t esp)
+void isr_handler(interrupt_registers *regs)
 {
-  interrupt_registers *regs = (interrupt_registers *)esp;
+  handle_interrupt(regs);
+}
 
-  // Send an EOI (end of interrupt) signal to the PICs.
-  // If this interrupt involved the slave.
+void register_interrupt_handler(uint8_t n, I86_IRQ_HANDLER handler)
+{
+  _interrupt_handlers[n] = handler;
+}
+
+// This gets called from our ASM interrupt handler stub.
+void irq_handler(interrupt_registers *regs)
+{
   if (regs->int_no >= 40)
-  {
-    // Send reset signal to slave.
-    outb(0xA0, 0x20);
-  }
+		outportb(PIC2_COMMAND, PIC_EOI);
+	outportb(PIC1_COMMAND, PIC_EOI);
 
-  // Send reset signal to master. (As well as slave, if necessary).
-  outb(0x20, 0x20);
-
-  if (interrupt_handlers[regs->int_no] != 0)
-  {
-    int_callback handler = interrupt_handlers[regs->int_no];
-    handler(*regs);
-  }
+  handle_interrupt(regs);
 }
 

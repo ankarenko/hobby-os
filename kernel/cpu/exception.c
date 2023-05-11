@@ -146,24 +146,24 @@ void exception_init()
 {
 	terminal_writestring("Exception: Initializing\n");
 
-	register_interrupt_handler(0, (int_callback)divide_by_zero_fault);
-	register_interrupt_handler(1, (int_callback)single_step_trap);
-	register_interrupt_handler(2, (int_callback)nmi_trap);
-	register_interrupt_handler(3, (int_callback)breakpoint_trap);
-	register_interrupt_handler(4, (int_callback)overflow_trap);
-	register_interrupt_handler(5, (int_callback)bounds_check_fault);
-	register_interrupt_handler(6, (int_callback)invalid_opcode_fault);
-	register_interrupt_handler(7, (int_callback)no_device_fault);
-	register_interrupt_handler(8, (int_callback)double_fault_abort);
-	register_interrupt_handler(10, (int_callback)invalid_tss_fault);
-	register_interrupt_handler(11, (int_callback)no_segment_fault);
-	register_interrupt_handler(12, (int_callback)stack_fault);
-	register_interrupt_handler(13, (int_callback)general_protection_fault);
-	//register_interrupt_handler(14, (int_callback)page_fault);
-	register_interrupt_handler(16, (int_callback)fpu_fault);
-	register_interrupt_handler(17, (int_callback)alignment_check_fault);
-	register_interrupt_handler(18, (int_callback)machine_check_abort);
-	register_interrupt_handler(19, (int_callback)simd_fpu_fault);
+	register_interrupt_handler(0, (I86_IRQ_HANDLER)divide_by_zero_fault);
+	register_interrupt_handler(1, (I86_IRQ_HANDLER)single_step_trap);
+	register_interrupt_handler(2, (I86_IRQ_HANDLER)nmi_trap);
+	register_interrupt_handler(3, (I86_IRQ_HANDLER)breakpoint_trap);
+	register_interrupt_handler(4, (I86_IRQ_HANDLER)overflow_trap);
+	register_interrupt_handler(5, (I86_IRQ_HANDLER)bounds_check_fault);
+	register_interrupt_handler(6, (I86_IRQ_HANDLER)invalid_opcode_fault);
+	register_interrupt_handler(7, (I86_IRQ_HANDLER)no_device_fault);
+	register_interrupt_handler(8, (I86_IRQ_HANDLER)double_fault_abort);
+	register_interrupt_handler(10, (I86_IRQ_HANDLER)invalid_tss_fault);
+	register_interrupt_handler(11, (I86_IRQ_HANDLER)no_segment_fault);
+	register_interrupt_handler(12, (I86_IRQ_HANDLER)stack_fault);
+	register_interrupt_handler(13, (I86_IRQ_HANDLER)general_protection_fault);
+	//register_interrupt_handler(14, (I86_IRQ_HANDLER)page_fault);
+	register_interrupt_handler(16, (I86_IRQ_HANDLER)fpu_fault);
+	register_interrupt_handler(17, (I86_IRQ_HANDLER)alignment_check_fault);
+	register_interrupt_handler(18, (I86_IRQ_HANDLER)machine_check_abort);
+	register_interrupt_handler(19, (I86_IRQ_HANDLER)simd_fpu_fault);
 
 	terminal_writestring("Exception: Done\n");
 }
