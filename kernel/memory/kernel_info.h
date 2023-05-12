@@ -21,5 +21,4 @@ extern void *stack_top;
 #define STACK_BOTTOM (uint32_t)(&stack_bottom)
 #define STACK_TOP (uint32_t)(&stack_top)
 
-
 #endif

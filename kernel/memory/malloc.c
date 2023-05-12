@@ -1,26 +1,24 @@
 #include "malloc.h"
+
 #include <stdint.h>
+
 #include "kernel_info.h"
 
 // first 1MB is reserved for GRUB and BIOS
-// then goes your program, make sure you won't rewrite it 
+// then goes your program, make sure you won't rewrite it
 uint32_t placement_address = KERNEL_END;
 
-uint32_t
-kmalloc_int(uint32_t sz, int align, uint32_t *phys)
-{
+uint32_t kmalloc_int(uint32_t sz, int align, uint32_t *phys) {
   // This will eventually call malloc() on the kernel heap.
   // For now, though, we just assign memory at placement_address
   // and increment it by sz. Even when we've coded our kernel
   // heap, this will be useful for use before the heap is initialised.
-  if (align == 1 && (placement_address & 0xFFF))
-  {
+  if (align == 1 && (placement_address & 0xFFF)) {
     // Align the placement address;
     placement_address &= 0xFFFFF000;
     placement_address += 0x1000;
   }
-  if (phys)
-  {
+  if (phys) {
     *phys = placement_address;
   }
   uint32_t tmp = placement_address;
@@ -28,22 +26,18 @@ kmalloc_int(uint32_t sz, int align, uint32_t *phys)
   return tmp;
 }
 
-uint32_t kmalloc_a(uint32_t sz)
-{
+uint32_t kmalloc_a(uint32_t sz) {
   return kmalloc_int(sz, 1, 0);
 }
 
-uint32_t kmalloc_p(uint32_t sz, uint32_t *phys)
-{
+uint32_t kmalloc_p(uint32_t sz, uint32_t *phys) {
   return kmalloc_int(sz, 0, phys);
 }
 
-uint32_t kmalloc_ap(uint32_t sz, uint32_t *phys)
-{
+uint32_t kmalloc_ap(uint32_t sz, uint32_t *phys) {
   return kmalloc_int(sz, 1, phys);
 }
 
-uint32_t kmalloc(uint32_t sz)
-{
+uint32_t kmalloc(uint32_t sz) {
   return kmalloc_int(sz, 0, 0);
 }

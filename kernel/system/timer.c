@@ -1,21 +1,21 @@
 // timer.c -- Initialises the PIT, and handles clock updates.
 // Written for JamesM's kernel development tutorials.
 
-#include <stdio.h>
-#include "../cpu/idt.h"
-#include "../cpu/hal.h"
 #include "timer.h"
+
+#include <stdio.h>
+
+#include "../cpu/hal.h"
+#include "../cpu/idt.h"
 
 uint32_t tick = 0;
 
-static void timer_callback(interrupt_registers regs)
-{
+static void timer_callback(interrupt_registers regs) {
   tick++;
   printf("Tick: %d \n", tick);
 }
 
-void timer_create(uint32_t frequency)
-{
+void timer_create(uint32_t frequency) {
   // Firstly, register our timer callback.
   register_interrupt_handler(IRQ0, &timer_callback);
 
@@ -29,7 +29,7 @@ void timer_create(uint32_t frequency)
 
   // Divisor has to be sent byte-wise, so split here into upper/lower bytes.
   uint8_t l = (uint8_t)(divisor & 0xFF);
-  uint8_t h = (uint8_t)((divisor >> 8) & 0xFF );
+  uint8_t h = (uint8_t)((divisor >> 8) & 0xFF);
 
   // Send the frequency divisor.
   outportb(0x40, l);

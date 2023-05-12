@@ -1,33 +1,34 @@
+#include "idt.h"
+
 #include <stdint.h>
 #include <stdio.h>
-#include "../devices/tty.h"
-#include "idt.h"
-#include "pic.h"
-#include "hal.h"
 
-#define IDT_INIT_ISR(i, sel) i86_install_ir(i, (uint32_t)isr ## i, sel, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32)
-#define IDT_INIT_IRQ(i, sel) i86_install_ir(i + 32, (uint32_t)irq ## i, sel, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32)
+#include "../devices/tty.h"
+#include "hal.h"
+#include "pic.h"
+
+#define IDT_INIT_ISR(i, sel) i86_install_ir(i, (uint32_t)isr##i, sel, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32)
+#define IDT_INIT_IRQ(i, sel) i86_install_ir(i + 32, (uint32_t)irq##i, sel, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32)
 
 __attribute__((aligned(0x10)));
 static idt_entry_t _idt_entries[I86_MAX_INTERRUPTS];
 static I86_IRQ_HANDLER _interrupt_handlers[I86_MAX_INTERRUPTS];
-static idt_ptr_t   _idt_ptr;
+static idt_ptr_t _idt_ptr;
 
-void i86_default_handler () {
+void i86_default_handler() {
   disable_interrupts();
 
   terminal_writestring("*** [i86 Hal] i86_default_handler: Unhandled Exception");
-	
-  for(;;);
+
+  for (;;)
+    ;
 }
 
+uint32_t i86_idt_initialize(uint16_t sel) {
+  _idt_ptr.limit = sizeof(idt_entry_t) * I86_MAX_INTERRUPTS - 1;
+  _idt_ptr.base = (uint32_t)&_idt_entries;
 
-uint32_t i86_idt_initialize(uint16_t sel)
-{
-  _idt_ptr.limit = sizeof(idt_entry_t) * I86_MAX_INTERRUPTS -1;
-  _idt_ptr.base  = (uint32_t)&_idt_entries;
-
-  memset(&_idt_entries, 0, sizeof(idt_entry_t)*I86_MAX_INTERRUPTS);
+  memset(&_idt_entries, 0, sizeof(idt_entry_t) * I86_MAX_INTERRUPTS);
 
   IDT_INIT_ISR(0, sel);
   IDT_INIT_ISR(1, sel);
@@ -82,21 +83,20 @@ uint32_t i86_idt_initialize(uint16_t sel)
   IDT_INIT_IRQ(15, sel);
 
   for (uint32_t i = 0; i < I86_MAX_INTERRUPTS; ++i) {
-    if (i == IRQ0) { //except timer
+    if (i == IRQ0) {  // except timer
       continue;
     }
     register_interrupt_handler(i, i86_default_handler);
   }
 
   idt_flush((uint32_t)&_idt_ptr);
-  
+
   return 0;
 }
 
-int i86_install_ir(uint8_t i, uint32_t base, uint16_t sel, uint8_t flags)
-{
+int i86_install_ir(uint8_t i, uint32_t base, uint16_t sel, uint8_t flags) {
   if (i > I86_MAX_INTERRUPTS)
-		return 0;
+    return 0;
 
   _idt_entries[i].base_lo = base & 0xFFFF;
   _idt_entries[i].base_hi = (base >> 16) & 0xFFFF;
@@ -105,37 +105,32 @@ int i86_install_ir(uint8_t i, uint32_t base, uint16_t sel, uint8_t flags)
   _idt_entries[i].always0 = 0;
   // We must uncomment the OR below when we get to using user-mode.
   // It sets the interrupt gate's privilege level to 3.
-  _idt_entries[i].flags   = flags /* | 0x60 */;
+  _idt_entries[i].flags = flags /* | 0x60 */;
   return 0;
 }
 
 void handle_interrupt(interrupt_registers *regs) {
-  if (_interrupt_handlers[regs->int_no] != 0)
-  {
+  if (_interrupt_handlers[regs->int_no] != 0) {
     I86_IRQ_HANDLER handler = _interrupt_handlers[regs->int_no];
     if (handler(regs) == IRQ_HANDLER_STOP)
-			return;
+      return;
   }
 }
 
 // This gets called from our ASM interrupt handler stub.
-void isr_handler(interrupt_registers *regs)
-{
+void isr_handler(interrupt_registers *regs) {
   handle_interrupt(regs);
 }
 
-void register_interrupt_handler(uint8_t n, I86_IRQ_HANDLER handler)
-{
+void register_interrupt_handler(uint8_t n, I86_IRQ_HANDLER handler) {
   _interrupt_handlers[n] = handler;
 }
 
 // This gets called from our ASM interrupt handler stub.
-void irq_handler(interrupt_registers *regs)
-{
+void irq_handler(interrupt_registers *regs) {
   if (regs->int_no >= 40)
-		outportb(PIC2_COMMAND, PIC_EOI);
-	outportb(PIC1_COMMAND, PIC_EOI);
+    outportb(PIC2_COMMAND, PIC_EOI);
+  outportb(PIC1_COMMAND, PIC_EOI);
 
   handle_interrupt(regs);
 }
-
