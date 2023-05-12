@@ -1,7 +1,6 @@
-#include "malloc.h"
-
 #include <stdint.h>
 
+#include "malloc.h"
 #include "kernel_info.h"
 
 // first 1MB is reserved for GRUB and BIOS

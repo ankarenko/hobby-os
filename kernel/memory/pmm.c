@@ -1,7 +1,9 @@
-#include <stdint.h>
-#include <stdbool.h>
-#include <string.h>
+
 #include "pmm.h"
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <string.h>
 
 #define INDEX_FROM_BIT(a) (a / 4 * PMM_BLOCKS_PER_BYTE)
 #define OFFSET_FROM_BIT(a) (a % 4 * PMM_BLOCKS_PER_BYTE)
@@ -13,7 +15,7 @@ static uint32_t _used_blocks = 0;
 // maximum number of available memory blocks
 static uint32_t _max_blocks = 0;
 // memory map bit array. Each bit represents a memory block
-static uint32_t *_memory_map = 0;
+static uint32_t* _memory_map = 0;
 
 void memory_bitmap_set(uint32_t bit) {
   _memory_map[INDEX_FROM_BIT(bit)] |= (1 << (OFFSET_FROM_BIT(bit)));
@@ -31,8 +33,7 @@ int32_t memory_bitmap_first_free() {
   //! find the first free bit
   for (uint32_t i = 0; i < pmm_get_block_count() / 32; i++)
     if (_memory_map[i] != 0xffffffff)
-      for (uint32_t j = 0; j < 32; j++)
-      { //! test each bit in the dword
+      for (uint32_t j = 0; j < 32; j++) {  //! test each bit in the dword
 
         uint32_t bit = 1 << j;
         if (!(_memory_map[i] & bit))
@@ -51,25 +52,20 @@ int32_t memory_bitmap_first_free_s(uint32_t size) {
 
   for (uint32_t i = 0; i < pmm_get_block_count() / 32; i++)
     if (_memory_map[i] != 0xffffffff)
-      for (uint32_t j = 0; j < 32; j++)
-      { //! test each bit in the dword
+      for (uint32_t j = 0; j < 32; j++) {  //! test each bit in the dword
 
         uint32_t bit = 1 << j;
-        if (!(_memory_map[i] & bit))
-        {
-
+        if (!(_memory_map[i] & bit)) {
           uint32_t startingBit = i * 32;
-          startingBit += bit; // get the free bit in the dword at index i
+          startingBit += bit;  // get the free bit in the dword at index i
 
-          uint32_t free = 0; // loop through each bit to see if its enough space
-          for (uint32_t count = 0; count <= size; count++)
-          {
-
+          uint32_t free = 0;  // loop through each bit to see if its enough space
+          for (uint32_t count = 0; count <= size; count++) {
             if (!memory_bitmap_test(startingBit + count))
-              free++; // this bit is clear (free frame)
+              free++;  // this bit is clear (free frame)
 
             if (free == size)
-              return i * 4 * PMM_BLOCKS_PER_BYTE + j; // free count==size needed; return index
+              return i * 4 * PMM_BLOCKS_PER_BYTE + j;  // free count==size needed; return index
           }
         }
       }
@@ -77,11 +73,10 @@ int32_t memory_bitmap_first_free_s(uint32_t size) {
   return -1;
 }
 
-void pmm_init(uint32_t memSize, physical_addr bitmap)
-{
+void pmm_init(uint32_t memSize, physical_addr bitmap) {
   _memory_size = memSize;
-  _memory_map = (uint32_t *)bitmap;
-  _max_blocks = (pmm_get_memory_size() * 1024) / PMM_BLOCK_SIZE;
+  _memory_map = (uint32_t*)bitmap;
+  _max_blocks = pmm_get_memory_size() / PMM_BLOCK_SIZE;
   _used_blocks = pmm_get_block_count();
 
   //! By default, all of memory is in use
@@ -89,54 +84,69 @@ void pmm_init(uint32_t memSize, physical_addr bitmap)
 }
 
 void pmm_init_region(physical_addr base, uint32_t size) {
- 
-	int align = base / PMM_BLOCK_SIZE;
-	int blocks = size / PMM_BLOCK_SIZE;
- 
-	for (; blocks>0; blocks--) {
-		memory_bitmap_unset (align++);
-		_used_blocks--;
-	}
- 
-	memory_bitmap_set (0);	//first block is always set. This insures allocs cant be 0
+  int align = base / PMM_BLOCK_SIZE;
+  int blocks = size / PMM_BLOCK_SIZE;
+
+  for (; blocks > 0; blocks--) {
+    memory_bitmap_unset(align++);
+    _used_blocks--;
+  }
+
+  memory_bitmap_set(0);  // first block is always set. This insures allocs cant be 0
 }
 
-void pmm_deinit_region (physical_addr base, uint32_t size) {
- 
-	int align = base / PMM_BLOCK_SIZE;
-	int blocks = size / PMM_BLOCK_SIZE;
- 
-	for (; blocks>0; blocks--) {
-		memory_bitmap_set (align++);
-		_used_blocks++;
-	}
+void pmm_deinit_region(physical_addr base, uint32_t size) {
+  int align = base / PMM_BLOCK_SIZE;
+  int blocks = size / PMM_BLOCK_SIZE;
+
+  for (; blocks > 0; blocks--) {
+    memory_bitmap_set(align++);
+    _used_blocks++;
+  }
 }
 
-void*	pmm_alloc_block () {
- 
-	if (pmm_get_free_block_count() <= 0)
-		return 0;	//out of memory
- 
-	int frame = memory_bitmap_first_free();
- 
-	if (frame == -1)
-		return 0;	//out of memory
- 
-	memory_bitmap_set (frame);
- 
-	physical_addr addr = frame * PMM_BLOCK_SIZE;
-	_used_blocks++;
- 
-	return (void*)addr;
+void* pmm_alloc_block() {
+  if (pmm_get_free_block_count() <= 0)
+    return 0;  // out of memory
+
+  int frame = memory_bitmap_first_free();
+
+  if (frame == -1)
+    return 0;  // out of memory
+
+  memory_bitmap_set(frame);
+
+  physical_addr addr = frame * PMM_BLOCK_SIZE;
+  _used_blocks++;
+
+  return (void*)addr;
 }
 
-void pmm_free_block (void* p) {
-	physical_addr addr = (physical_addr)p;
-	int frame = addr / PMM_BLOCK_SIZE;
- 
-	memory_bitmap_unset (frame);
- 
-	_used_blocks--;
+void* pmm_alloc_blocks(uint32_t size) {
+  if (pmm_get_free_block_count() <= size)
+    return 0;  // not enough space
+
+  int frame = memory_bitmap_first_free_s(size);
+
+  if (frame == -1)
+    return 0;  // not enough space
+
+  for (uint32_t i = 0; i < size; i++)
+    memory_bitmap_set(frame + i);
+
+  physical_addr addr = frame * PMM_BLOCK_SIZE;
+  _used_blocks += size;
+
+  return (void*)addr;
+}
+
+void pmm_free_block(void* p) {
+  physical_addr addr = (physical_addr)p;
+  int frame = addr / PMM_BLOCK_SIZE;
+
+  memory_bitmap_unset(frame);
+
+  _used_blocks--;
 }
 
 uint32_t pmm_get_memory_size() {

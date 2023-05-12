@@ -17,6 +17,7 @@ void pmm_init(uint32_t memSize, physical_addr bitmap);
 void pmm_init_region(physical_addr base, uint32_t size);
 void pmm_deinit_region(physical_addr base, uint32_t size);
 void* pmm_alloc_block();
+void* pmm_alloc_blocks(uint32_t size);
 
 uint32_t pmm_get_memory_size();
 uint32_t pmm_get_block_count();

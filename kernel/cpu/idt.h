@@ -1,8 +1,7 @@
 #ifndef _IDT_H
 #define _IDT_H
-// #include <common.h>
-
 #include <stdint.h>
+
 #define IRQ_HANDLER_CONTINUE 0
 #define IRQ_HANDLER_STOP 1
 //! i86 defines 256 possible interrupt handlers (0-255)
@@ -43,9 +42,6 @@ typedef struct
 #define IRQ15 47
 
 typedef int32_t (*I86_IRQ_HANDLER)(struct interrupt_registers *registers);
-extern void idt_flush(uint32_t);
-
-uint32_t i86_idt_initialize(uint16_t sel);
 
 // A struct describing an interrupt gate.
 struct idt_entry_struct {
@@ -65,62 +61,8 @@ struct idt_ptr_struct {
 } __attribute__((packed));
 typedef struct idt_ptr_struct idt_ptr_t;
 
-#define ISR(index) extern void isr##index()
-#define IRQ(index) extern void irq##index()
-
 void register_interrupt_handler(uint8_t n, I86_IRQ_HANDLER handler);
-int i86_install_ir(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags);
-void irq_handler(interrupt_registers *regs);
-void isr_handler(interrupt_registers *regs);
-
-ISR(0);
-ISR(1);
-ISR(2);
-ISR(3);
-ISR(4);
-ISR(5);
-ISR(6);
-ISR(7);
-ISR(8);
-ISR(9);
-ISR(10);
-ISR(11);
-ISR(12);
-ISR(13);
-ISR(14);
-ISR(15);
-ISR(16);
-ISR(17);
-ISR(18);
-ISR(19);
-ISR(20);
-ISR(21);
-ISR(22);
-ISR(23);
-ISR(24);
-ISR(25);
-ISR(26);
-ISR(27);
-ISR(28);
-ISR(29);
-ISR(30);
-ISR(31);
-
-IRQ(0);
-IRQ(1);
-IRQ(2);
-IRQ(3);
-IRQ(4);
-IRQ(5);
-IRQ(6);
-IRQ(7);
-IRQ(8);
-IRQ(9);
-IRQ(10);
-IRQ(11);
-IRQ(12);
-IRQ(13);
-IRQ(14);
-IRQ(15);
+int32_t i86_install_ir(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags);
+uint32_t i86_idt_initialize(uint16_t sel);
 
 #endif

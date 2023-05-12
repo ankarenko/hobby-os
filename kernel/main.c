@@ -11,10 +11,10 @@
 #include "./kernel/cpu/idt.h"
 #include "./kernel/devices/kybrd.h"
 #include "./kernel/memory/kernel_info.h"
-#include "./kernel/memory/vmm.h"
+#include "./kernel/memory/pmm.h"
 #include "./multiboot.h"
 
-void get_memory_info(multiboot_info_t *mbd, uint32_t magic) {
+uint32_t calculate_memsize(multiboot_info_t *mbd, uint32_t magic) {
   if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
     printf("invalid magic number!");
     return;
@@ -33,18 +33,21 @@ void get_memory_info(multiboot_info_t *mbd, uint32_t magic) {
     multiboot_memory_map_t *mmmt =
         (multiboot_memory_map_t *)(mbd->mmap_addr + i);
 
+    /*
     printf("Start Addr: %X | Length: %d | Size: %d | Type: %d\n",
            mmmt->addr_low, mmmt->len_low, mmmt->size, mmmt->type);
+    */
 
-    if (mmmt->type == MULTIBOOT_MEMORY_AVAILABLE) {
-      /*
-       * Do something with this memory block!
-       * BE WARNED that some of memory shown as availiable is actually
-       * actively being used by the kernel! You'll need to take that
-       * into account before writing to memory!
-       */
+    if (
+      mmmt->type == MULTIBOOT_MEMORY_AVAILABLE && 
+      mmmt->addr_low < KERNEL_END &&
+      mmmt->len_low + mmmt->addr_low > KERNEL_END
+    ) {
+      return mmmt->len_low + mmmt->addr_low - KERNEL_END;
     }
   }
+
+  return -1;
 }
 
 void a(uint32_t max) {
@@ -68,13 +71,24 @@ void print_data_layout() {
 void kernel_main(multiboot_info_t *mbd, uint32_t magic) {
   i86_gdt_initialize();
   i86_idt_initialize(0x8);
-  // timer_create(10);
   /* Mandatory, because the PIC interrupts are maskable. */
   enable_interrupts();
   terminal_initialize();
   init_keyboard();
-  print_data_layout();
-  exception_init();
+  uint32_t memsize = calculate_memsize(mbd, magic);
+  
+  printf("Available data frame: [%X - %X]\n", KERNEL_END, KERNEL_END + memsize);
+  printf("Available memory: %d KB\n", memsize >> 10);
+  
+  pmm_init(memsize, KERNEL_END);
+  pmm_init_region(KERNEL_END, memsize);
+  
+  printf("Before: %d\n", pmm_get_free_block_count());
+
+  physical_addr addr = pmm_alloc_block();
+
+  printf("After: %d\n", pmm_get_free_block_count());
+
   /*
   initialise_paging();
 
