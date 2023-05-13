@@ -1,11 +1,21 @@
-#include "vmm.h"
-
 #include <string.h>
+#include <stdio.h>
+
+#include "vmm.h"
 
 //! current directory table (global)
 struct pdirectory* _cur_directory = 0;
 //! current page directory base register
 physical_addr _cur_pdbr = 0;
+
+bool vmm_switch_pdirectory(struct pdirectory* dir) {
+  if (!dir)
+    return false;
+
+  _cur_directory = dir;
+  pmm_load_PDBR(_cur_pdbr);
+  return true;
+}
 
 bool vmm_alloc_page(pt_entry* e) {
   //! allocate a free physical frame
@@ -36,31 +46,18 @@ pd_entry* vmm_pdirectory_lookup_entry(struct pdirectory* p, virtual_addr addr) {
   return p ? &p->m_entries[PAGE_TABLE_INDEX(addr)] : 0;
 }
 
-inline bool vmm_switch_pdirectory(struct pdirectory* dir) {
-  if (!dir)
-    return false;
-
-  _cur_directory = dir;
-  pmm_load_PDBR(_cur_pdbr);
-  return true;
-}
-
 struct pdirectory* vmm_get_directory() {
   return _cur_directory;
 }
 
 void vmm_flush_tlb_entry(virtual_addr addr) {
-#ifdef _MSC_VER
-  _asm {
-		cli
-		invlpg	addr
-		sti
-  }
-#endif
-}
-
-struct pdirectory* vmm_get_directory() {
-  return _cur_directory;
+  __asm__ __volatile__(
+      "cli        \n\t"
+      "invlpg %0  \n\t"
+      "sti        \n\t"
+      :
+      : "m"(addr)
+      :);
 }
 
 void vmm_map_page(void* phys, void* virt) {
@@ -109,10 +106,14 @@ void vmm_initialize() {
     return;
 
   //! clear page table
-  vmm_ptable_clear(table);
+  memset(table, 0, sizeof(struct ptable));
 
   //! 1st 4mb are idenitity mapped
-  for (int i = 0, frame = 0x0, virt = 0x00000000; i < 1024; i++, frame += 4096, virt += 4096) {
+  for (
+    uint32_t i = 0, frame = 0x0, virt = 0x00000000; 
+    i < PAGES_PER_TABLE; 
+    i++, frame += PAGE_SIZE, virt += PAGE_SIZE
+  ) {
     //! create a new page
     pt_entry page = 0;
     pt_entry_add_attrib(&page, I86_PTE_PRESENT);
@@ -120,10 +121,19 @@ void vmm_initialize() {
 
     //! ...and add it to the page table
     table2->m_entries[PAGE_TABLE_INDEX(virt)] = page;
+
+    if (i == PAGES_PER_TABLE) {
+      printf("Index: %d : [%x]\n", PAGE_TABLE_INDEX(virt), frame + PAGE_SIZE);
+    }
+    
   }
 
   //! map 1mb to 3gb (where we are at)
-  for (int i = 0, frame = 0x100000, virt = 0xc0000000; i < 1024; i++, frame += 4096, virt += 4096) {
+  for (
+    uint32_t i = 0, frame = 0x100000, virt = 0xc0000000; 
+    i < PAGES_PER_TABLE; 
+    i++, frame += PAGE_SIZE, virt += PAGE_SIZE
+  ) {
     //! create a new page
     pt_entry page = 0;
     pt_entry_add_attrib(&page, I86_PTE_PRESENT);

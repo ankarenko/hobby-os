@@ -13,3 +13,11 @@ gdt_flush:
   ljmp $0x08, $.flush   # 0x08 is the offset to our code segment: Far jump!
 .flush:
   ret
+
+.global idt_flush
+.type idt_flush, @function
+idt_flush:
+  mov 4(%esp), %eax  # Get the pointer to the IDT, passed as a parameter.
+  lidt (%eax)        # Load the IDT pointer.
+  ret
+

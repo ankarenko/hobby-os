@@ -5,6 +5,7 @@
 #include "hal.h"
 #include "pic.h"
 #include "idt.h"
+#include "exception.h"
 
 #define ISR(index) extern void isr##index()
 #define IRQ(index) extern void irq##index()
@@ -68,15 +69,6 @@ static idt_entry_t _idt_entries[I86_MAX_INTERRUPTS];
 static I86_IRQ_HANDLER _interrupt_handlers[I86_MAX_INTERRUPTS];
 static idt_ptr_t _idt_ptr;
 
-void i86_default_handler() {
-  disable_interrupts();
-
-  terminal_writestring("*** [i86 Hal] i86_default_handler: Unhandled Exception");
-
-  for (;;)
-    ;
-}
-
 uint32_t i86_idt_initialize(uint16_t sel) {
   _idt_ptr.limit = sizeof(idt_entry_t) * I86_MAX_INTERRUPTS - 1;
   _idt_ptr.base = (uint32_t)&_idt_entries;
@@ -135,13 +127,7 @@ uint32_t i86_idt_initialize(uint16_t sel) {
   IDT_INIT_IRQ(14, sel);
   IDT_INIT_IRQ(15, sel);
 
-  for (uint32_t i = 0; i < I86_MAX_INTERRUPTS; ++i) {
-    if (i == IRQ0) {  // except timer
-      continue;
-    }
-    register_interrupt_handler(i, i86_default_handler);
-  }
-
+  exception_init();
   idt_flush((uint32_t)&_idt_ptr);
 
   return 0;
@@ -165,8 +151,7 @@ int32_t i86_install_ir(uint8_t i, uint32_t base, uint16_t sel, uint8_t flags) {
 void handle_interrupt(interrupt_registers *regs) {
   if (_interrupt_handlers[regs->int_no] != 0) {
     I86_IRQ_HANDLER handler = _interrupt_handlers[regs->int_no];
-    if (handler(regs) == IRQ_HANDLER_STOP)
-      return;
+    handler(regs);
   }
 }
 

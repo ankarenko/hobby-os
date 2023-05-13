@@ -1,133 +1,172 @@
 #include "exception.h"
 
-#include "../devices/tty.h"
-#include "./hal.h"
-#include "./idt.h"
-// #include <cdefs.h>
-// #include <utils/debug.h>
+#include <stdio.h>
 
-#define kernel_panic(fmt, ...) ({ disable_interrupts(); terminal_writestring(fmt); terminal_writestring("\n");  __asm__ __volatile__("int $0x01"); })
+#include "idt.h"
+#include "panic.h"
 
-static int32_t divide_by_zero_fault(struct interrupt_registers *regs) {
-  kernel_panic("Divide by 0");
-  return IRQ_HANDLER_STOP;
-}
+//! divide by 0 fault
+void divide_by_zero_fault(interrupt_registers *registers) {
+  /*
+  _asm {
+    cli
+    add esp, 12
+    pushad
+  }
+  */
 
-static int32_t single_step_trap(struct interrupt_registers *regs) {
-  while (1)
+  kernel_panic(
+      "Divide by 0 at physical address [0x%x:0x%x] EFLAGS [0x%x] other: 0x%x",
+      registers->cs,
+      registers->eip,
+      registers->eflags);
+  for (;;)
     ;
+}
 
+//! single step
+void single_step_trap(struct interrupt_registers *registers) {
   kernel_panic("Single step");
-  return IRQ_HANDLER_STOP;
+  for (;;)
+    ;
 }
 
-static int32_t nmi_trap(struct interrupt_registers *regs) {
+//! non maskable trap
+void nmi_trap(struct interrupt_registers *registers) {
   kernel_panic("NMI trap");
-  return IRQ_HANDLER_STOP;
+  for (;;)
+    ;
 }
 
-static int32_t breakpoint_trap(struct interrupt_registers *regs) {
+//! breakpoint hit
+void breakpoint_trap(struct interrupt_registers *registers) {
   kernel_panic("Breakpoint trap");
-  return IRQ_HANDLER_STOP;
+  for (;;)
+    ;
 }
 
-static int32_t overflow_trap(struct interrupt_registers *regs) {
+//! overflow
+void overflow_trap(struct interrupt_registers *registers) {
   kernel_panic("Overflow trap");
-  return IRQ_HANDLER_STOP;
+  for (;;)
+    ;
 }
 
-static int32_t bounds_check_fault(struct interrupt_registers *regs) {
+//! bounds check
+void bounds_check_fault(struct interrupt_registers *registers) {
   kernel_panic("Bounds check fault");
-  return IRQ_HANDLER_STOP;
+  for (;;)
+    ;
 }
 
-static int32_t invalid_opcode_fault(struct interrupt_registers *regs) {
+//! invalid opcode / instruction
+void invalid_opcode_fault(struct interrupt_registers *registers) {
   kernel_panic("Invalid opcode");
-  return IRQ_HANDLER_STOP;
+  for (;;)
+    ;
 }
 
-static int32_t no_device_fault(struct interrupt_registers *regs) {
+//! device not available
+void no_device_fault(struct interrupt_registers *registers) {
   kernel_panic("Device not found");
-  return IRQ_HANDLER_STOP;
+  for (;;)
+    ;
 }
 
-static int32_t double_fault_abort(struct interrupt_registers *regs) {
+//! double fault
+void double_fault_abort(struct interrupt_registers *registers) {
   kernel_panic("Double fault");
-  return IRQ_HANDLER_STOP;
+  for (;;)
+    ;
 }
 
-static int32_t invalid_tss_fault(struct interrupt_registers *regs) {
+//! invalid Task State Segment (TSS)
+void invalid_tss_fault(struct interrupt_registers *registers) {
   kernel_panic("Invalid TSS");
-  return IRQ_HANDLER_STOP;
+  for (;;)
+    ;
 }
 
-static int32_t no_segment_fault(struct interrupt_registers *regs) {
+//! segment not present
+void no_segment_fault(struct interrupt_registers *registers) {
   kernel_panic("Invalid segment");
-  return IRQ_HANDLER_STOP;
+  for (;;)
+    ;
 }
 
-static int32_t stack_fault(struct interrupt_registers *regs) {
+//! stack fault
+void stack_fault(struct interrupt_registers *registers) {
   kernel_panic("Stack fault");
-  return IRQ_HANDLER_STOP;
+  for (;;)
+    ;
 }
 
-static int32_t general_protection_fault(struct interrupt_registers *regs) {
+//! general protection fault
+void general_protection_fault(struct interrupt_registers *registers) {
   kernel_panic("General Protection Fault");
-  return IRQ_HANDLER_STOP;
+  for (;;)
+    ;
 }
 
-static int32_t fpu_fault(struct interrupt_registers *regs) {
+//! page fault
+void page_fault(struct interrupt_registers *registers) {
+  //_asm cli _asm sub ebp, 4
+
+  //	int faultAddr=0;
+
+  //	_asm {
+  //		mov eax, cr2
+  //		mov [faultAddr], eax
+  //	}
+
+  //	kernel_panic ("Page Fault at 0x%x:0x%x refrenced memory at 0x%x",
+  //		cs, eip, faultAddr);
+
+  //_asm popad _asm sti _asm iretd
+}
+
+//! Floating Point Unit (FPU) error
+void fpu_fault(struct interrupt_registers *registers) {
   kernel_panic("FPU Fault");
-  return IRQ_HANDLER_STOP;
+  for (;;)
+    ;
 }
 
-static int32_t alignment_check_fault(struct interrupt_registers *regs) {
+void i86_default_handler(interrupt_registers *registers) {
+  kernel_panic("*** [i86 Hal] i86_default_handler: Unhandled Exception");
+  
+  for (;;)
+    ;
+}
+
+//! alignment check
+void alignment_check_fault(struct interrupt_registers *registers) {
   kernel_panic("Alignment Check");
-  return IRQ_HANDLER_STOP;
+  for (;;)
+    ;
 }
 
-static int32_t machine_check_abort(struct interrupt_registers *regs) {
+//! machine check
+void machine_check_abort(struct interrupt_registers *registers) {
   kernel_panic("Machine Check");
-  return IRQ_HANDLER_STOP;
+  for (;;)
+    ;
 }
 
-static int32_t simd_fpu_fault(struct interrupt_registers *regs) {
+//! Floating Point Unit (FPU) Single Instruction Multiple Data (SIMD) error
+void simd_fpu_fault(struct interrupt_registers *registers) {
   kernel_panic("FPU SIMD fault");
-  return IRQ_HANDLER_STOP;
+  for (;;)
+    ;
 }
-
-/*
-static int32_t page_fault(interrupt_registers regs)
-{
-  // A page fault has occurred.
-  // The faulting address is stored in the CR2 register.
-  uint32_t faulting_address;
-  asm volatile("mov %%cr2, %0" : "=r" (faulting_address));
-
-  // The error code gives us details of what happened.
-  int present   = !(regs.err_code & 0x1); // Page not present
-  int rw = regs.err_code & 0x2;           // Write operation?
-  int us = regs.err_code & 0x4;           // Processor was in user-mode?
-  int reserved = regs.err_code & 0x8;     // Overwritten CPU-reserved bits of page entry?
-  int id = regs.err_code & 0x10;          // Caused by an instruction fetch?
-
-  // Output an error message.
-  terminal_writestring("Page fault! ( ");
-  if (present) {terminal_writestring("present ");}
-  if (rw) {terminal_writestring("read-only ");}
-  if (us) {terminal_writestring("user-mode ");}
-  if (reserved) {terminal_writestring("reserved ");}
-  terminal_writestring(") at 0x");
-  terminal_writestring(faulting_address); // TODO: hex writestring_hex
-  terminal_writestring("\n");
-  terminal_writestring("Page fault");
-  kernel_panic("Page Fault");
-        return IRQ_HANDLER_STOP;
-}
-*/
 
 void exception_init() {
-  terminal_writestring("Exception: Initializing\n");
+  for (uint32_t i = 0; i < I86_MAX_INTERRUPTS; ++i) {
+    if (i == IRQ0) {  // ignore timer
+      continue;
+    }
+    register_interrupt_handler(i, i86_default_handler);
+  }
 
   register_interrupt_handler(0, (I86_IRQ_HANDLER)divide_by_zero_fault);
   register_interrupt_handler(1, (I86_IRQ_HANDLER)single_step_trap);
@@ -142,11 +181,9 @@ void exception_init() {
   register_interrupt_handler(11, (I86_IRQ_HANDLER)no_segment_fault);
   register_interrupt_handler(12, (I86_IRQ_HANDLER)stack_fault);
   register_interrupt_handler(13, (I86_IRQ_HANDLER)general_protection_fault);
-  // register_interrupt_handler(14, (I86_IRQ_HANDLER)page_fault);
+  register_interrupt_handler(14, (I86_IRQ_HANDLER)page_fault);
   register_interrupt_handler(16, (I86_IRQ_HANDLER)fpu_fault);
   register_interrupt_handler(17, (I86_IRQ_HANDLER)alignment_check_fault);
   register_interrupt_handler(18, (I86_IRQ_HANDLER)machine_check_abort);
   register_interrupt_handler(19, (I86_IRQ_HANDLER)simd_fpu_fault);
-
-  terminal_writestring("Exception: Done\n");
 }

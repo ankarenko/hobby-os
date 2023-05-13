@@ -5,8 +5,8 @@
 #include <stdint.h>
 
 #include "pmm.h"
-#include "vmm_pte.h"
 #include "vmm_pde.h"
+#include "vmm_pte.h"
 
 //! virtual address
 typedef uint32_t virtual_addr;
@@ -37,5 +37,43 @@ struct ptable {
 struct pdirectory {
   pd_entry m_entries[PAGES_PER_DIR];
 };
+
+void vmm_initialize();
+
+//! maps phys to virtual address
+void vmm_map_page(void* phys, void* virt);
+
+//! allocates a page in physical memory
+bool vmm_alloc_page(pt_entry*);
+
+//! frees a page in physical memory
+void vmm_free_page(pt_entry* e);
+
+//! switch to a new page directory
+bool vmm_switch_pdirectory(struct pdirectory*);
+
+//! get current page directory
+struct pdirectory* vmm_get_directory();
+
+//! flushes a cached translation lookaside buffer (TLB) entry
+void vmm_flush_tlb_entry(virtual_addr addr);
+
+//! clears a page table
+void vmm_ptable_clear(struct ptable* p);
+
+//! convert virtual address to page table index
+uint32_t vmm_ptable_virt_to_index(virtual_addr addr);
+
+//! get page entry from page table
+pt_entry* vmm_ptable_lookup_entry(struct ptable* p, virtual_addr addr);
+
+//! convert virtual address to page directory index
+uint32_t vmm_pdirectory_virt_to_index(virtual_addr addr);
+
+//! clears a page directory table
+void vmm_pdirectory_clear(struct pdirectory* dir);
+
+//! get directory entry from directory table
+pd_entry* vmm_pdirectory_lookup_entry(struct pdirectory* p, virtual_addr addr);
 
 #endif

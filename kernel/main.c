@@ -12,6 +12,7 @@
 #include "./kernel/devices/kybrd.h"
 #include "./kernel/memory/kernel_info.h"
 #include "./kernel/memory/pmm.h"
+#include "./kernel/memory/vmm.h"
 #include "./multiboot.h"
 
 uint32_t calculate_memsize(multiboot_info_t *mbd, uint32_t magic) {
@@ -75,6 +76,10 @@ void kernel_main(multiboot_info_t *mbd, uint32_t magic) {
   enable_interrupts();
   terminal_initialize();
   init_keyboard();
+  print_data_layout();
+  
+  //uint32_t a = 1/0;
+  
   uint32_t memsize = calculate_memsize(mbd, magic);
   
   printf("Available data frame: [%X - %X]\n", KERNEL_END, KERNEL_END + memsize);
@@ -85,10 +90,7 @@ void kernel_main(multiboot_info_t *mbd, uint32_t magic) {
   
   printf("Before: %d\n", pmm_get_free_block_count());
 
-  physical_addr addr = pmm_alloc_block();
-
-  printf("After: %d\n", pmm_get_free_block_count());
-
+  //vmm_initialize();
   /*
   initialise_paging();
 
@@ -98,7 +100,6 @@ void kernel_main(multiboot_info_t *mbd, uint32_t magic) {
   */
   // a(_A);
 
-  printf("Hello world\n");
   // printf("%d", as);
   // asm volatile ("int $0x0");
 

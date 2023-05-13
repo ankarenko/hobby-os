@@ -1,8 +1,6 @@
-
 #include "pmm.h"
 
 #include <stdbool.h>
-#include <stdint.h>
 #include <string.h>
 
 #define INDEX_FROM_BIT(a) (a / 4 * PMM_BLOCKS_PER_BYTE)
@@ -120,6 +118,32 @@ void* pmm_alloc_block() {
   _used_blocks++;
 
   return (void*)addr;
+}
+
+void pmm_paging_enable(bool b) {
+  uint32_t cr0 = 0;
+  asm volatile("mov %%cr0, %0"
+               : "=r"(cr0));
+  cr0 |= b ? 0x80000000 : 0x7FFFFFFF;  // Enable paging!
+  asm volatile("mov %0, %%cr0" ::"r"(cr0));
+}
+
+bool pmm_is_paging() {
+  uint32_t cr0;
+  asm volatile("mov %%cr0, %0"
+               : "=r"(cr0));
+  return (cr0 & 0x80000000) ? true : false;
+}
+
+void pmm_load_PDBR(physical_addr addr) {
+  asm volatile("mov %0, %%cr3" ::"r"(addr));
+}
+
+physical_addr pmm_get_PDBR() {
+  uint32_t cr3;
+  asm volatile("mov %%cr3, %0"
+               : "=r"(cr3));
+  return cr3;
 }
 
 void* pmm_alloc_blocks(uint32_t size) {
