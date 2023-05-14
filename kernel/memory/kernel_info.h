@@ -3,14 +3,16 @@
 
 #include <stdint.h>
 
-extern void *kernel_start;
-extern void *kernel_text_start;
-extern void *kernel_text_end;
-extern void *kernel_data_start;
-extern void *kernel_data_end;
-extern void *kernel_end;
-extern void *stack_bottom;
-extern void *stack_top;
+extern void* kernel_start;
+extern void* kernel_text_start;
+extern void* kernel_text_end;
+extern void* kernel_data_start;
+extern void* kernel_data_end;
+extern void* kernel_end;
+extern void* stack_bottom;
+extern void* stack_top;
+extern void* kernel_boot;
+extern void* kernel_higher_half;
 
 #define KERNEL_START (uint32_t)(&kernel_start)
 #define KERNEL_TEXT_START (uint32_t)(&kernel_text_start)
@@ -20,5 +22,7 @@ extern void *stack_top;
 #define KERNEL_END (uint32_t)(&kernel_end)
 #define STACK_BOTTOM (uint32_t)(&stack_bottom)
 #define STACK_TOP (uint32_t)(&stack_top)
+#define KERNEL_HIGHER_HALF (uint32_t)(&kernel_higher_half)
+#define KERNEL_BOOT (uint32_t)(&kernel_boot)
 
 #endif

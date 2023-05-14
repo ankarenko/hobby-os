@@ -125,7 +125,6 @@ void vmm_initialize() {
     if (i == PAGES_PER_TABLE) {
       printf("Index: %d : [%x]\n", PAGE_TABLE_INDEX(virt), frame + PAGE_SIZE);
     }
-    
   }
 
   //! map 1mb to 3gb (where we are at)

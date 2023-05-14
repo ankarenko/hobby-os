@@ -9,9 +9,7 @@ SECTIONS
   kernel_boot = 0x00100000;
 	kernel_higher_half = 0xC0000000;
   
-	/* Begin putting sections at 1 MiB, a conventional place for kernels to be
-	   loaded at by the bootloader. */
-	. = 0xC0100000;
+	. = kernel_higher_half + kernel_boot;
   kernel_start = .;
   
 	/* First put the multiboot header, as it is required to be put very early

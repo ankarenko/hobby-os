@@ -8,6 +8,46 @@
 #include "vmm_pde.h"
 #include "vmm_pte.h"
 
+/*
+  Memory layout of our address space
+  +-------------------------+ 0xFFFFFFFF
+  | Page table mapping      |
+  |_________________________| 0xFFC00000
+  |                         |
+  |-------------------------| 0xF0000000
+  |                         |
+  | Device drivers          |
+  |                         |
+  |-------------------------| 0xE8000000
+  | VMALLOC                 |
+  |-------------------------| 0xE0000000
+  |                         |
+  |                         |
+  | Kernel heap             |
+  |                         |
+  |_________________________| 0xC8000000
+  |                         | 
+  | Kernel itself           |
+  |_________________________| 0xC0000000
+  |                         |
+  | Page for page faults    |
+  |_________________________| 0xBFFFF000
+  |                         |
+  |                         |
+  |                         |
+  |                         |
+  |_________________________| 0x40000000
+  |                         |
+  | User heap               |
+  |_________________________| 0x
+  |                         |
+  | Elf                     |
+  |_________________________| 0x100000
+  |                         |
+  | Reversed for devices    |
+  +_________________________+ 0x00000000
+*/
+
 //! virtual address
 typedef uint32_t virtual_addr;
 

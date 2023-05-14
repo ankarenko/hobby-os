@@ -16,8 +16,6 @@
 #include "./multiboot.h"
 
 uint32_t calculate_memsize(multiboot_info_t *mbd, uint32_t magic) {
-  printf("header address: %x", mbd);
-
   if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
     printf("invalid magic number!");
     return;
@@ -29,14 +27,14 @@ uint32_t calculate_memsize(multiboot_info_t *mbd, uint32_t magic) {
     return;
   }
 
-  /* Loop through the memory map and display the values */
-  int i;
-  for (i = 0; i < mbd->mmap_length;
-       i += sizeof(multiboot_memory_map_t)) {
-    multiboot_memory_map_t *mmmt =
-        (multiboot_memory_map_t *)(mbd->mmap_addr + i);
-
+  mbd->mmap_addr += KERNEL_HIGHER_HALF;
+  for (uint32_t i = 0; i < mbd->mmap_length; i += sizeof(multiboot_memory_map_t)) {
     
+    multiboot_memory_map_t *mmmt = (multiboot_memory_map_t *)(mbd->mmap_addr + i);
+
+    mmmt->addr_low += KERNEL_HIGHER_HALF;
+    mmmt->addr_high += KERNEL_HIGHER_HALF;
+
     printf("Start Addr: %X | Length: %d | Size: %d | Type: %d\n",
            mmmt->addr_low, mmmt->len_low, mmmt->size, mmmt->type);
     

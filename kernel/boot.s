@@ -20,11 +20,13 @@ hello_world:    .asciz "HELLO MY FIRENDS \n"
 .section .data
 .align 0x1000 // 4KB
 boot_page_directory:
-.long 0x00000083
+.long 0x00000083 // I86_PDE_4MB = 0x80 is important!
 .fill (KERNEL_PAGE_NUMBER - 1), 4, 0                 # Pages before kernel space.
 # This page directory entry defines a 4MB page containing the kernel.
 .long 0x00000083
 .fill (1024 - KERNEL_PAGE_NUMBER - 1), 4, 0  # Pages after the kernel image.
+
+# [ PDE 0 MAPPED TO FIRST 4MB, PDE 768 MAPPED TO FIRST 4MB ] 
 
 # Reserve a stack for the initial thread.
 .section .bss
@@ -38,8 +40,7 @@ stack_top:
 .section .text
 .global _start
 .type _start, @function
-_start:
-
+_start:  
 
 kernel_enable_paging:
 	# NOTE: Until paging is set up, the code must be position-independent and use physical
@@ -71,36 +72,30 @@ start_in_higher_half:
 	invlpg [0]
 
 	# NOTE: From now on, paging should be enabled. The first 4MB of physical address space is
-	# mapped smovl $TEST, %ebx tarting at KERNEL_VIRTUAL_BASE. Everything is linked to this address, so no more
+	# mapped starting at KERNEL_VIRTUAL_BASE. Everything is linked to this address, so no more
 	# position-independent code or funny business with virtual-to-physical address translation
 	# should be necessary. We now have a higher-half kernel.
 
   movl $stack_top, %esp
 
-	# Call the global constructors.
   # pushing Multiboot v1 params onto the stack
   push %eax 
+  # pass Multiboot info structure -- WARNING: This is a physical address and may not be
+	# in the first 4MB! Let's hope it is!
   add $KERNEL_VIRTUAL_BASE, %ebx  # make the address virtual
   push %ebx
   sub $0x8, %esp
+	# Call the global constructors.
   call _init
 
-  # Init GDB and IDT tables and move to the protected mode
   add $0x8, %esp
 
   # Transfer control to the main kernel
 	call kernel_main
-	# mov kernel_stack + KERNEL_STACK_SIZE, %esp           # set up the stack
-
-	# push eax                           ; pass Multiboot magic number
-
-	# pass Multiboot info structure -- WARNING: This is a physical address and may not be
-	# in the first 4MB!
 	
 1:	hlt
 	jmp 1b
 .size _start, . - _start
-.end .
 
 
 
