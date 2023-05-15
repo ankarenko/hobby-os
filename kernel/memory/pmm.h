@@ -3,6 +3,13 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
+
+#include "../multiboot.h"
+
+#define PMM_DEBUG() printf("Available: \n Blocks: %d \n Bytes: %d \n Used: \n Blocks: %d \n Bytes: %d \n", pmm_get_free_block_count(), pmm_get_free_block_count() * pmm_get_block_size(), pmm_get_use_block_count(), pmm_get_use_block_count() * pmm_get_block_size());
+  
+  
 
 //! 8 blocks per byte
 #define PMM_BLOCKS_PER_BYTE 8
@@ -16,21 +23,22 @@
 //! physical address
 typedef uint32_t physical_addr;
 
-void pmm_init(uint32_t memSize, physical_addr bitmap);
+void pmm_init(multiboot_info_t* mbd);
 void pmm_init_region(physical_addr base, uint32_t size);
-void pmm_deinit_region(physical_addr base, uint32_t size);
+void pmm_deinit_region(physical_addr base, uint32_t size, bool ceil);
 void* pmm_alloc_block();
 void* pmm_alloc_blocks(uint32_t size);
 void pmm_paging_enable(bool b);
 bool pmm_is_paging();
 void pmm_load_PDBR(physical_addr addr);
-physical_addr pmm_get_PDBR();
+void pmm_mark_used_addr(uint32_t paddr);
+void pmm_free_block(void* p);
 
+physical_addr pmm_get_PDBR();
 uint32_t pmm_get_memory_size();
 uint32_t pmm_get_block_count();
 uint32_t pmm_get_use_block_count();
 uint32_t pmm_get_free_block_count();
 uint32_t pmm_get_block_size();
-void pmm_free_block(void* p);
 
 #endif

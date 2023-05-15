@@ -78,7 +78,7 @@ struct pdirectory {
   pd_entry m_entries[PAGES_PER_DIR];
 };
 
-void vmm_initialize();
+void vmm_init();
 
 //! maps phys to virtual address
 void vmm_map_page(void* phys, void* virt);

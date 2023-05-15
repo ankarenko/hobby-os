@@ -21,40 +21,7 @@ uint32_t calculate_memsize(multiboot_info_t *mbd, uint32_t magic) {
     return;
   }
 
-  /* Check bit 6 to see if we have a valid memory map */
-  if (!(mbd->flags >> 6 & 0x1)) {
-    printf("invalid memory map given by GRUB bootloader");
-    return;
-  }
-
-  mbd->mmap_addr += KERNEL_HIGHER_HALF;
-  for (uint32_t i = 0; i < mbd->mmap_length; i += sizeof(multiboot_memory_map_t)) {
-    
-    multiboot_memory_map_t *mmmt = (multiboot_memory_map_t *)(mbd->mmap_addr + i);
-
-    mmmt->addr_low += KERNEL_HIGHER_HALF;
-    mmmt->addr_high += KERNEL_HIGHER_HALF;
-
-    printf("Start Addr: %X | Length: %d | Size: %d | Type: %d\n",
-           mmmt->addr_low, mmmt->len_low, mmmt->size, mmmt->type);
-    
-    if (
-      mmmt->type == MULTIBOOT_MEMORY_AVAILABLE && 
-      mmmt->addr_low < KERNEL_END &&
-      mmmt->len_low + mmmt->addr_low > KERNEL_END
-    ) {
-      return mmmt->len_low + mmmt->addr_low - KERNEL_END;
-    }
-  }
-
-  return -1;
-}
-
-void a(uint32_t max) {
-  print_data_layout();
-  for (uint32_t i = 0; i < max; ++i) {
-    print_data_layout();
-  }
+  
 }
 
 void print_data_layout() {
@@ -76,21 +43,23 @@ void kernel_main(multiboot_info_t *mbd, uint32_t magic) {
   terminal_initialize();
   init_keyboard();
   print_data_layout();
-
   
+  pmm_init(mbd);
+  
+  PMM_DEBUG();
+
+  physical_addr addr = pmm_alloc_blocks(10);
+
+  PMM_DEBUG();
+  pmm_free_block(addr);
+
+  PMM_DEBUG();
+  
+  vmm_init();
+  PMM_DEBUG();
   //uint32_t a = 1/0;
   
-  uint32_t memsize = calculate_memsize(mbd, magic);
   
-  printf("Available data frame: [%X - %X]\n", KERNEL_END, KERNEL_END + memsize);
-  printf("Available memory: %d KB\n", memsize >> 10);
-  
-  pmm_init(memsize, KERNEL_END);
-  pmm_init_region(KERNEL_END, memsize);
-  
-  printf("Before: %d\n", pmm_get_free_block_count());
-
-  vmm_initialize();
   /*
   initialise_paging();
 

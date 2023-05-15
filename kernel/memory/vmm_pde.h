@@ -35,21 +35,21 @@ void pd_entry_del_attrib(pd_entry* e, uint32_t attrib);
 void pd_entry_set_frame(pd_entry*, physical_addr);
 
 //! test if page is present
-bool pd_entry_is_present(pd_entry e);
+bool pd_entry_is_present(pd_entry* e);
 
 //! test if directory is user mode
-bool pd_entry_is_user(pd_entry);
+bool pd_entry_is_user(pd_entry*);
 
 //! test if directory contains 4mb pages
-bool pd_entry_is_4mb(pd_entry);
+bool pd_entry_is_4mb(pd_entry*);
 
 //! test if page is writable
-bool pd_entry_is_writable(pd_entry e);
+bool pd_entry_is_writable(pd_entry* e);
 
 //! get page table entry frame address
-physical_addr pd_entry_pfn(pd_entry e);
+physical_addr pd_entry_pfn(pd_entry* e);
 
 //! enable global pages
-void pd_entry_enable_global(pd_entry e);
+void pd_entry_enable_global(pd_entry* e);
 
 #endif
