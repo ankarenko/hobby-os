@@ -223,3 +223,18 @@ void vmm_create_page_table(struct pdirectory* va_dir, uint32_t virt, uint32_t fl
   vmm_flush_tlb_entry(virt);
   memset(PAGE_TABLE_PHYS_ADDRESS(virt), 0, sizeof(struct ptable));
 }
+
+
+virtual_addr vmm_alloc_size(virtual_addr from, uint32_t size, uint32_t flags) {
+  if (size == 0) {
+    return; 
+  }
+
+  uint32_t phyiscal_addr = (uint32_t)pmm_alloc_frames(div_ceil(size, PMM_FRAME_SIZE));
+  uint32_t page_addr = (from / PMM_FRAME_SIZE) * PMM_FRAME_SIZE;
+  for (; page_addr < from + size; page_addr += PMM_FRAME_SIZE, phyiscal_addr += PMM_FRAME_SIZE) {
+    vmm_map_address(vmm_get_directory(), page_addr, phyiscal_addr, flags);
+  }
+
+  return page_addr - PMM_FRAME_SIZE + size;
+}

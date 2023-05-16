@@ -22,7 +22,7 @@ void *sbrk(size_t n) {
     for (; page_addr < _kernel_heap_current + n; page_addr += PMM_FRAME_SIZE, phyiscal_addr += PMM_FRAME_SIZE) {
       vmm_map_address(vmm_get_directory(), page_addr, phyiscal_addr, I86_PTE_PRESENT | I86_PTE_WRITABLE);
     }
-
+    
     _kernel_remaining_from_last_used = page_addr - (_kernel_heap_current + n);
   }
 

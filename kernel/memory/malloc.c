@@ -1,7 +1,8 @@
+#include "malloc.h"
+
 #include <math.h>
 #include <stdint.h>
 
-#include "malloc.h"
 #include "sbrk.h"
 
 #define BLOCK_MAGIC 0x464E
@@ -92,4 +93,11 @@ void *kmalloc(size_t size) {
   assert_kblock_valid(block);
 
   return block ? block + 1 : NULL;
+}
+
+void *kcalloc(size_t n, size_t size) {
+  void *block = kmalloc(n * size);
+  if (block)
+    memset(block, 0, n * size);
+  return block;
 }

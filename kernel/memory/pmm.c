@@ -8,7 +8,6 @@
 
 #define INDEX_FROM_BIT(a) (a / (4 * PMM_FRAMES_PER_BYTE))
 #define OFFSET_FROM_BIT(a) (a % (4 * PMM_FRAMES_PER_BYTE))
- 
 
 // size of physical memory
 static uint32_t _memory_size = 0;
@@ -18,7 +17,7 @@ static uint32_t _used_frames = 0;
 static uint32_t _max_frames = 0;
 // memory map bit array. Each bit represents a memory frame
 static uint32_t* _memory_bitmap = 0;
-static uint32_t _memory_bitmap_size = 0; //4294967295
+static uint32_t _memory_bitmap_size = 0;  // 4294967295
 
 void memory_bitmap_set(uint32_t bit) {
   _memory_bitmap[INDEX_FROM_BIT(bit)] |= (1 << (OFFSET_FROM_BIT(bit)));
@@ -101,7 +100,7 @@ void pmm_init(multiboot_info_t* mbd) {
 
     if (mmmt->type == MULTIBOOT_MEMORY_AVAILABLE) {
       printf("Start Addr: %X | Length: %d | Size: %d | Type: %d\n",
-        mmmt->addr_low, mmmt->len_low, mmmt->size, mmmt->type);
+             mmmt->addr_low, mmmt->len_low, mmmt->size, mmmt->type);
 
       pmm_init_region(mmmt->addr_low, mmmt->len_low);
     }
@@ -125,8 +124,8 @@ void pmm_init(uint32_t memSize, physical_addr bitmap) {
 
 void pmm_init_region(physical_addr base, uint32_t size) {
   uint32_t align = base / PMM_FRAME_SIZE;
-  uint32_t frames = size / PMM_FRAME_SIZE; // div_ceil(size, PMM_FRAME_SIZE);
-  
+  uint32_t frames = size / PMM_FRAME_SIZE;  // div_ceil(size, PMM_FRAME_SIZE);
+
   for (uint32_t i = 0; i < frames; ++i) {
     memory_bitmap_unset(align + i);
     _used_frames--;
@@ -137,7 +136,8 @@ void pmm_init_region(physical_addr base, uint32_t size) {
 
 void pmm_deinit_region(physical_addr base, uint32_t size, bool ceil) {
   uint32_t align = base / PMM_FRAME_SIZE;
-  uint32_t frames = ceil? div_ceil(size, PMM_FRAME_SIZE) : size / PMM_FRAME_SIZE;;
+  uint32_t frames = ceil ? div_ceil(size, PMM_FRAME_SIZE) : size / PMM_FRAME_SIZE;
+  ;
 
   for (uint32_t i = 0; i < frames; ++i) {
     memory_bitmap_set(align + i);
@@ -181,15 +181,12 @@ void pmm_load_PDBR(physical_addr addr) {
   asm volatile("mov %0, %%cr3" ::"r"(addr));
 }
 
-
-void pmm_mark_used_addr(uint32_t paddr)
-{
-	uint32_t frame = paddr / PMM_FRAME_SIZE;
-	if (!memory_bitmap_test(frame))
-	{
-		memory_bitmap_set(frame);
-		_used_frames++;
-	}
+void pmm_mark_used_addr(uint32_t paddr) {
+  uint32_t frame = paddr / PMM_FRAME_SIZE;
+  if (!memory_bitmap_test(frame)) {
+    memory_bitmap_set(frame);
+    _used_frames++;
+  }
 }
 
 physical_addr pmm_get_PDBR() {
