@@ -1,42 +1,95 @@
+#include <math.h>
 #include <stdint.h>
 
 #include "malloc.h"
-#include "kernel_info.h"
+#include "sbrk.h"
 
-// first 1MB is reserved for GRUB and BIOS
-// then goes your program, make sure you won't rewrite it
-uint32_t placement_address = KERNEL_END;
+#define BLOCK_MAGIC 0x464E
 
-uint32_t kmalloc_int(uint32_t sz, int align, uint32_t *phys) {
-  // This will eventually call malloc() on the kernel heap.
-  // For now, though, we just assign memory at placement_address
-  // and increment it by sz. Even when we've coded our kernel
-  // heap, this will be useful for use before the heap is initialised.
-  if (align == 1 && (placement_address & 0xFFF)) {
-    // Align the placement address;
-    placement_address &= 0xFFFFF000;
-    placement_address += 0x1000;
+extern uint32_t heap_current;
+static struct block_meta *_kblocklist = NULL;
+
+void assert_kblock_valid(struct block_meta *block) {
+  // NOTE: MQ 2020-06-06 if a block's size > 32 MiB -> might be an corrupted block
+  if (block->magic != BLOCK_MAGIC || block->size > 0x2000000) {
+    // todo: kernel panic
+    // assert_not_reached();
   }
-  if (phys) {
-    *phys = placement_address;
+}
+
+struct block_meta *find_free_block(struct block_meta **last, size_t size) {
+  struct block_meta *current = (struct block_meta *)_kblocklist;
+  while (current && !(current->free && current->size >= size)) {
+    assert_kblock_valid(current);
+    *last = current;
+    current = current->next;
+    if (current)
+      assert_kblock_valid(current);
   }
-  uint32_t tmp = placement_address;
-  placement_address += sz;
-  return tmp;
+  return current;
 }
 
-uint32_t kmalloc_a(uint32_t sz) {
-  return kmalloc_int(sz, 1, 0);
+void split_block(struct block_meta *block, size_t size) {
+  if (block->size > size + sizeof(struct block_meta)) {
+    struct block_meta *splited_block = (struct block_meta *)((char *)block + sizeof(struct block_meta) + size);
+    splited_block->free = true;
+    splited_block->magic = BLOCK_MAGIC;
+    splited_block->size = block->size - size - sizeof(struct block_meta);
+    splited_block->next = block->next;
+
+    block->size = size;
+    block->next = splited_block;
+  }
 }
 
-uint32_t kmalloc_p(uint32_t sz, uint32_t *phys) {
-  return kmalloc_int(sz, 0, phys);
+struct block_meta *request_space(struct block_meta *last, size_t size) {
+  struct block_meta *block = sbrk(size + sizeof(struct block_meta));
+
+  if (last)
+    last->next = block;
+
+  block->size = size;
+  block->next = NULL;
+  block->free = false;
+  block->magic = BLOCK_MAGIC;
+  return block;
 }
 
-uint32_t kmalloc_ap(uint32_t sz, uint32_t *phys) {
-  return kmalloc_int(sz, 1, phys);
+struct block_meta *get_block_ptr(void *ptr) {
+  return (struct block_meta *)ptr - 1;
 }
 
-uint32_t kmalloc(uint32_t sz) {
-  return kmalloc_int(sz, 0, 0);
+void kfree(void *ptr) {
+  if (!ptr)
+    return;
+
+  struct block_meta *block = get_block_ptr(ptr);
+  assert_kblock_valid(block);
+  block->free = true;
+}
+
+void *kmalloc(size_t size) {
+  if (size <= 0)
+    return NULL;
+
+  struct block_meta *block;
+
+  size = ALIGN_UP(size, 4);
+
+  if (_kblocklist) {
+    struct block_meta *last = _kblocklist;
+    block = find_free_block(&last, size);
+    if (block) {
+      block->free = false;
+      split_block(block, size);
+    } else
+      block = request_space(last, size);
+  } else {
+    block = request_space(NULL, size);
+    _kblocklist = block;
+  }
+
+  assert_kblock_valid(block);
+
+  return block ? block + 1 : NULL;
 }

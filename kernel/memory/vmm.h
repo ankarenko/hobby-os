@@ -115,5 +115,7 @@ void vmm_pdirectory_clear(struct pdirectory* dir);
 
 //! get directory entry from directory table
 pd_entry* vmm_pdirectory_lookup_entry(struct pdirectory* p, virtual_addr addr);
+physical_addr vmm_get_physical_address(virtual_addr vaddr, bool is_page);
+void vmm_map_address(struct pdirectory *va_dir, uint32_t virt, uint32_t phys, uint32_t flags);
 
 #endif

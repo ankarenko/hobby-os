@@ -14,6 +14,7 @@
 #include "./kernel/memory/pmm.h"
 #include "./kernel/memory/vmm.h"
 #include "./multiboot.h"
+#include "./kernel/memory/malloc.h"
 
 uint32_t calculate_memsize(multiboot_info_t *mbd, uint32_t magic) {
   if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
@@ -46,17 +47,14 @@ void kernel_main(multiboot_info_t *mbd, uint32_t magic) {
   
   pmm_init(mbd);
   
+  vmm_init();
+  
   PMM_DEBUG();
 
-  physical_addr addr = pmm_alloc_blocks(10);
-
-  PMM_DEBUG();
-  pmm_free_block(addr);
-
+  virtual_addr arr = kmalloc(PMM_FRAME_SIZE * (100));
   PMM_DEBUG();
   
-  vmm_init();
-  PMM_DEBUG();
+  
   //uint32_t a = 1/0;
   
   

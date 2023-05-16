@@ -6,19 +6,19 @@
 
 #include "./kernel_info.h"
 
-#define INDEX_FROM_BIT(a) (a / (4 * PMM_BLOCKS_PER_BYTE))
-#define OFFSET_FROM_BIT(a) (a % (4 * PMM_BLOCKS_PER_BYTE))
+#define INDEX_FROM_BIT(a) (a / (4 * PMM_FRAMES_PER_BYTE))
+#define OFFSET_FROM_BIT(a) (a % (4 * PMM_FRAMES_PER_BYTE))
  
 
 // size of physical memory
 static uint32_t _memory_size = 0;
-// number of blocks currently in use
-static uint32_t _used_blocks = 0;
-// maximum number of available memory blocks
-static uint32_t _max_blocks = 0;
-// memory map bit array. Each bit represents a memory block
+// number of frames currently in use
+static uint32_t _used_frames = 0;
+// maximum number of available memory frames
+static uint32_t _max_frames = 0;
+// memory map bit array. Each bit represents a memory frame
 static uint32_t* _memory_bitmap = 0;
-static uint32_t _memory_bitmap_size = 0;
+static uint32_t _memory_bitmap_size = 0; //4294967295
 
 void memory_bitmap_set(uint32_t bit) {
   _memory_bitmap[INDEX_FROM_BIT(bit)] |= (1 << (OFFSET_FROM_BIT(bit)));
@@ -37,13 +37,13 @@ bool memory_bitmap_test(uint32_t bit) {
 
 int32_t memory_bitmap_first_free() {
   //! find the first free bit
-  for (uint32_t i = 0; i < pmm_get_block_count() / 32; i++)
+  for (uint32_t i = 0; i < pmm_get_frame_count() / 32; i++)
     if (_memory_bitmap[i] != 0xffffffff)
       for (uint32_t j = 0; j < 32; j++) {  //! test each bit in the dword
 
         uint32_t bit = 1 << j;
         if (!(_memory_bitmap[i] & bit))
-          return i * 4 * PMM_BLOCKS_PER_BYTE + j;
+          return i * 4 * PMM_FRAMES_PER_BYTE + j;
       }
 
   return -1;
@@ -56,14 +56,14 @@ int32_t memory_bitmap_first_free_s(uint32_t size) {
   if (size == 1)
     return memory_bitmap_first_free();
 
-  for (uint32_t i = 0; i < pmm_get_block_count() / 32; i++)
+  for (uint32_t i = 0; i < pmm_get_frame_count() / 32; i++)
     if (_memory_bitmap[i] != 0xffffffff)
       for (uint32_t j = 0; j < 32; j++) {  //! test each bit in the dword
 
         uint32_t bit = 1 << j;
         if (!(_memory_bitmap[i] & bit)) {
           uint32_t startingBit = i * 32;
-          startingBit += bit;  // get the free bit in the dword at index i
+          startingBit += j;  // get the free bit in the dword at index i
 
           uint32_t free = 0;  // loop through each bit to see if its enough space
           for (uint32_t count = 0; count <= size; count++) {
@@ -71,7 +71,7 @@ int32_t memory_bitmap_first_free_s(uint32_t size) {
               free++;  // this bit is clear (free frame)
 
             if (free == size)
-              return i * 4 * PMM_BLOCKS_PER_BYTE + j;  // free count==size needed; return index
+              return i * 4 * PMM_FRAMES_PER_BYTE + j;  // free count==size needed; return index
           }
         }
       }
@@ -88,8 +88,8 @@ void pmm_init(multiboot_info_t* mbd) {
 
   _memory_size = (mbd->mem_lower + mbd->mem_upper) * 1024;
   _memory_bitmap = (uint32_t*)KERNEL_END;
-  _used_blocks = _max_blocks = div_ceil(_memory_size, PMM_BLOCK_SIZE);
-  _memory_bitmap_size = div_ceil(_max_blocks, PMM_BLOCKS_PER_BYTE);
+  _used_frames = _max_frames = div_ceil(_memory_size, PMM_FRAME_SIZE);
+  _memory_bitmap_size = div_ceil(_max_frames, PMM_FRAMES_PER_BYTE);
   memset(_memory_bitmap, 0xff, _memory_bitmap_size);
 
   mbd->mmap_addr += KERNEL_HIGHER_HALF;
@@ -115,38 +115,38 @@ void pmm_init(multiboot_info_t* mbd) {
 void pmm_init(uint32_t memSize, physical_addr bitmap) {
   _memory_size = memSize;
   _memory_bitmap = (uint32_t*)bitmap;
-  _max_blocks = pmm_get_memory_size() / PMM_BLOCK_SIZE;
-  _used_blocks = pmm_get_block_count();
+  _max_frames = pmm_get_memory_size() / PMM_FRAME_SIZE;
+  _used_frames = pmm_get_frame_count();
 
   //! By default, all of memory is in use
-  memset(_memory_bitmap, 0xf, pmm_get_block_count() / PMM_BLOCKS_PER_BYTE);
+  memset(_memory_bitmap, 0xf, pmm_get_frame_count() / PMM_FRAMES_PER_BYTE);
 }
 */
 
 void pmm_init_region(physical_addr base, uint32_t size) {
-  uint32_t align = base / PMM_BLOCK_SIZE;
-  uint32_t blocks = size / PMM_BLOCK_SIZE; // div_ceil(size, PMM_BLOCK_SIZE);
+  uint32_t align = base / PMM_FRAME_SIZE;
+  uint32_t frames = size / PMM_FRAME_SIZE; // div_ceil(size, PMM_FRAME_SIZE);
   
-  for (uint32_t i = 0; i < blocks; ++i) {
+  for (uint32_t i = 0; i < frames; ++i) {
     memory_bitmap_unset(align + i);
-    _used_blocks--;
+    _used_frames--;
   }
 
-  memory_bitmap_set(0);  // first block is always set. This insures allocs cant be 0
+  memory_bitmap_set(0);  // first frame is always set. This insures allocs cant be 0
 }
 
 void pmm_deinit_region(physical_addr base, uint32_t size, bool ceil) {
-  uint32_t align = base / PMM_BLOCK_SIZE;
-  uint32_t blocks = ceil? div_ceil(size, PMM_BLOCK_SIZE) : size / PMM_BLOCK_SIZE;;
+  uint32_t align = base / PMM_FRAME_SIZE;
+  uint32_t frames = ceil? div_ceil(size, PMM_FRAME_SIZE) : size / PMM_FRAME_SIZE;;
 
-  for (uint32_t i = 0; i < blocks; ++i) {
+  for (uint32_t i = 0; i < frames; ++i) {
     memory_bitmap_set(align + i);
-    _used_blocks++;
+    _used_frames++;
   }
 }
 
-void* pmm_alloc_block() {
-  if (pmm_get_free_block_count() <= 0)
+void* pmm_alloc_frame() {
+  if (pmm_get_free_frame_count() <= 0)
     return 0;  // out of memory
 
   int32_t frame = memory_bitmap_first_free();
@@ -156,8 +156,8 @@ void* pmm_alloc_block() {
 
   memory_bitmap_set(frame);
 
-  physical_addr addr = frame * PMM_BLOCK_SIZE;
-  _used_blocks++;
+  physical_addr addr = frame * PMM_FRAME_SIZE;
+  _used_frames++;
 
   return (void*)addr;
 }
@@ -184,11 +184,11 @@ void pmm_load_PDBR(physical_addr addr) {
 
 void pmm_mark_used_addr(uint32_t paddr)
 {
-	uint32_t frame = paddr / PMM_BLOCK_SIZE;
+	uint32_t frame = paddr / PMM_FRAME_SIZE;
 	if (!memory_bitmap_test(frame))
 	{
 		memory_bitmap_set(frame);
-		_used_blocks++;
+		_used_frames++;
 	}
 }
 
@@ -199,8 +199,8 @@ physical_addr pmm_get_PDBR() {
   return cr3;
 }
 
-void* pmm_alloc_blocks(uint32_t size) {
-  if (pmm_get_free_block_count() <= size)
+void* pmm_alloc_frames(uint32_t size) {
+  if (pmm_get_free_frame_count() <= size)
     return 0;  // not enough space
 
   int32_t frame = memory_bitmap_first_free_s(size);
@@ -211,37 +211,37 @@ void* pmm_alloc_blocks(uint32_t size) {
   for (uint32_t i = 0; i < size; i++)
     memory_bitmap_set(frame + i);
 
-  physical_addr addr = frame * PMM_BLOCK_SIZE;
-  _used_blocks += size;
+  physical_addr addr = frame * PMM_FRAME_SIZE;
+  _used_frames += size;
 
   return (void*)addr;
 }
 
-void pmm_free_block(void* p) {
+void pmm_free_frame(void* p) {
   physical_addr addr = (physical_addr)p;
-  uint32_t frame = addr / PMM_BLOCK_SIZE;
+  uint32_t frame = addr / PMM_FRAME_SIZE;
 
   memory_bitmap_unset(frame);
 
-  _used_blocks--;
+  _used_frames--;
 }
 
 uint32_t pmm_get_memory_size() {
   return _memory_size;
 }
 
-uint32_t pmm_get_block_count() {
-  return _max_blocks;
+uint32_t pmm_get_frame_count() {
+  return _max_frames;
 }
 
-uint32_t pmm_get_use_block_count() {
-  return _used_blocks;
+uint32_t pmm_get_use_frame_count() {
+  return _used_frames;
 }
 
-uint32_t pmm_get_free_block_count() {
-  return _max_blocks - _used_blocks;
+uint32_t pmm_get_free_frame_count() {
+  return _max_frames - _used_frames;
 }
 
-uint32_t pmm_get_block_size() {
-  return PMM_BLOCK_SIZE;
+uint32_t pmm_get_frame_size() {
+  return PMM_FRAME_SIZE;
 }

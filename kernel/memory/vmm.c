@@ -5,6 +5,10 @@
 
 #include "./kernel_info.h"
 
+#define PAGE_DIRECTORY_BASE 0xFFFFF000
+#define PAGE_TABLE_BASE 0xFFC00000
+#define PAGE_TABLE_PHYS_ADDRESS(virt) (uint8_t*) PAGE_TABLE_BASE + PAGE_DIRECTORY_INDEX(virt) * PMM_FRAME_SIZE
+
 //! current directory table (global)
 struct pdirectory* _current_dir = 0;
 //! current page directory base register
@@ -21,7 +25,7 @@ bool vmm_switch_pdirectory(struct pdirectory* dir) {
 
 bool vmm_alloc_page(pt_entry* e) {
   //! allocate a free physical frame
-  void* p = pmm_alloc_block();
+  void* p = pmm_alloc_frame();
   if (!p)
     return false;
 
@@ -35,7 +39,7 @@ bool vmm_alloc_page(pt_entry* e) {
 void vmm_free_page(pt_entry* e) {
   void* p = (void*)pt_entry_pfn(*e);
   if (p)
-    pmm_free_block(p);
+    pmm_free_frame(p);
 
   pt_entry_del_attrib(e, I86_PTE_PRESENT);
 }
@@ -70,7 +74,7 @@ void vmm_map_page(void* phys, void* virt) {
   pd_entry* e = &pageDirectory->m_entries[PAGE_DIRECTORY_INDEX((uint32_t)virt)];
   if ((*e & I86_PTE_PRESENT) != I86_PTE_PRESENT) {
     //! page table not present, allocate it
-    struct ptable* table = (struct ptable*)pmm_alloc_block();
+    struct ptable* table = (struct ptable*)pmm_alloc_frame();
     if (!table)
       return;
 
@@ -97,14 +101,14 @@ void vmm_map_page(void* phys, void* virt) {
 }
 
 void vmm_init_and_map(struct pdirectory* va_dir, uint32_t vaddr, uint32_t paddr) {
-  uint32_t pa_table = (uint32_t)pmm_alloc_block();
+  uint32_t pa_table = (uint32_t)pmm_alloc_frame();
   struct ptable* va_table = (struct ptable*)(pa_table + KERNEL_HIGHER_HALF);
   memset(va_table, 0, sizeof(struct ptable));
 
   uint32_t ivirtual = vaddr;
   uint32_t iframe = paddr;
 
-  for (int i = 0; i < PAGES_PER_TABLE; ++i, ivirtual += PMM_BLOCK_SIZE, iframe += PMM_BLOCK_SIZE) {
+  for (int i = 0; i < PAGES_PER_TABLE; ++i, ivirtual += PMM_FRAME_SIZE, iframe += PMM_FRAME_SIZE) {
     pt_entry* entry = &va_table->m_entries[PAGE_TABLE_INDEX(ivirtual)];
     pt_entry_set_frame(entry, iframe);
     pt_entry_add_attrib(entry, I86_PTE_PRESENT);
@@ -119,7 +123,7 @@ void vmm_init_and_map(struct pdirectory* va_dir, uint32_t vaddr, uint32_t paddr)
 }
 
 void vmm_init() {
-  uint32_t pa_dir = (uint32_t)pmm_alloc_block();
+  uint32_t pa_dir = (uint32_t)pmm_alloc_frame();
   struct pdirectory* va_dir = (struct pdirectory*)(pa_dir + KERNEL_HIGHER_HALF);
   memset(va_dir, 0, sizeof(struct pdirectory));
 
@@ -144,7 +148,7 @@ void vmm_alloc_ptable(struct pdirectory* va_dir, uint32_t index) {
   if (pd_entry_is_present(entry))
     return;
 
-  uint32_t pa_table = (uint32_t)pmm_alloc_block();
+  uint32_t pa_table = (uint32_t)pmm_alloc_frame();
   pd_entry_set_frame(entry, pa_table);
   pd_entry_add_attrib(entry, I86_PTE_PRESENT);
   pd_entry_add_attrib(entry, I86_PTE_WRITABLE);
@@ -161,4 +165,61 @@ void vmm_paging(struct pdirectory* va_dir, uint32_t pa_dir) {
       "mov %%cr0, %%ecx        \n"
       "or $0x80000000, %%ecx   \n"
       "mov %%ecx, %%cr0        \n" ::"r"(pa_dir));
+}
+
+physical_addr vmm_get_physical_address(virtual_addr vaddr, bool is_page) {
+  uint32_t* table = (uint32_t*)PAGE_TABLE_PHYS_ADDRESS(vaddr);
+  uint32_t tindex = PAGE_TABLE_INDEX(vaddr);
+  uint32_t paddr = table[tindex];
+  return is_page ? paddr : (paddr & ~0xfff) | (vaddr & 0xfff);
+}
+
+void vmm_unmap_address(struct pdirectory* va_dir, uint32_t virt) {
+  if (virt != PAGE_ALIGN(virt)) {
+    printf("0x%x is not page aligned", virt);
+    return;
+  }
+
+  if (!pd_entry_is_present(&va_dir->m_entries[PAGE_DIRECTORY_INDEX(virt)]))
+    return;
+
+  struct ptable* pt = (struct ptable*)PAGE_TABLE_PHYS_ADDRESS(virt);
+  uint32_t pte = PAGE_TABLE_INDEX(virt);
+
+  pt_entry* entry = &pt->m_entries[pte];
+  if (!pt_entry_is_present(entry))
+    return;
+
+  pt->m_entries[pte] = 0;
+  vmm_flush_tlb_entry(virt);
+}
+
+void vmm_map_address(struct pdirectory* va_dir, uint32_t virt, uint32_t phys, uint32_t flags) {
+  if (virt != PAGE_ALIGN(virt)) {
+    printf("0x%x is not page aligned", virt);
+  }
+
+  if (!pd_entry_is_present(&va_dir->m_entries[PAGE_DIRECTORY_INDEX(virt)]))
+    vmm_create_page_table(va_dir, virt, flags);
+
+  uint32_t* table = (uint32_t*)(PAGE_TABLE_PHYS_ADDRESS(virt));
+  uint32_t tindex = PAGE_TABLE_INDEX(virt);
+
+  pt_entry* entry = &table[tindex];
+  pt_entry_add_attrib(entry, flags);
+  pt_entry_set_frame(entry, phys);
+  vmm_flush_tlb_entry(virt);
+}
+
+void vmm_create_page_table(struct pdirectory* va_dir, uint32_t virt, uint32_t flags) {
+  if (pd_entry_is_present(&va_dir->m_entries[PAGE_DIRECTORY_INDEX(virt)]))
+    return;
+
+  uint32_t pa_table = (uint32_t)pmm_alloc_frame();
+
+  pd_entry* entry = &va_dir->m_entries[PAGE_DIRECTORY_INDEX(virt)];
+  pd_entry_add_attrib(entry, flags);
+  pd_entry_set_frame(entry, pa_table);
+  vmm_flush_tlb_entry(virt);
+  memset(PAGE_TABLE_PHYS_ADDRESS(virt), 0, sizeof(struct ptable));
 }
