@@ -96,6 +96,12 @@ void scroll() {
   terminal_column = 0;
 }
 
+void terminal_newline() {
+  terminal_row++;
+  terminal_column = 0;
+  update_cursor(terminal_column, terminal_row);
+}
+
 void terminal_popchar() {
   if (terminal_column == 0 && terminal_row == 0) {
     return;

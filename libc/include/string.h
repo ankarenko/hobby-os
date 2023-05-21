@@ -2,6 +2,7 @@
 #define _STRING_H 1
 
 #include <stddef.h>
+#include <stdint.h>
 #include <sys/cdefs.h>
 
 #ifdef __cplusplus
@@ -13,6 +14,7 @@ void* memcpy(void* __restrict, const void* __restrict, size_t);
 void* memmove(void*, const void*, size_t);
 void* memset(void*, int, size_t);
 size_t strlen(const char*);
+int32_t strcmp (const char* str1, const char* str2);
 
 #ifdef __cplusplus
 }

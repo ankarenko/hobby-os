@@ -11,53 +11,108 @@
 #include "./kernel/cpu/idt.h"
 #include "./kernel/devices/kybrd.h"
 #include "./kernel/memory/kernel_info.h"
+#include "./kernel/memory/malloc.h"
 #include "./kernel/memory/pmm.h"
 #include "./kernel/memory/vmm.h"
 #include "./multiboot.h"
-#include "./kernel/memory/malloc.h"
 
-uint32_t calculate_memsize(multiboot_info_t *mbd, uint32_t magic) {
-  if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
-    printf("invalid magic number!");
-    return;
+//! sleeps a little bit. This uses the HALs get_tick_count() which in turn uses the PIT
+void sleep(int ms) {
+}
+
+//! wait for key stroke
+enum KEYCODE getch() {
+  enum KEYCODE key = KEY_UNKNOWN;
+
+  //! wait for a keypress
+  while (key == KEY_UNKNOWN)
+    key = kkybrd_get_last_key();
+
+  //! discard last keypress (we handled it) and return
+  kkybrd_discard_last_key();
+  return key;
+}
+
+//! command prompt
+void cmd() {
+}
+
+//! gets next command
+void get_cmd(char* buf, int n) {
+  uint32_t i = 0;
+  while (i < n) {
+    enum KEYCODE key = getch();
+
+    switch (key) {
+      case KEY_BACKSPACE:
+        terminal_popchar();
+        break;
+      case KEY_RETURN:
+        buf[i] = '\0';
+        terminal_newline();
+        return;
+      case KEY_UNKNOWN:
+      case KEY_CAPSLOCK:
+        break;
+      default:
+        char c = kkybrd_key_to_ascii(key);
+
+        if (isascii(c)) {
+          terminal_write(&c, 1);
+        }
+
+        buf[i] = c;
+        i++;
+        break;
+    }
+  }
+}
+
+//! our simple command parser
+bool run_cmd(char* cmd_buf) {
+  if (strcmp(cmd_buf, "exit") == 0) {
+    return true;
+  } else if (strcmp(cmd_buf, "layout") == 0) {
+    printf("Kernel start: %X\n", KERNEL_START);
+    printf("Text start: %X\n", KERNEL_TEXT_START);
+    printf("Text end: %X\n", KERNEL_TEXT_END);
+    printf("Data start: %X\n", KERNEL_DATA_START);
+    printf("Data end: %X\n", KERNEL_DATA_END);
+    printf("Stack bottom %X\n", STACK_BOTTOM);
+    printf("Stack top: %X\n", STACK_TOP);
+    printf("Kernel end: %X\n", KERNEL_END);
+  } else if (strcmp(cmd_buf, "pmmdump") == 0) {
+    PMM_DEBUG();
   }
 
-  
+  return false;
 }
 
-void print_data_layout() {
-  printf("Kernel start: %X\n", KERNEL_START);
-  printf("Text start: %X\n", KERNEL_TEXT_START);
-  printf("Text end: %X\n", KERNEL_TEXT_END);
-  printf("Data start: %X\n", KERNEL_DATA_START);
-  printf("Data end: %X\n", KERNEL_DATA_END);
-  printf("Stack bottom %X\n", STACK_BOTTOM);
-  printf("Stack top: %X\n", STACK_TOP);
-  printf("Kernel end: %X\n", KERNEL_END);
+void run() {
+  char cmd_buf[100];
+
+  while (1) {
+    get_cmd(cmd_buf, 98);
+
+    if (run_cmd(cmd_buf) == true)
+      break;
+  }
 }
 
-void kernel_main(multiboot_info_t *mbd, uint32_t magic) {
+void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   i86_gdt_initialize();
   i86_idt_initialize(0x8);
   /* Mandatory, because the PIC interrupts are maskable. */
   enable_interrupts();
   terminal_initialize();
-  init_keyboard();
-  print_data_layout();
-  
+  kkybrd_install(IRQ1);
+  // print_data_layout();
   pmm_init(mbd);
-  
   vmm_init();
-  
-  PMM_DEBUG();
 
-  virtual_addr arr = kmalloc(PMM_FRAME_SIZE * (100));
-  PMM_DEBUG();
-  
-  
-  //uint32_t a = 1/0;
-  
-  
+  run();
+  // uint32_t a = 1/0;
+
   /*
   initialise_paging();
 
