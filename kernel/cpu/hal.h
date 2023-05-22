@@ -3,8 +3,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "pic.h"
 #include "idt.h"
+#include "pic.h"
 
 static __inline void io_wait() {
   /* Port 0x80 is used for 'checkpoints' during POST. */
@@ -100,18 +100,10 @@ static __inline void outportsw(uint16_t portid, const void *addr, size_t count) 
 void cpuid(int code, uint32_t *a, uint32_t *d);
 const char *get_cpu_vender();
 
-static __inline void interruptdone(uint32_t intno) {
-  //! insure its a valid hardware irq
-  if (intno < IRQ0 || intno > IRQ15)
-    return;
+void interruptdone(uint32_t intno);
 
-  //! test if we need to send end-of-interrupt to second pic
-  if (intno >= IRQ8)
-    i86_pic_send_command(I86_PIC_OCW2_MASK_EOI, 1);
-
-  //! always send end-of-interrupt to primary pic
-  i86_pic_send_command(I86_PIC_OCW2_MASK_EOI, 0);
-}
+//! shutdown hardware devices
+int32_t hal_shutdown();
 
 uint32_t hal_initialize();
 uint32_t get_tick_count();

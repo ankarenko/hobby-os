@@ -2,7 +2,6 @@
 // From JamesM's kernel development tutorials.
 
 #include "hal.h"
-
 #include "gdt.h"
 #include "idt.h"
 #include "pic.h"
@@ -26,6 +25,24 @@ void cpuid(int code, uint32_t *a, uint32_t *d) {
                : "=a"(*a), "=d"(*d)
                : "a"(code)
                : "ecx", "ebx");
+}
+
+void interruptdone(uint32_t intno) {
+  //! insure its a valid hardware irq
+  if (intno < IRQ0 || intno > IRQ15)
+    return;
+
+  //! test if we need to send end-of-interrupt to second pic
+  if (intno >= IRQ8)
+    i86_pic_send_command(I86_PIC_OCW2_MASK_EOI, 1);
+
+  //! always send end-of-interrupt to primary pic
+  i86_pic_send_command(I86_PIC_OCW2_MASK_EOI, 0);
+}
+
+//! shutdown hardware devices
+int32_t hal_shutdown () {
+	return 0;
 }
 
 uint32_t hal_initialize() {

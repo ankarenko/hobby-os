@@ -10,6 +10,7 @@
 #include "./kernel/cpu/hal.h"
 #include "./kernel/cpu/idt.h"
 #include "./kernel/devices/kybrd.h"
+#include "./kernel/fs/flpydsk.h"
 #include "./kernel/memory/kernel_info.h"
 #include "./kernel/memory/malloc.h"
 #include "./kernel/memory/pmm.h"
@@ -85,9 +86,13 @@ bool run_cmd(char* cmd_buf) {
     PMM_DEBUG();
   } else if (strcmp(cmd_buf, "clear") == 0) {
     terminal_clrscr();
-  } else {
+  } else if (strcmp (cmd_buf, "read") == 0) {
+		cmd_read_sect ();
+	}
+   
+  else {
     printf("Invalid command\n");
-  }
+  } 
 
   return false;
 }
@@ -103,15 +108,49 @@ void cmd_init() {
   }
 }
 
+//! read sector command
+void cmd_read_sect() {
+  uint32_t sectornum = 0;
+  char sectornumbuf[4];
+  uint8_t* sector = 0;
+
+  printf("\n\rPlease type in the sector number [0 is default] >");
+  get_cmd(sectornumbuf, 3);
+  sectornum = atoi(sectornumbuf);
+
+  printf("\n\rSector %i contents:\n\n\r", sectornum);
+
+  //! read sector from disk
+  sector = flpydsk_read_sector(sectornum);
+
+  //! display sector
+  if (sector != 0) {
+    int i = 0;
+    for (int c = 0; c < 4; c++) {
+      for (int j = 0; j < 128; j++)
+        printf("0x%x ", sector[i + j]);
+      i += 128;
+
+      printf("\n\rPress any key to continue\n\r");
+      getch();
+    }
+  } else
+    printf("\n\r*** Error reading sector from disk");
+
+  printf("\n\rDone.");
+}
+
 void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   hal_initialize();
   terminal_initialize();
   kkybrd_install(IRQ1);
   pmm_init(mbd);
   vmm_init();
-  cmd_init();
 
-  // uint32_t a = 1/0;
+  flpydsk_set_working_drive(0);
+  flpydsk_install(IRQ6);
+
+  cmd_init();
 
   /*
   initialise_paging();
