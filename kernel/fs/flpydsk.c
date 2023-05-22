@@ -1,8 +1,6 @@
-
-#include "flpydsk.h"
-
 #include <stdbool.h>
 
+#include "flpydsk.h"
 #include "../cpu/hal.h"
 #include "../memory/kernel_info.h"
 
@@ -139,10 +137,6 @@ enum FLPYDSK_SECTOR_DTL {
 
 //! used to wait in miliseconds
 extern void sleep(int32_t);
-
-//============================================================================
-//    IMPLEMENTATION PRIVATE DATA
-//============================================================================
 
 //! current working drive. Defaults to 0 which should be fine on most systems
 static uint8_t _CurrentDrive = 0;
@@ -418,10 +412,6 @@ int32_t flpydsk_seek(uint32_t cyl, uint32_t head) {
 
   return -1;
 }
-
-//============================================================================
-//    INTERFACE FUNCTIONS
-//============================================================================
 
 //! convert LBA to CHS
 void flpydsk_lba_to_chs(uint32_t lba, uint32_t* head, uint32_t* track, uint32_t* sector) {

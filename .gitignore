@@ -9,3 +9,4 @@ run_qemu.sh
 hints2.txt
 asm.s
 asm.asm
+disk.img

@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <ctype.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -154,6 +155,7 @@ void terminal_putchar(char c) {
     }
 
     default: {
+
       if (terminal_column == VGA_WIDTH) {
         terminal_column = 0;
         terminal_row++;

@@ -4,6 +4,7 @@
     "pic.h": "c",
     "vga.h": "c",
     "hal.h": "c",
-    "typeinfo": "c"
+    "typeinfo": "c",
+    "ctype.h": "c"
   }
 }

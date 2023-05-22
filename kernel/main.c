@@ -53,7 +53,6 @@ void get_cmd(char* buf, int n) {
         // terminal_newline();
         return;
       case KEY_UNKNOWN:
-      case KEY_CAPSLOCK:
         break;
       default:
         char c = kkybrd_key_to_ascii(key);
@@ -86,13 +85,13 @@ bool run_cmd(char* cmd_buf) {
     PMM_DEBUG();
   } else if (strcmp(cmd_buf, "clear") == 0) {
     terminal_clrscr();
-  } else if (strcmp (cmd_buf, "read") == 0) {
-		cmd_read_sect ();
-	}
-   
+  } else if (strcmp(cmd_buf, "read") == 0) {
+    cmd_read_sect();
+  }
+
   else {
     printf("Invalid command\n");
-  } 
+  }
 
   return false;
 }
@@ -114,11 +113,11 @@ void cmd_read_sect() {
   char sectornumbuf[4];
   uint8_t* sector = 0;
 
-  printf("\n\rPlease type in the sector number [0 is default] >");
+  printf("\nPlease type in the sector number [0 is default] \n");
   get_cmd(sectornumbuf, 3);
   sectornum = atoi(sectornumbuf);
 
-  printf("\n\rSector %i contents:\n\n\r", sectornum);
+  printf("\nSector %d contents:\n\n", sectornum);
 
   //! read sector from disk
   sector = flpydsk_read_sector(sectornum);
@@ -128,16 +127,16 @@ void cmd_read_sect() {
     int i = 0;
     for (int c = 0; c < 4; c++) {
       for (int j = 0; j < 128; j++)
-        printf("0x%x ", sector[i + j]);
+        printf("%x ", sector[i + j]);
       i += 128;
 
-      printf("\n\rPress any key to continue\n\r");
+      printf("\nPress any key to continue\n");
       getch();
     }
   } else
-    printf("\n\r*** Error reading sector from disk");
+    printf("\n*** Error reading sector from disk");
 
-  printf("\n\rDone.");
+  printf("\nDone.");
 }
 
 void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
