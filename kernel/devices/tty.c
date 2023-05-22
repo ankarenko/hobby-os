@@ -52,21 +52,37 @@ uint16_t get_cursor_position(void) {
   return pos;
 }
 
-void terminal_initialize(void) {
-  enable_cursor(13, 13);
+void clrscr() {
   terminal_row = 0;
   terminal_column = 0;
-  video_memory_index = 0;
-  terminal_color = vga_entry_color(VGA_COLOR_GREEN, VGA_COLOR_BLACK);
-  BLANK = vga_entry(' ', terminal_color);
-
-  terminal_buffer = VGA_MEMORY;
   for (size_t y = 0; y < VGA_HEIGHT; y++) {
     for (size_t x = 0; x < VGA_WIDTH; x++) {
       const size_t index = y * VGA_WIDTH + x;
       terminal_buffer[index] = BLANK;
     }
   }
+  update_cursor(terminal_column, terminal_row);
+}
+
+void terminal_clrline() {
+  for (size_t x = 0; x < VGA_WIDTH; x++) {
+    const size_t index = terminal_row * VGA_WIDTH + x;
+    terminal_buffer[index] = BLANK;
+  }
+  terminal_column = 0;
+  update_cursor(terminal_column, terminal_row);
+}
+
+void terminal_initialize(void) {
+  enable_cursor(13, 13);
+  
+  video_memory_index = 0;
+  terminal_color = vga_entry_color(VGA_COLOR_GREEN, VGA_COLOR_BLACK);
+  BLANK = vga_entry(' ', terminal_color);
+
+  terminal_buffer = VGA_MEMORY;
+
+  clrscr();
 
   /*
   for (size_t i = 0; i < VIDEO_MEMORY_SIZE; ++i) {
@@ -97,8 +113,11 @@ void scroll() {
 }
 
 void terminal_newline() {
-  terminal_row++;
   terminal_column = 0;
+  terminal_row++;
+  if (terminal_row == VGA_HEIGHT) {
+    scroll();
+  }
   update_cursor(terminal_column, terminal_row);
 }
 
@@ -120,16 +139,17 @@ void terminal_popchar() {
   update_cursor(terminal_column, terminal_row);
 }
 
+void terminal_clrscr() {
+  clrscr();
+}
+
+
 void terminal_putchar(char c) {
   const bool is_special = c == '\n';
 
   switch (c) {
     case '\n': {
-      terminal_column = 0;
-      terminal_row++;
-      if (terminal_row == VGA_HEIGHT) {
-        scroll();
-      }
+      terminal_newline();
       break;
     }
 

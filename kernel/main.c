@@ -17,7 +17,10 @@
 #include "./multiboot.h"
 
 //! sleeps a little bit. This uses the HALs get_tick_count() which in turn uses the PIT
-void sleep(int ms) {
+void sleep(uint32_t ms) {
+  int32_t ticks = ms + get_tick_count();
+  while (ticks > get_tick_count())
+    ;
 }
 
 //! wait for key stroke
@@ -33,10 +36,6 @@ enum KEYCODE getch() {
   return key;
 }
 
-//! command prompt
-void cmd() {
-}
-
 //! gets next command
 void get_cmd(char* buf, int n) {
   uint32_t i = 0;
@@ -49,7 +48,8 @@ void get_cmd(char* buf, int n) {
         break;
       case KEY_RETURN:
         buf[i] = '\0';
-        terminal_newline();
+        terminal_clrline();
+        // terminal_newline();
         return;
       case KEY_UNKNOWN:
       case KEY_CAPSLOCK:
@@ -81,14 +81,18 @@ bool run_cmd(char* cmd_buf) {
     printf("Stack bottom %X\n", STACK_BOTTOM);
     printf("Stack top: %X\n", STACK_TOP);
     printf("Kernel end: %X\n", KERNEL_END);
-  } else if (strcmp(cmd_buf, "pmmdump") == 0) {
+  } else if (strcmp(cmd_buf, "dump") == 0) {
     PMM_DEBUG();
+  } else if (strcmp(cmd_buf, "clear") == 0) {
+    terminal_clrscr();
+  } else {
+    printf("Invalid command\n");
   }
 
   return false;
 }
 
-void run() {
+void cmd_init() {
   char cmd_buf[100];
 
   while (1) {
@@ -100,17 +104,13 @@ void run() {
 }
 
 void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
-  i86_gdt_initialize();
-  i86_idt_initialize(0x8);
-  /* Mandatory, because the PIC interrupts are maskable. */
-  enable_interrupts();
+  hal_initialize();
   terminal_initialize();
   kkybrd_install(IRQ1);
-  // print_data_layout();
   pmm_init(mbd);
   vmm_init();
+  cmd_init();
 
-  run();
   // uint32_t a = 1/0;
 
   /*

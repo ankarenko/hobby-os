@@ -23,7 +23,7 @@ elif [ "$1" = "run" ]
 then
   $ENVIRONMENT ./build.sh && \
   $ENVIRONMENT ./make_iso.sh && \
-  qemu-system-i386 -m 16 -monitor unix:qemu-monitor-socket,server,nowait -no-reboot -kernel isodir/boot/myos.bin
+  qemu-system-i386 -m 16 -monitor unix:qemu-monitor-socket,server,nowait  -no-reboot -kernel isodir/boot/myos.bin
 else 
   echo "Unknown param: clean, build, run"
 fi

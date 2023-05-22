@@ -108,7 +108,7 @@ uint32_t i86_idt_initialize(uint16_t sel) {
   IDT_INIT_ISR(30, sel);
   IDT_INIT_ISR(31, sel);
 
-  pic_remap();
+  //pic_remap();
 
   IDT_INIT_IRQ(0, sel);
   IDT_INIT_IRQ(1, sel);
@@ -167,8 +167,9 @@ void register_interrupt_handler(uint8_t n, I86_IRQ_HANDLER handler) {
 // This gets called from our ASM interrupt handler stub.
 void irq_handler(interrupt_registers *regs) {
   if (regs->int_no >= 40)
-    outportb(PIC2_COMMAND, PIC_EOI);
-  outportb(PIC1_COMMAND, PIC_EOI);
+    i86_pic_send_command(I86_PIC_OCW2_MASK_EOI, 1);
+  i86_pic_send_command(I86_PIC_OCW2_MASK_EOI, 0);
 
   handle_interrupt(regs);
+  interruptdone(regs->int_no);
 }

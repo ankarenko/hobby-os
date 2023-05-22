@@ -37,6 +37,8 @@ isr_common_stub:
   mov %ax, %fs
   mov %ax, %gs
 
+  cld # C code following the sysV ABI requires DF to be clear on function entry
+    
   push %esp
   call isr_handler
   
@@ -79,7 +81,10 @@ irq_common_stub:
   mov %ax, %fs
   mov %ax, %gs
 
+  cld # C code following the sysV ABI requires DF to be clear on function entry
+    
   push %esp
+  
   call irq_handler
   
   add $4, %esp    # cleans esp param from the stack
