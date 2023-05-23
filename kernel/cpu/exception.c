@@ -109,19 +109,15 @@ void general_protection_fault(struct interrupt_registers *registers) {
 }
 
 //! page fault
-void page_fault(struct interrupt_registers *registers) {
+void page_fault(interrupt_registers *registers) {
   //_asm cli _asm sub ebp, 4
 
-  //	int faultAddr=0;
+  int faultAddr=0;
 
-  //	_asm {
-  //		mov eax, cr2
-  //		mov [faultAddr], eax
-  //	}
+  kernel_panic ("Page Fault at %x:%x refrenced memory at %x", registers->cs, registers->eip, faultAddr);
 
-  //	kernel_panic ("Page Fault at 0x%x:0x%x refrenced memory at 0x%x",
-  //		cs, eip, faultAddr);
-
+  for (;;)
+    ;
   //_asm popad _asm sti _asm iretd
 }
 

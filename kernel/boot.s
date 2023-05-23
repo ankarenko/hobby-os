@@ -20,7 +20,7 @@ hello_world:    .asciz "HELLO MY FIRENDS \n"
 .section .data
 .align 0x1000 // 4KB
 boot_page_directory:
-.long 0x00000083 // I86_PDE_4MB = 0x80 is important!
+.long 0x00000083 // I86_PDE_4MB = 0x80 is important! Identity map
 .fill (KERNEL_PAGE_NUMBER - 1), 4, 0                 # Pages before kernel space.
 # This page directory entry defines a 4MB page containing the kernel.
 .long 0x00000083

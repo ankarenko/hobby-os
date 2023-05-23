@@ -144,8 +144,9 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   terminal_initialize();
   kkybrd_install(IRQ1);
   pmm_init(mbd);
+  
   vmm_init();
-
+  
   flpydsk_set_working_drive(0);
   flpydsk_install(IRQ6);
 

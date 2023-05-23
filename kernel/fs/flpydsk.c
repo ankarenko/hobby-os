@@ -1,6 +1,7 @@
+#include "flpydsk.h"
+
 #include <stdbool.h>
 
-#include "flpydsk.h"
 #include "../cpu/hal.h"
 #include "../memory/kernel_info.h"
 
@@ -133,7 +134,8 @@ enum FLPYDSK_SECTOR_DTL {
 #define FLOPPY_IRQ 6
 #define FLPY_SECTORS_PER_TRACK 18
 #define FLPY_HEADS_PER_CYLINDER 2
-#define DMA_BUFFER 0x1000 + KERNEL_HIGHER_HALF // make it virtual address
+#define DMA_BUFFER 0x1000  // make it virtual address
+#define FDC_DMA_CHANNEL 2
 
 //! used to wait in miliseconds
 extern void sleep(int32_t);
@@ -144,41 +146,37 @@ static uint8_t _CurrentDrive = 0;
 //! set when IRQ fires
 static volatile uint8_t _FloppyDiskIRQ = 0;
 
-/**
- *	DMA Routines.
- **	The DMA (Direct Memory Access) controller allows the FDC to send data to the DMA,
- **	which can put the data in memory. While the FDC can be programmed to not use DMA,
- **  it is not very well supported on emulators or virtual machines. Because of this, we
- **  will be using the DMA for data transfers. The DMA is a complex controller, because of
- **  this we will cover it in the next tutorial. For now, please do not worry about the DMA
- **  routines to much :)
- */
+bool dma_initialize_floppy(uint8_t* buffer, unsigned length) {
+  union {
+    uint8_t byte[4];  // Lo[0], Mid[1], Hi[2]
+    unsigned long l;
+  } a, c;
 
-//! initialize DMA to use phys addr 84k-128k
-void flpydsk_initialize_dma() {
-  outportb(0x0a, 0x06);  // mask dma channel 2
-  outportb(0xd8, 0xff);  // reset master flip-flop
-  outportb(0x04, 0);     // address=0x1000
-  outportb(0x04, 0x10);
-  outportb(0xd8, 0xff);  // reset master flip-flop
-  outportb(0x05, 0xff);  // count to 0x23ff (number of bytes in a 3.5" floppy disk track)
-  outportb(0x05, 0x23);
-  outportb(0x80, 0);     // external page register = 0
-  outportb(0x0a, 0x02);  // unmask dma channel 2
-}
+  a.l = (unsigned)buffer;
+  c.l = (unsigned)length - 1;
 
-//! prepare the DMA for read transfer
-void flpydsk_dma_read() {
-  outportb(0x0a, 0x06);  // mask dma channel 2
-  outportb(0x0b, 0x56);  // single transfer, address increment, autoinit, read, channel 2
-  outportb(0x0a, 0x02);  // unmask dma channel 2
-}
+  // Check for buffer issues
+  // Specifically it checks that buffer address is at most 24 bits (under 16MB) 
+  // that length is at most 16-bit (since that's what DMA accepts), 
+  // and that if you add the buffer address and the length, you don't get need a carry.
+  // if(address & 0xff000000 || length & 0xffff0000 || ((address+length)&0xffff0000)!=(address&0xffff0000))
+  if ((a.l >> 24) || (c.l >> 16) || (((a.l & 0xffff) + c.l) >> 16)) {
+    return false;
+  }
 
-//! prepare the DMA for write transfer
-void flpydsk_dma_write() {
-  outportb(0x0a, 0x06);  // mask dma channel 2
-  outportb(0x0b, 0x5a);  // single transfer, address increment, autoinit, write, channel 2
-  outportb(0x0a, 0x02);  // unmask dma channel 2
+  dma_reset(1);
+  dma_mask_channel(FDC_DMA_CHANNEL);  // Mask channel 2
+  dma_reset_flipflop(1);              // Flipflop reset on DMA 1
+
+  dma_set_address(FDC_DMA_CHANNEL, a.byte[0], a.byte[1]);  // Buffer address
+  dma_reset_flipflop(1);                                   // Flipflop reset on DMA 1
+
+  dma_set_count(FDC_DMA_CHANNEL, c.byte[0], c.byte[1]);  // Set count
+  dma_set_read(FDC_DMA_CHANNEL);
+
+  dma_unmask_all(1);  // Unmask channel 2
+
+  return true;
 }
 
 /**
@@ -363,7 +361,7 @@ void flpydsk_read_sector_imp(uint8_t head, uint8_t track, uint8_t sector) {
   uint32_t st0, cyl;
 
   //! set the DMA for read transfer
-  flpydsk_dma_read();
+  dma_set_read(FDC_DMA_CHANNEL);
 
   //! read in a sector
   flpydsk_send_command(
@@ -426,7 +424,7 @@ void flpydsk_install(uint32_t irq) {
   register_interrupt_handler(irq, i86_flpy_irq);
 
   //! initialize the DMA for FDC
-  flpydsk_initialize_dma();
+  dma_initialize_floppy((uint8_t*)DMA_BUFFER, 512);
 
   //! reset the fdc
   flpydsk_reset();

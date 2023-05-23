@@ -101,7 +101,7 @@ void vmm_map_page(void* phys, void* virt) {
   pt_entry_add_attrib(page, I86_PTE_PRESENT);
 }
 
-void vmm_init_and_map(struct pdirectory* va_dir, uint32_t vaddr, uint32_t paddr) {
+void vmm_init_and_map(struct pdirectory* va_dir, uint32_t vaddr, uint32_t paddr, uint32_t num_of_pages) {
   uint32_t pa_table = (uint32_t)pmm_alloc_frame();
   struct ptable* va_table = (struct ptable*)(pa_table + KERNEL_HIGHER_HALF);
   memset(va_table, 0, sizeof(struct ptable));
@@ -109,7 +109,7 @@ void vmm_init_and_map(struct pdirectory* va_dir, uint32_t vaddr, uint32_t paddr)
   uint32_t ivirtual = vaddr;
   uint32_t iframe = paddr;
 
-  for (int i = 0; i < PAGES_PER_TABLE; ++i, ivirtual += PMM_FRAME_SIZE, iframe += PMM_FRAME_SIZE) {
+  for (int i = 0; i < num_of_pages; ++i, ivirtual += PMM_FRAME_SIZE, iframe += PMM_FRAME_SIZE) {
     pt_entry* entry = &va_table->m_entries[PAGE_TABLE_INDEX(ivirtual)];
     pt_entry_set_frame(entry, iframe);
     pt_entry_add_attrib(entry, I86_PTE_PRESENT);
@@ -117,7 +117,7 @@ void vmm_init_and_map(struct pdirectory* va_dir, uint32_t vaddr, uint32_t paddr)
     pmm_mark_used_addr(iframe);
   }
 
-  pd_entry* entry = &va_dir->m_entries[PAGE_DIRECTORY_INDEX((virtual_addr)va_table)];
+  pd_entry* entry = &va_dir->m_entries[PAGE_DIRECTORY_INDEX((virtual_addr)vaddr)];
   pd_entry_set_frame(entry, pa_table);
   pd_entry_add_attrib(entry, I86_PTE_PRESENT);
   pd_entry_add_attrib(entry, I86_PTE_WRITABLE);
@@ -128,7 +128,9 @@ void vmm_init() {
   struct pdirectory* va_dir = (struct pdirectory*)(pa_dir + KERNEL_HIGHER_HALF);
   memset(va_dir, 0, sizeof(struct pdirectory));
 
-  vmm_init_and_map(va_dir, KERNEL_HIGHER_HALF, 0x00000000);
+  //make identity map of first MB and mark it used 
+  vmm_init_and_map(va_dir, 0x00000000, 0x00000000, PAGES_PER_TABLE >> 2);
+  vmm_init_and_map(va_dir, KERNEL_HIGHER_HALF, 0x00000000, PAGES_PER_TABLE);
 
   // NOTE: MQ 2019-11-21 Preallocate ptable for higher half kernel
   for (int i = PAGE_DIRECTORY_INDEX(KERNEL_HIGHER_HALF) + 1; i < PAGES_PER_DIR; ++i)
@@ -161,7 +163,7 @@ void vmm_paging(struct pdirectory* va_dir, uint32_t pa_dir) {
   __asm__ __volatile__(
       "mov %0, %%cr3           \n"
       "mov %%cr4, %%ecx        \n"
-      "and $~0x00000010, %%ecx \n"
+      "or $0x00000010, %%ecx   \n"  // i don't know why but "and $~0x00000010, %%ecx doesnt work
       "mov %%ecx, %%cr4        \n"
       "mov %%cr0, %%ecx        \n"
       "or $0x80000000, %%ecx   \n"
