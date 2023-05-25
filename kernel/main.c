@@ -10,11 +10,13 @@
 #include "./kernel/cpu/hal.h"
 #include "./kernel/cpu/idt.h"
 #include "./kernel/devices/kybrd.h"
+#include "./kernel/fs/fat12/fat12.h"
 #include "./kernel/fs/flpydsk.h"
 #include "./kernel/memory/kernel_info.h"
 #include "./kernel/memory/malloc.h"
 #include "./kernel/memory/pmm.h"
 #include "./kernel/memory/vmm.h"
+#include "./kernel/fs/fsys.h"
 #include "./multiboot.h"
 
 //! sleeps a little bit. This uses the HALs get_tick_count() which in turn uses the PIT
@@ -144,12 +146,21 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   terminal_initialize();
   kkybrd_install(IRQ1);
   pmm_init(mbd);
-  
+
   vmm_init();
-  
+
   flpydsk_set_working_drive(0);
   flpydsk_install(IRQ6);
 
+  fat12_initialize();
+  char* path = "names.txt";
+  FILE file = vol_open_file(path);
+
+  uint8_t buf[512];
+	vol_read_file(&file, buf, 512);
+
+  printf(buf);
+  
   cmd_init();
 
   /*

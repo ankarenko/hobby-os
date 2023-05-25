@@ -156,8 +156,8 @@ bool dma_initialize_floppy(uint8_t* buffer, unsigned length) {
   c.l = (unsigned)length - 1;
 
   // Check for buffer issues
-  // Specifically it checks that buffer address is at most 24 bits (under 16MB) 
-  // that length is at most 16-bit (since that's what DMA accepts), 
+  // Specifically it checks that buffer address is at most 24 bits (under 16MB)
+  // that length is at most 16-bit (since that's what DMA accepts),
   // and that if you add the buffer address and the length, you don't get need a carry.
   // if(address & 0xff000000 || length & 0xffff0000 || ((address+length)&0xffff0000)!=(address&0xffff0000))
   if ((a.l >> 24) || (c.l >> 16) || (((a.l & 0xffff) + c.l) >> 16)) {

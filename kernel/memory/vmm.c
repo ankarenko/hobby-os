@@ -135,7 +135,7 @@ void vmm_init() {
   // NOTE: MQ 2019-11-21 Preallocate ptable for higher half kernel
   for (int i = PAGE_DIRECTORY_INDEX(KERNEL_HIGHER_HALF) + 1; i < PAGES_PER_DIR; ++i)
     vmm_alloc_ptable(va_dir, i);
-
+  
   // NOTE: MQ 2019-05-08 Using the recursive page directory trick when paging (map last entry to directory)
   pd_entry* entry = &va_dir->m_entries[PAGES_PER_DIR - 1];
   pd_entry_set_frame(entry, pa_dir & 0xFFFFF000);
@@ -163,7 +163,7 @@ void vmm_paging(struct pdirectory* va_dir, uint32_t pa_dir) {
   __asm__ __volatile__(
       "mov %0, %%cr3           \n"
       "mov %%cr4, %%ecx        \n"
-      "or $0x00000010, %%ecx   \n"  // i don't know why but "and $~0x00000010, %%ecx doesnt work
+      "or $0x00000010, %%ecx   \n"  // i don't know why but "and $~0x00000010, %%ecx doesnt work (QEMU)
       "mov %%ecx, %%cr4        \n"
       "mov %%cr0, %%ecx        \n"
       "or $0x80000000, %%ecx   \n"

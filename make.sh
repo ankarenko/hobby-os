@@ -1,5 +1,6 @@
 #!/bin/sh
 BOOT_DIR=isodir/boot
+DISK=./floppy_fat12.img
 
 if alias os-machine >/dev/null 2>&1; then 
   ENVIRONMENT="os-machine"
@@ -23,7 +24,7 @@ elif [ "$1" = "run" ]
 then
   $ENVIRONMENT ./build.sh && \
   $ENVIRONMENT ./make_iso.sh && \
-  qemu-system-i386 -m 16 -monitor unix:qemu-monitor-socket,server,nowait -blockdev driver=file,node-name=f0,filename=./floppy.img -device floppy,drive=f0 -no-reboot -kernel isodir/boot/myos.bin
+  qemu-system-i386 -m 16 -monitor unix:qemu-monitor-socket,server,nowait -blockdev driver=file,node-name=f0,filename=$DISK -device floppy,drive=f0 -no-reboot -kernel isodir/boot/myos.bin
 else 
   echo "Unknown param: clean, build, run"
 fi
