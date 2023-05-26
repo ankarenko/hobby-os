@@ -62,6 +62,14 @@ void vol_ls(PFILE file) {
     _file_systems[file->device_id - 'a']->ls(file);
 }
 
+FILE vol_get_root(uint32_t device_id) {
+  if (_file_systems[device_id - 'a']) {
+    FILE file = _file_systems[device_id - 'a']->root();
+    file.device_id = device_id;
+    return file;
+  }
+}
+
 /**
  *	Registers a filesystem
  */

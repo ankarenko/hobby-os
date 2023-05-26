@@ -18,23 +18,49 @@
 //! FAT FileSystem
 FILESYSTEM _fsys_fat;
 
-
 //! Mount info
 MOUNT_INFO _mount_info;
 
 //! File Allocation Table (FAT)
 uint8_t FAT[SECTOR_SIZE * 2];
 
+void fat12_print_record(PDIRECTORY pkDir) {
+  uint8_t attr = pkDir->attrib;
+  
+  // check file is not SWP 
+  if (attr && !(attr & (FAT12_HIDDEN)) && strcmp(pkDir->ext, "SWP ") != 0) {
+    char* type = attr & FAT12_DIRECTORY? "d" : "f";
+    printf("%s %s : %d (bytes)\n", pkDir->filename, type, pkDir->file_size);
+  }
+}
+
+bool fat12_check(PDIRECTORY pkDir, const char* dos_filename, const char* filename, PFILE file) {
+  if (pkDir->attrib && !(pkDir->attrib & FAT12_HIDDEN)) {
+    char name[FAT12_MAX_FILE_SIZE + 1];
+    memcpy(name, pkDir->filename, FAT12_MAX_FILE_SIZE);
+    name[FAT12_MAX_FILE_SIZE] = 0;
+
+    if (strcmp(name, dos_filename) == 0) {
+      strcpy(file->name, filename);
+      file->id = 0;
+      file->current_cluster = pkDir->first_cluster;
+      file->file_length = pkDir->file_size;
+      file->eof = 0;
+      file->flags = pkDir->attrib == FAT12_DIRECTORY ? FS_DIRECTORY : FS_FILE;
+
+      return true;
+    }
+  }
+
+  return false;
+}
+
 void to_dos_filename(const char* filename, char* fname, uint32_t fname_length) {
   uint32_t i = 0;
 
-  if (fname_length > FAT12_MAX_FILE_SIZE)
+  if (fname_length > FAT12_MAX_FILE_SIZE || !fname || !filename)
     return;
 
-  if (!fname || !filename)
-    return;
-
-  //! set all characters in output name to spaces
   memset(fname, ' ', fname_length);
 
   //! 8.3 filename
@@ -62,9 +88,6 @@ void to_dos_filename(const char* filename, char* fname, uint32_t fname_length) {
     fname[8 + i] = toupper(fname[8 + i]);
 }
 
-/**
- *	Reads from a file
- */
 void fat12_read(PFILE file, uint8_t* buffer, uint32_t Length) {
   if (file) {
     // in fat12 two FAT tables + root directory table = 9*2 + (244 * 32 / 512) = 18 + 14 = 32
@@ -81,7 +104,7 @@ void fat12_read(PFILE file, uint8_t* buffer, uint32_t Length) {
 
     //! locate FAT sector
     // multiply by 1.5, because each fat entry is 12bit, for FAT16 it would be 2, for FAT32 - 4
-    uint32_t FAT_Offset = file->current_cluster + file->current_cluster / 2;  
+    uint32_t FAT_Offset = file->current_cluster + file->current_cluster / 2;
     uint32_t FAT_Sector = 1 + (FAT_Offset / SECTOR_SIZE);
     uint32_t entry_offset = FAT_Offset % SECTOR_SIZE;
 
@@ -132,99 +155,39 @@ void fat12_close(PFILE file) {
 /**
  *	Locates file or directory in root directory
  */
-FILE fat12_look_root_directory(const char* name) {
+FILE fat12_look_root_directory(const char* filename) {
   FILE file;
-  uint8_t* buf;
-  PDIRECTORY directory;
 
-  //! get 8.3 directory name
   char dos_filename[FAT12_MAX_FILE_SIZE + 1];
-  to_dos_filename(name, dos_filename, FAT12_MAX_FILE_SIZE);
-  dos_filename[FAT12_MAX_FILE_SIZE] = 0;  // end of string
+  to_dos_filename(filename, dos_filename, FAT12_MAX_FILE_SIZE);
+  dos_filename[FAT12_MAX_FILE_SIZE] = 0;
 
-  //! 14 sectors per directory
   for (int32_t sector = 0; sector < _mount_info.root_size; sector++) {
-    //! read in sector of root directory
-    buf = (uint8_t*)flpydsk_read_sector(_mount_info.root_offset + sector);
+    PDIRECTORY directory = (PDIRECTORY)flpydsk_read_sector(_mount_info.root_offset + sector);
 
-    //! get directory info
-    directory = (PDIRECTORY)buf;
-
-    //! 16 entries per sector
     for (int32_t i = 0; i < NUM_DIRECTORY_ENTRIES; i++, directory++) {
-  
-      if (directory->attrib & FAT12_HIDDEN)
-        continue;
-      
-      char name[FAT12_MAX_FILE_SIZE + 1];
-      memcpy(name, directory->filename, FAT12_MAX_FILE_SIZE);
-      name[FAT12_MAX_FILE_SIZE] = 0;
-
-      //! find a match?
-      if (strcmp(dos_filename, name) == 0) {
-        //! found it, set up file info
-        strcpy(file.name, name);
-        file.id = 0;
-        file.current_cluster = directory->first_cluster;
-        file.file_length = directory->file_size;
-        file.eof = 0;
-
-        //! set file type
-        if (directory->attrib == FAT12_DIRECTORY)
-          file.flags = FS_DIRECTORY;
-        else
-          file.flags = FS_FILE;
-
-        //! return file
+      if (fat12_check(directory, dos_filename, filename, &file)) {
         return file;
       }
     }
   }
 
-  //! unable to find file
   file.flags = FS_INVALID;
   return file;
 }
 
 FILE fat12_look_subdir(FILE file, const char* filename) {
-  //! get 8.3 directory name
   char dos_filename[FAT12_MAX_FILE_SIZE + 1];
   to_dos_filename(filename, dos_filename, FAT12_MAX_FILE_SIZE);
   dos_filename[FAT12_MAX_FILE_SIZE] = 0;
 
-  //! read directory
   while (!file.eof) {
-    //! read directory
     uint8_t buf[SECTOR_SIZE];
     fat12_read(&file, buf, SECTOR_SIZE);
-
-    //! set directort
     PDIRECTORY pkDir = (PDIRECTORY)buf;
 
-    for (uint32_t i = 0; i < DIRECTORY_ENTRY_SIZE; i++, pkDir++) {
-      if (pkDir->attrib & FAT12_HIDDEN)
-        continue;
-
-      char name[FAT12_MAX_FILE_SIZE + 1];
-      memcpy(name, pkDir->filename, FAT12_MAX_FILE_SIZE);
-      name[FAT12_MAX_FILE_SIZE] = 0;
-
-      //! match?
-      if (strcmp(name, dos_filename) == 0) {
-        //! found it, set up file info
-        strcpy(file.name, filename);
-        file.id = 0;
-        file.current_cluster = pkDir->first_cluster;
-        file.file_length = pkDir->file_size;
-        file.eof = 0;
-
-        //! set file type
-        if (pkDir->attrib == FAT12_DIRECTORY)
-          file.flags = FS_DIRECTORY;
-        else
-          file.flags = FS_FILE;
-
-        //! return file
+    for (uint32_t i = 0; i < NUM_DIRECTORY_ENTRIES; i++, pkDir++) {
+      if (fat12_check(pkDir, dos_filename, filename, &file)) {
         return file;
       }
     }
@@ -235,32 +198,44 @@ FILE fat12_look_subdir(FILE file, const char* filename) {
   return file;
 }
 
+void fat12_ls_rootdir() {
+  for (int32_t sector = 0; sector < _mount_info.root_size; sector++) {
+    PDIRECTORY directory = (PDIRECTORY)flpydsk_read_sector(_mount_info.root_offset + sector);
+
+    for (int32_t i = 0; i < NUM_DIRECTORY_ENTRIES; i++, directory++) {
+      fat12_print_record(directory);
+    }
+  }
+}
+
+void fat12_ls_subdir(FILE file) {
+  while (!file.eof) {
+    uint8_t buf[SECTOR_SIZE];
+    fat12_read(&file, buf, SECTOR_SIZE);
+    PDIRECTORY pkDir = (PDIRECTORY)buf;
+
+    for (uint32_t i = 0; i < NUM_DIRECTORY_ENTRIES; i++, pkDir++) {
+      fat12_print_record(pkDir);
+    }
+  }
+}
+
+
+FILE fat12_get_rootdir() {  
+  FILE rootdir;
+  rootdir.eof = 0;
+  rootdir.device_id = 0;
+  rootdir.flags = FS_ROOT_DIRECTORY;
+  return rootdir;
+}
+
 bool fat12_ls(PFILE pfile) {
-  FILE file = *pfile;
-  
-  if (file.flags != FS_DIRECTORY) {
+  if (pfile && !(pfile->flags & (FS_DIRECTORY | FS_ROOT_DIRECTORY))) {
     return false;
   }
 
-  uint8_t buf[SECTOR_SIZE];
-  
-  while (!file.eof) {
-    fat12_read(&file, buf, SECTOR_SIZE);
-    //! set directort
-    PDIRECTORY pkDir = (PDIRECTORY)buf;
-
-    for (uint32_t i = 0; i < DIRECTORY_ENTRY_SIZE; i++) {
-      if (!(pkDir->attrib & FAT12_HIDDEN)) {
-        //! get current filename
-        char name[FAT12_MAX_FILE_SIZE + 1];
-        memcpy(name, pkDir->filename, FAT12_MAX_FILE_SIZE);
-        name[FAT12_MAX_FILE_SIZE] = 0;
-        printf(name);
-      }
-      pkDir++;
-    }
-  }
-  
+  pfile->flags == FS_ROOT_DIRECTORY ? 
+    fat12_ls_rootdir() : fat12_ls_subdir(*pfile);
 }
 
 FILE fat12_open(const char* filename) {
@@ -271,7 +246,7 @@ FILE fat12_open(const char* filename) {
 
   //! any '/'s in path?
   p = strchr(path, '\/');
-  p = !p? path : p + 1;
+  p = !p ? path : p + 1;
 
   while (p) {
     //! get pathname
@@ -291,7 +266,6 @@ FILE fat12_open(const char* filename) {
       file = fat12_look_subdir(file, pathname);
     }
 
-    
     //! found directory or file?
     if (file.flags == FS_INVALID)
       break;
@@ -318,29 +292,8 @@ FILE fat12_open(const char* filename) {
 
 bool check_fat12(uint16_t sectorsize) {
   return true;
-  /*
-  if (sectorsize == 0)
-{
-   fat_type = ExFAT;
-}
-else if(total_clusters < 4085)
-{
-   fat_type = FAT12;
-}
-else if(total_clusters < 65525)
-{
-   fat_type = FAT16;
-}
-else
-{
-   fat_type = FAT32;
-}
-  */
 }
 
-/**
- *	Mounts the filesystem
- */
 void fat12_mount() {
   //! Boot sector info
   PBOOTSECTOR bootsector;
@@ -352,15 +305,14 @@ void fat12_mount() {
     // panic
   }
 
-// FAT12 STRUCTURE
-//
-// | Boot Sector                                 | 
-// | Extra Reserved Sectors	                     | 
-// | File Allocation Table 1                     | 
-// | File Allocation Table 2	                   | 
-// | Root Directory (FAT12/FAT16 Only)           | 
-// | Data Region containng files and directories |
-
+  // FAT12 STRUCTURE
+  //
+  // | Boot Sector                                 |
+  // | Extra Reserved Sectors	                     |
+  // | File Allocation Table 1                     |
+  // | File Allocation Table 2	                   |
+  // | Root Directory (FAT12/FAT16 Only)           |
+  // | Data Region containng files and directories |
 
   //! store mount info
   _mount_info.num_sectors = bootsector->bpb.num_sectors;
@@ -383,7 +335,7 @@ void fat12_initialize() {
   _fsys_fat.read = fat12_read;
   _fsys_fat.close = fat12_close;
   _fsys_fat.directory = fat12_look_root_directory;
-  //_fsys_fat.root = fat12_get_root_dir;
+  _fsys_fat.root = fat12_get_rootdir;
   _fsys_fat.ls = fat12_ls;
 
   //! register ourself to volume manager

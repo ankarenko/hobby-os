@@ -5,6 +5,7 @@
     "vga.h": "c",
     "hal.h": "c",
     "typeinfo": "c",
-    "ctype.h": "c"
+    "ctype.h": "c",
+    "exception.h": "c"
   }
 }

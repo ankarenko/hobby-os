@@ -3,6 +3,7 @@
 // #include <string.h>
 // #include <timer.h>
 #include <ctype.h>
+#include <math.h>
 
 #include "./devices/tty.h"
 #include "./kernel/cpu/exception.h"
@@ -41,13 +42,14 @@ enum KEYCODE getch() {
 
 //! gets next command
 void get_cmd(char* buf, int n) {
-  uint32_t i = 0;
+  int32_t i = 0;
   while (i < n) {
     enum KEYCODE key = getch();
 
     switch (key) {
       case KEY_BACKSPACE:
         terminal_popchar();
+        i = max(i - 1, 0);       
         break;
       case KEY_RETURN:
         buf[i] = '\0';
@@ -70,6 +72,8 @@ void get_cmd(char* buf, int n) {
   }
 }
 
+static PFILE _cur_dir = NULL;
+
 //! our simple command parser
 bool run_cmd(char* cmd_buf) {
   if (strcmp(cmd_buf, "exit") == 0) {
@@ -91,6 +95,8 @@ bool run_cmd(char* cmd_buf) {
     cmd_read_sect();
   } else if (strcmp(cmd_buf, "cat") == 0) {
     cmd_read_file();
+  } else if (strcmp(cmd_buf, "ls") == 0) {
+    cmd_read_ls();
   }
 
   else {
@@ -132,6 +138,25 @@ void cmd_init() {
     if (run_cmd(cmd_buf) == true)
       break;
   }
+}
+
+void cmd_read_ls() {
+  char filepath[100];
+
+  printf("\nPlease folder path \n");
+  get_cmd(filepath, 100);
+
+  FILE folder;
+
+  if (strcmp(filepath, "") == 0) {
+    printf("a:\n");
+    folder = vol_get_root('a');
+  } else {
+    printf("a:/%s\n", filepath);
+    folder = vol_open_file(filepath);
+  }
+  
+  vol_ls(&folder);
 }
 
 //! read sector command
@@ -178,6 +203,9 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   flpydsk_install(IRQ6);
 
   fat12_initialize();
+  FILE root = vol_get_root('a');
+  _cur_dir = &root;
+
   char* path = "/folder/content.txt";
   char* path2 = "names.txt";
 
