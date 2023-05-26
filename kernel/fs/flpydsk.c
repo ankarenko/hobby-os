@@ -280,7 +280,8 @@ void flpydsk_control_motor(bool b) {
     flpydsk_write_dor(FLPYDSK_DOR_MASK_RESET);
 
   //! in all cases; wait a little bit for the motor to spin up/turn off
-  sleep(20);
+  //sleep(20);
+  sleep(1);
 }
 
 //! configure drive

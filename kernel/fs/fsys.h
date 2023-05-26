@@ -20,13 +20,13 @@ typedef struct _FILE {
  */
 typedef struct _FILE_SYSTEM {
   char name[8];
-  FILE(*directory)
-  (const char* directory_name);
+  FILE(*directory)(const char* directory_name);
   void (*mount)();
   void (*read)(PFILE file, uint8_t* buffer, uint32_t length);
   void (*close)(PFILE);
-  FILE(*open)
-  (const char* filename);
+  //FILE (*root)();
+  void (*ls)(PFILE file);
+  FILE(*open)(const char* filename);
 } FILESYSTEM, *PFILESYSTEM;
 
 /**
@@ -39,6 +39,7 @@ typedef struct _FILE_SYSTEM {
 FILE vol_open_file(const char* fname);
 void vol_read_file(PFILE file, uint8_t* buffer, uint32_t length);
 void vol_close_file(PFILE file);
+void vol_ls(PFILE file);
 void vol_register_file_system(PFILESYSTEM, uint32_t device_id);
 void vol_unregister_file_system(PFILESYSTEM);
 void vol_unregister_file_system_by_id(uint32_t device_id);

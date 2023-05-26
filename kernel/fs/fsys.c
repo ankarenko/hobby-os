@@ -57,6 +57,11 @@ void vol_close_file(PFILE file) {
       _file_systems[file->device_id - 'a']->close(file);
 }
 
+void vol_ls(PFILE file) {
+  if (_file_systems[file->device_id - 'a'])
+    _file_systems[file->device_id - 'a']->ls(file);
+}
+
 /**
  *	Registers a filesystem
  */

@@ -12,11 +12,11 @@
 #include "./kernel/devices/kybrd.h"
 #include "./kernel/fs/fat12/fat12.h"
 #include "./kernel/fs/flpydsk.h"
+#include "./kernel/fs/fsys.h"
 #include "./kernel/memory/kernel_info.h"
 #include "./kernel/memory/malloc.h"
 #include "./kernel/memory/pmm.h"
 #include "./kernel/memory/vmm.h"
-#include "./kernel/fs/fsys.h"
 #include "./multiboot.h"
 
 //! sleeps a little bit. This uses the HALs get_tick_count() which in turn uses the PIT
@@ -89,6 +89,8 @@ bool run_cmd(char* cmd_buf) {
     terminal_clrscr();
   } else if (strcmp(cmd_buf, "read") == 0) {
     cmd_read_sect();
+  } else if (strcmp(cmd_buf, "cat") == 0) {
+    cmd_read_file();
   }
 
   else {
@@ -96,6 +98,29 @@ bool run_cmd(char* cmd_buf) {
   }
 
   return false;
+}
+
+void cmd_read_file() {
+  char filepath[100];
+
+  printf("\nPlease enter file path \n");
+  get_cmd(filepath, 100);
+
+  FILE file = vol_open_file(filepath);
+  
+  if (file.flags == FS_INVALID) {
+    printf("\n*** File not found ***\n");
+    return;
+  }
+
+  uint8_t buf[512];
+  printf("___________________%s_________________________\n", filepath);
+  while (!file.eof)
+  {
+    vol_read_file(&file, buf, 512);
+    printf(buf);
+  }
+  printf("\n___________________EOF_________________________\n");
 }
 
 void cmd_init() {
@@ -136,7 +161,7 @@ void cmd_read_sect() {
       getch();
     }
   } else
-    printf("\n*** Error reading sector from disk");
+    printf("\n*** Error reading sector from disk\n");
 
   printf("\nDone.");
 }
@@ -153,14 +178,20 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   flpydsk_install(IRQ6);
 
   fat12_initialize();
-  char* path = "names.txt";
-  FILE file = vol_open_file(path);
+  char* path = "/folder/content.txt";
+  char* path2 = "names.txt";
 
+  //FILE file = vol_open_file("folder");
+  //vol_ls(&file);
+  /*
   uint8_t buf[512];
-	vol_read_file(&file, buf, 512);
 
-  printf(buf);
-  
+  while (!file.eof)
+  {
+    vol_read_file(&file, buf, 512);
+    printf(buf);
+  }
+  */
   cmd_init();
 
   /*
