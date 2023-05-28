@@ -11,3 +11,4 @@ asm.s
 asm.asm
 disk.img
 floppy.img
+floppy_fat12.img

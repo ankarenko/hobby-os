@@ -1,10 +1,8 @@
 // timer.c -- Initialises the PIT, and handles clock updates.
 // Written for JamesM's kernel development tutorials.
-
-#include "timer.h"
-
 #include <stdio.h>
 
+#include "time.h"
 #include "../cpu/hal.h"
 #include "../cpu/idt.h"
 

@@ -114,6 +114,7 @@ void vmm_init_and_map(struct pdirectory* va_dir, uint32_t vaddr, uint32_t paddr,
     pt_entry_set_frame(entry, iframe);
     pt_entry_add_attrib(entry, I86_PTE_PRESENT);
     pt_entry_add_attrib(entry, I86_PTE_WRITABLE);
+    pd_entry_add_attrib(entry, I86_PDE_USER); // TODO: remove, very bad to mix user
     pmm_mark_used_addr(iframe);
   }
 
@@ -121,6 +122,7 @@ void vmm_init_and_map(struct pdirectory* va_dir, uint32_t vaddr, uint32_t paddr,
   pd_entry_set_frame(entry, pa_table);
   pd_entry_add_attrib(entry, I86_PTE_PRESENT);
   pd_entry_add_attrib(entry, I86_PTE_WRITABLE);
+  pd_entry_add_attrib(entry, I86_PDE_USER); // TODO: remove, very bad to mix user
 }
 
 void vmm_init() {
@@ -141,6 +143,7 @@ void vmm_init() {
   pd_entry_set_frame(entry, pa_dir & 0xFFFFF000);
   pd_entry_add_attrib(entry, I86_PTE_PRESENT);
   pd_entry_add_attrib(entry, I86_PTE_WRITABLE);
+  pd_entry_add_attrib(entry, I86_PDE_USER); // TODO: remove, very bad to mix user
 
   vmm_paging(va_dir, pa_dir);
 }

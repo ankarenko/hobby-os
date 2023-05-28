@@ -10,6 +10,7 @@
 #include "./kernel/cpu/gdt.h"
 #include "./kernel/cpu/hal.h"
 #include "./kernel/cpu/idt.h"
+#include "./kernel/cpu/tss.h"
 #include "./kernel/devices/kybrd.h"
 #include "./kernel/fs/fat12/fat12.h"
 #include "./kernel/fs/flpydsk.h"
@@ -18,7 +19,10 @@
 #include "./kernel/memory/malloc.h"
 #include "./kernel/memory/pmm.h"
 #include "./kernel/memory/vmm.h"
+#include "./kernel/system/sysapi.h"
 #include "./multiboot.h"
+
+extern void enter_usermode();
 
 //! sleeps a little bit. This uses the HALs get_tick_count() which in turn uses the PIT
 void sleep(uint32_t ms) {
@@ -49,7 +53,7 @@ void get_cmd(char* buf, int n) {
     switch (key) {
       case KEY_BACKSPACE:
         terminal_popchar();
-        i = max(i - 1, 0);       
+        i = max(i - 1, 0);
         break;
       case KEY_RETURN:
         buf[i] = '\0';
@@ -74,9 +78,29 @@ void get_cmd(char* buf, int n) {
 
 static PFILE _cur_dir = NULL;
 
+void user_syscall() {
+  asm volatile ("int $0x3");
+  int32_t a = 2;
+  syscall_printf("\nIn user mode");
+}
+
+void cmd_user() {
+  int32_t esp;
+  __asm__ __volatile__("mov %%esp, %0"
+                       : "=r"(esp));
+  tss_set_stack(0x10, esp);
+
+  enter_usermode();
+  int32_t a = 2;
+  syscall_printf("\nIn user mode");
+}
+
 //! our simple command parser
 bool run_cmd(char* cmd_buf) {
-  if (strcmp(cmd_buf, "exit") == 0) {
+  if (strcmp(cmd_buf, "user") == 0) {
+    cmd_user();
+  } else if (strcmp(cmd_buf, "exit") == 0) {
+    printf("Goodbuy!");
     return true;
   } else if (strcmp(cmd_buf, "layout") == 0) {
     printf("Kernel start: %X\n", KERNEL_START);
@@ -113,7 +137,7 @@ void cmd_read_file() {
   get_cmd(filepath, 100);
 
   FILE file = vol_open_file(filepath);
-  
+
   if (file.flags == FS_INVALID) {
     printf("\n*** File not found ***\n");
     return;
@@ -121,8 +145,7 @@ void cmd_read_file() {
 
   uint8_t buf[512];
   printf("___________________%s_________________________\n", filepath);
-  while (!file.eof)
-  {
+  while (!file.eof) {
     vol_read_file(&file, buf, 512);
     printf(buf);
   }
@@ -155,7 +178,7 @@ void cmd_read_ls() {
     printf("a:/%s\n", filepath);
     folder = vol_open_file(filepath);
   }
-  
+
   vol_ls(&folder);
 }
 
@@ -191,6 +214,8 @@ void cmd_read_sect() {
   printf("\nDone.");
 }
 
+
+
 void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   hal_initialize();
   terminal_initialize();
@@ -203,14 +228,14 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   flpydsk_install(IRQ6);
 
   fat12_initialize();
-  FILE root = vol_get_root('a');
-  _cur_dir = &root;
+  syscall_init();
+  install_tss(5, 0x10, 0);
 
-  char* path = "/folder/content.txt";
-  char* path2 = "names.txt";
+  // char* path = "/folder/content.txt";
+  // char* path2 = "names.txt";
 
-  //FILE file = vol_open_file("folder");
-  //vol_ls(&file);
+  // FILE file = vol_open_file("folder");
+  // vol_ls(&file);
   /*
   uint8_t buf[512];
 

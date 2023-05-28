@@ -11,6 +11,8 @@
 #define IRQ(index) extern void irq##index()
 #define IDT_INIT_ISR(i, sel) i86_install_ir(i, (uint32_t)isr##i, sel, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32)
 #define IDT_INIT_IRQ(i, sel) i86_install_ir(i + 32, (uint32_t)irq##i, sel, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32)
+#define IDT_INIT_SYSCALL(i, sel) i86_install_ir(i, (uint32_t)isr##i, sel, I86_IDT_DESC_RING3 | I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32)
+  
 
 ISR(0);
 ISR(1);
@@ -44,6 +46,7 @@ ISR(28);
 ISR(29);
 ISR(30);
 ISR(31);
+ISR(128); //SYCALL
 
 IRQ(0);
 IRQ(1);
@@ -126,6 +129,9 @@ uint32_t i86_idt_initialize(uint16_t sel) {
   IDT_INIT_IRQ(13, sel);
   IDT_INIT_IRQ(14, sel);
   IDT_INIT_IRQ(15, sel);
+  
+  // regitering 0x80 int handler for sys calls
+  IDT_INIT_SYSCALL(128, sel);
 
   exception_init();
   idt_flush((uint32_t)&_idt_ptr);

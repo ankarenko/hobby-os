@@ -1,11 +1,9 @@
-
-#include "./fat12.h"
-
 #include <ctype.h>
 #include <math.h>
 #include <stdbool.h>
 #include <string.h>
 
+#include "./fat12.h"
 #include "../bpb.h"
 #include "../flpydsk.h"
 

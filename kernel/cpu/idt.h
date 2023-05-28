@@ -14,14 +14,17 @@
 #define I86_IDT_DESC_RING2 0x20    // 00100000
 #define I86_IDT_DESC_RING3 0x60    // 01100000
 #define I86_IDT_DESC_PRESENT 0x80  // 10000000
+#define DISPATCHER_ISR 128  // 0x80
 
+#pragma pack(1)
 typedef struct
 {
   uint32_t gs, fs, es, ds;
   uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
   uint32_t int_no, err_code;
   uint32_t eip, cs, eflags, useresp, ss;
-} __attribute__((packed)) interrupt_registers;
+} /*__attribute__((packed))*/ interrupt_registers;
+#pragma pack(0)
 
 // A few defines to make life a little easier
 #define IRQ0 32

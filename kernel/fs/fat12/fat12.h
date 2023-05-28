@@ -7,7 +7,7 @@
 /**
  *	Directory entry
  */
-#pragma pack(1)
+
 
 #define FAT12_READ_ONLY 0x01
 #define FAT12_HIDDEN 0x02
@@ -16,7 +16,7 @@
 #define FAT12_DIRECTORY 0x10
 #define FAT12_ARCHIVE 0x20
 
-
+#pragma pack(1)
 typedef struct _DIRECTORY {
   uint8_t filename[8];
   uint8_t ext[3];

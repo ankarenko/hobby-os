@@ -6,6 +6,7 @@
     "hal.h": "c",
     "typeinfo": "c",
     "ctype.h": "c",
-    "exception.h": "c"
+    "exception.h": "c",
+    "idt.h": "c"
   }
 }

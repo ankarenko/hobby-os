@@ -25,7 +25,7 @@
 .type isr_common_stub, @function
 isr_common_stub:
   pusha
-
+  
   push %ds
   push %es
   push %fs
@@ -133,6 +133,9 @@ ISR_NOERRCODE 28
 ISR_NOERRCODE 29
 ISR_NOERRCODE 30
 ISR_NOERRCODE 31
+
+// SYS CALL INTERRUPT
+ISR_NOERRCODE 128
 
 IRQ   0,    32
 IRQ   1,    33
