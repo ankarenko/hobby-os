@@ -20,6 +20,7 @@
 #include "./kernel/memory/pmm.h"
 #include "./kernel/memory/vmm.h"
 #include "./kernel/system/sysapi.h"
+#include "./kernel/proc/elf.h"
 #include "./multiboot.h"
 
 extern void enter_usermode();
@@ -84,6 +85,10 @@ void user_syscall() {
   syscall_printf("\nIn user mode");
 }
 
+void cmd_read_elf() {
+  elf_load("a:/calc.exe");
+}
+
 void cmd_user() {
   int32_t esp;
   __asm__ __volatile__("mov %%esp, %0"
@@ -121,6 +126,8 @@ bool run_cmd(char* cmd_buf) {
     cmd_read_file();
   } else if (strcmp(cmd_buf, "ls") == 0) {
     cmd_read_ls();
+  } else if (strcmp(cmd_buf, "readelf") == 0) {
+    cmd_read_elf();
   }
 
   else {

@@ -1,8 +1,7 @@
-#include "sysapi.h"
-
 #include <stdio.h>
 
 #include "../cpu/idt.h"
+#include "sysapi.h"
 
 #define __NR_dprintf 512
 

@@ -1,7 +1,6 @@
-#include "tss.h"
-
 #include <string.h>
 
+#include "./tss.h"
 #include "./gdt.h"
 
 static struct tss_entry TSS;

@@ -1,17 +1,17 @@
 include ../rules/platform.mk
 include ../rules/variables.mk
 
-C_SOURCES = $(wildcard main.c cpu/*.c devices/*.c devices/**/*.c system/*.c memory/*.c fs/*.c fs/*/**.c)
-ASM_SOURCES = $(wildcard cpu/*.s)
-HEADERS = $(wildcard *.h include/*.h cpu/*.h devices/*.h devices/**/*.h system/*.h memory/*.h fs/*.h fs/*/**.h)
+C_SOURCES = $(wildcard main.c cpu/*.c devices/*.c devices/**/*.c system/*.c memory/*.c fs/*.c fs/*/**.c proc/*.c proc/*/**.c)
+A_SOURCES = $(wildcard cpu/*.s)
+HEADERS = $(wildcard *.h include/*.h cpu/*.h devices/*.h devices/**/*.h system/*.h memory/*.h fs/*.h fs/*/**.h proc/*.h proc/*/**.h)
 OBJ = \
 	crti.o \
 	crtbegin.o \
 	boot.o \
-	${ASM_SOURCES:.s=.o} \
+	${A_SOURCES:.s=.o} \
 	${C_SOURCES:.c=.o} \
 	crtend.o \
-	crtn.o 
+	crtn.o
 
 %.o: %.c
 	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS)
