@@ -2,7 +2,7 @@ include ../rules/platform.mk
 include ../rules/variables.mk
 
 C_SOURCES = $(wildcard main.c cpu/*.c devices/*.c devices/**/*.c system/*.c memory/*.c fs/*.c fs/*/**.c proc/*.c proc/*/**.c)
-A_SOURCES = $(wildcard cpu/*.s)
+A_SOURCES = $(wildcard cpu/*.s proc/*.s)
 HEADERS = $(wildcard *.h include/*.h cpu/*.h devices/*.h devices/**/*.h system/*.h memory/*.h fs/*.h fs/*/**.h proc/*.h proc/*/**.h)
 OBJ = \
 	crti.o \

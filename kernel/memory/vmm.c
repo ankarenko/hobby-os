@@ -112,17 +112,13 @@ void vmm_init_and_map(struct pdirectory* va_dir, uint32_t vaddr, uint32_t paddr,
   for (int i = 0; i < num_of_pages; ++i, ivirtual += PMM_FRAME_SIZE, iframe += PMM_FRAME_SIZE) {
     pt_entry* entry = &va_table->m_entries[PAGE_TABLE_INDEX(ivirtual)];
     pt_entry_set_frame(entry, iframe);
-    pt_entry_add_attrib(entry, I86_PTE_PRESENT);
-    pt_entry_add_attrib(entry, I86_PTE_WRITABLE);
-    pd_entry_add_attrib(entry, I86_PDE_USER); // TODO: remove, very bad to mix user
+    pt_entry_add_attrib(entry, I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PTE_USER);  // TODO: remove, very bad to mix user
     pmm_mark_used_addr(iframe);
   }
 
   pd_entry* entry = &va_dir->m_entries[PAGE_DIRECTORY_INDEX((virtual_addr)vaddr)];
   pd_entry_set_frame(entry, pa_table);
-  pd_entry_add_attrib(entry, I86_PTE_PRESENT);
-  pd_entry_add_attrib(entry, I86_PTE_WRITABLE);
-  pd_entry_add_attrib(entry, I86_PDE_USER); // TODO: remove, very bad to mix user
+  pd_entry_add_attrib(entry, I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PDE_USER); // TODO: remove, very bad to mix user
 }
 
 void vmm_init() {
@@ -141,9 +137,7 @@ void vmm_init() {
   // NOTE: MQ 2019-05-08 Using the recursive page directory trick when paging (map last entry to directory)
   pd_entry* entry = &va_dir->m_entries[PAGES_PER_DIR - 1];
   pd_entry_set_frame(entry, pa_dir & 0xFFFFF000);
-  pd_entry_add_attrib(entry, I86_PTE_PRESENT);
-  pd_entry_add_attrib(entry, I86_PTE_WRITABLE);
-  pd_entry_add_attrib(entry, I86_PDE_USER); // TODO: remove, very bad to mix user
+  pd_entry_add_attrib(entry, I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PDE_USER); // TODO: remove, very bad to mix user
 
   vmm_paging(va_dir, pa_dir);
 }

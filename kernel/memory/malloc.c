@@ -1,8 +1,8 @@
-#include "malloc.h"
 
 #include <math.h>
 #include <stdint.h>
 
+#include "malloc.h"
 #include "sbrk.h"
 
 #define BLOCK_MAGIC 0x464E
