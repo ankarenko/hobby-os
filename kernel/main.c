@@ -289,12 +289,13 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   kkybrd_install(IRQ1);
   pmm_init(mbd);
 
+  /*
   GREATEST_MAIN_BEGIN();
 
   RUN_SUITE(suite);
 
   GREATEST_MAIN_END();
-
+*/
   //
 
   vmm_init();

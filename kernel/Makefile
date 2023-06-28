@@ -1,9 +1,22 @@
 include ../rules/platform.mk
 include ../rules/variables.mk
 
-C_SOURCES = $(wildcard main.c cpu/*.c devices/*.c devices/**/*.c system/*.c memory/*.c fs/*.c fs/*/**.c proc/*.c proc/*/**.c)
-A_SOURCES = $(wildcard cpu/*.s proc/*.s)
-HEADERS = $(wildcard ../test/greatest.h *.h include/*.h cpu/*.h devices/*.h devices/**/*.h system/*.h memory/*.h fs/*.h fs/*/**.h proc/*.h proc/*/**.h)
+PATHS= \
+	main.c \
+	cpu/*.c \
+	devices/*.c devices/**/*.c \
+	system/*.c \
+	memory/*.c \
+	fs/*.c fs/*/**.c \
+	proc/*.c proc/*/**.c
+
+C_SOURCES = $(wildcard ${PATHS})
+C_SOURCES_WITH_TEST = $(filter-out main.c, $(wildcard ${C_SOURCES:.c=.test.c}) ${C_SOURCES})
+
+# $(info $$var is [${C_SOURCES_TEST}])
+
+A_SOURCES = $(wildcard ${PATHS:.c=.s})
+HEADERS = $(wildcard ../test/greatest.h *.h ${PATHS:.c=.h})
 OBJ = \
 	crti.o \
 	crtbegin.o \
@@ -20,6 +33,10 @@ OBJ = \
 	$(CC) -MD -c $< -o $@ $(CFLAGS)
 
 myos.bin: $(OBJ) linker.ld
+	$(CC) -T linker.ld -o $@ $(CFLAGS) $(OBJ) -nostdlib -lk -lgcc
+	grub-file --is-x86-multiboot myos.bin
+
+myos.bin.test: $(OBJ) linker.ld
 	$(CC) -T linker.ld -o $@ $(CFLAGS) $(OBJ) -nostdlib -lk -lgcc
 	grub-file --is-x86-multiboot myos.bin
  
