@@ -5,8 +5,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#define KERNEL_HEAP_TOP 0xF0000000
-#define KERNEL_HEAP_BOTTOM 0xD0000000
+#define KERNEL_HEAP_TOP 0xE0000000
+#define KERNEL_HEAP_BOTTOM 0xC8000000
 #define USER_HEAP_TOP 0x40000000
 
 struct block_meta

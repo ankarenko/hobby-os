@@ -19,13 +19,16 @@
   | Device drivers          |
   |                         |
   |-------------------------| 0xE8000000
-  | VMALLOC                 |
+  | VMALLOC  ???????        |
   |-------------------------| 0xE0000000
   |                         |
   |                         |
   | Kernel heap             |
   |                         |
-  |_________________________| 0xC8000000
+  |_________________________| KERNEL_END + BITMAP_SIZE_MAX
+  |                         |
+  | Bitmap                  |
+  |_________________________| KERNEL_END
   |                         | 
   | Kernel itself           |
   |_________________________| 0xC0000000
@@ -57,7 +60,7 @@ typedef uint32_t virtual_addr;
 
 #define PAGE_DIRECTORY_INDEX(x) (((x) >> 22) & 0x3ff)
 #define PAGE_TABLE_INDEX(x) (((x) >> 12) & 0x3ff)
-#define PAGE_GET_PHYSICAL_ADDRESS(x) (*x & ~0xfff)
+#define PAGE_PHYS_ADDR(x) (*x & ~0xfff)
 
 //! page table represents 4mb address space
 #define PTABLE_ADDR_SPACE_SIZE 0x400000
@@ -81,7 +84,10 @@ struct pdirectory {
 void vmm_init();
 
 //! maps phys to virtual address
-void vmm_map_page(void* phys, void* virt);
+void vmm_map_page(
+  struct pdirectory* page_directory, 
+  void* phys, void* virt, uint32_t flags
+);
 
 //! allocates a page in physical memory
 bool vmm_alloc_page(pt_entry*);
@@ -118,5 +124,8 @@ pd_entry* vmm_pdirectory_lookup_entry(struct pdirectory* p, virtual_addr addr);
 physical_addr vmm_get_physical_address(virtual_addr vaddr, bool is_page);
 void vmm_map_address(struct pdirectory *va_dir, uint32_t virt, uint32_t phys, uint32_t flags);
 //virtual_addr vmm_alloc_size(virtual_addr from, uint32_t size, uint32_t flags);
+
+
+// map (page_directory, virt, phys, pages_amount, flags)
 
 #endif

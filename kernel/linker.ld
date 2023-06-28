@@ -8,6 +8,7 @@ SECTIONS
 {
   kernel_boot = 0x00100000;
 	kernel_higher_half = 0xC0000000;
+  stack_size_bytes = 0x4000; /* 16384 */
   
 	. = kernel_higher_half + kernel_boot;
   kernel_start = .;
@@ -46,7 +47,7 @@ SECTIONS
 		*(.bss .bss.*)
     stack_bottom = .;
 		*(.stack)
-    stack_top = stack_bottom + 16384;
+    stack_top = stack_bottom + stack_size_bytes;
 	}
 
   kernel_end = .;

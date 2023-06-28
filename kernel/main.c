@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <math.h>
 
+#include "../test/greatest.h"
 #include "./devices/tty.h"
 #include "./kernel/cpu/exception.h"
 #include "./kernel/cpu/gdt.h"
@@ -19,9 +20,9 @@
 #include "./kernel/memory/malloc.h"
 #include "./kernel/memory/pmm.h"
 #include "./kernel/memory/vmm.h"
-#include "./kernel/system/sysapi.h"
 #include "./kernel/proc/elf.h"
 #include "./kernel/proc/task.h"
+#include "./kernel/system/sysapi.h"
 #include "./multiboot.h"
 
 extern void enter_usermode();
@@ -81,7 +82,7 @@ void get_cmd(char* buf, int n) {
 static PFILE _cur_dir = NULL;
 
 void user_syscall() {
-  asm volatile ("int $0x3");
+  asm volatile("int $0x3");
   int32_t a = 2;
   syscall_printf("\nIn user mode");
 }
@@ -218,13 +219,83 @@ void cmd_read_sect() {
   printf("\nDone.");
 }
 
+#define assert(expression, ...) ((expression)  \
+                                     ? (void)0 \
+                                     : (void)({ printf("expression " #expression " is falsy"); __asm__ __volatile("int $0x01"); }))
 
+TEST x_should_equal_1(void) {
+  int x = 1;
+  /* Compare, with an automatic "1 != x" failure message */
+  ASSERT_EQ(1, x);
+
+  /* Compare, with a custom failure message */
+  ASSERT_EQm("Yikes, x doesn't equal 1", 1, x);
+  PASS();
+}
+
+TEST true_is_true(void) {
+  ASSERT_EQ(true, true);
+  PASS();
+}
+
+void pmm_test() {
+  uint32_t frames_total = pmm_get_free_frame_count();
+
+  uint8_t* frames = pmm_alloc_frame();
+  assert(frames_total - 1 == pmm_get_free_frame_count());
+  pmm_free_frame(frames);
+  assert(frames_total == pmm_get_free_frame_count());
+
+  frames = pmm_alloc_frames(100);
+  assert(frames_total - 100 == pmm_get_free_frame_count());
+  pmm_free_frames(frames, 100);
+  assert(frames_total == pmm_get_free_frame_count());
+
+  // is not possible to allocate more than exists
+  frames = pmm_alloc_frames(frames_total + 1);
+  assert(frames == NULL);
+  assert(pmm_get_free_frame_count() == frames_total);
+
+  frames = pmm_alloc_frames(frames_total);
+  assert(pmm_get_free_frame_count() == 0);
+  pmm_free_frames(frames, frames_total);
+  assert(pmm_get_free_frame_count() == frames_total);
+
+  frames = pmm_alloc_frames(frames_total - 4);
+  assert(pmm_get_free_frame_count() == 4);
+  uint8_t* last_frame = pmm_alloc_frame();
+  assert((uint32_t)last_frame % PMM_FRAME_SIZE == 0);  // PMM_FRAME_SIZE ALIGNED
+  uint32_t as = pmm_get_free_frame_count();
+  assert(pmm_get_free_frame_count() == 0);
+
+  printf("%x", last_frame);
+
+  printf("PMM test successfull");
+}
+
+SUITE(suite) {
+  RUN_TEST(x_should_equal_1);
+  RUN_TEST(true_is_true);
+}
+
+GREATEST_MAIN_DEFS();
 
 void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
+  char** argv = 0;
+  int argc = 0;
+
   hal_initialize();
   terminal_initialize();
   kkybrd_install(IRQ1);
   pmm_init(mbd);
+
+  GREATEST_MAIN_BEGIN();
+
+  RUN_SUITE(suite);
+
+  GREATEST_MAIN_END();
+
+  //
 
   vmm_init();
 
@@ -277,7 +348,7 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   /* Make sure the magic number matches for memory mapping*/
 
   // get_memory_info(mbd, magic);
-
+  
   return 0;
 
   // terminal_putchar((int)'a');

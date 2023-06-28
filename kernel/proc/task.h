@@ -7,8 +7,7 @@
 
 /*
 0x00000000-0x00100000 � Kernel reserved
-0x00100000-0xC0000000 � User land
-           
+0x00100000-0xC0000000 � User land 
 0xC0000000-0xffffffff � Kernel reserved
 */
 

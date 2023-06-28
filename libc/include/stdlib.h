@@ -3,14 +3,12 @@
 
 #include <sys/cdefs.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#define EXIT_FAILURE 1
+#define EXIT_SUCCESS 0
+
+
+void exit(int status);
 
 __attribute__((__noreturn__)) void abort(void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

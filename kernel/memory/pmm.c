@@ -1,9 +1,8 @@
-#include "pmm.h"
-
 #include <math.h>
 #include <stdbool.h>
 #include <string.h>
 
+#include "pmm.h"
 #include "./kernel_info.h"
 
 #define INDEX_FROM_BIT(a) (a / (4 * PMM_FRAMES_PER_BYTE))
@@ -36,14 +35,19 @@ bool memory_bitmap_test(uint32_t bit) {
 
 int32_t memory_bitmap_first_free() {
   //! find the first free bit
-  for (uint32_t i = 0; i < pmm_get_frame_count() / 32; i++)
-    if (_memory_bitmap[i] != 0xffffffff)
-      for (uint32_t j = 0; j < 32; j++) {  //! test each bit in the dword
+  for (uint32_t i = 0; i < pmm_get_frame_count() / PMM_FRAMES_PER_4BYTES; i++) {
+    if (i == 119) {
+      int asds = 123;
+    }
+    if (_memory_bitmap[i] != 0xffffffff) {
+      for (uint32_t j = 0; j < PMM_FRAMES_PER_4BYTES; j++) {  //! test each bit in the dword
 
         uint32_t bit = 1 << j;
         if (!(_memory_bitmap[i] & bit))
-          return i * 4 * PMM_FRAMES_PER_BYTE + j;
+          return i * PMM_FRAMES_PER_4BYTES + j;
       }
+    }
+  }
 
   return -1;
 }
@@ -55,13 +59,13 @@ int32_t memory_bitmap_first_free_s(uint32_t size) {
   if (size == 1)
     return memory_bitmap_first_free();
 
-  for (uint32_t i = 0; i < pmm_get_frame_count() / 32; i++)
-    if (_memory_bitmap[i] != 0xffffffff)
-      for (uint32_t j = 0; j < 32; j++) {  //! test each bit in the dword
+  for (uint32_t i = 0; i < pmm_get_frame_count() / PMM_FRAMES_PER_4BYTES; i++) {
+    if (_memory_bitmap[i] != 0xffffffff) {
+      for (uint32_t j = 0; j < PMM_FRAMES_PER_4BYTES; j++) {  //! test each bit in the dword
 
         uint32_t bit = 1 << j;
         if (!(_memory_bitmap[i] & bit)) {
-          uint32_t startingBit = i * 32;
+          uint32_t startingBit = i * PMM_FRAMES_PER_4BYTES;
           startingBit += j;  // get the free bit in the dword at index i
 
           uint32_t free = 0;  // loop through each bit to see if its enough space
@@ -70,10 +74,12 @@ int32_t memory_bitmap_first_free_s(uint32_t size) {
               free++;  // this bit is clear (free frame)
 
             if (free == size)
-              return i * 4 * PMM_FRAMES_PER_BYTE + j;  // free count==size needed; return index
+              return i * PMM_FRAMES_PER_4BYTES + j;  // free count==size needed; return index
           }
         }
       }
+    }
+  }
 
   return -1;
 }
@@ -85,9 +91,12 @@ void pmm_init(multiboot_info_t* mbd) {
     return;
   }
 
-  _memory_size = (mbd->mem_lower + mbd->mem_upper) * 1024;
+  // make perfectly aligned and ignore some space to avoid mistakes in future
+  uint32_t perfect_align = PMM_FRAME_SIZE * PMM_FRAMES_PER_4BYTES;
+  _memory_size = ALIGN_DOWN((mbd->mem_lower + mbd->mem_upper) * 1024, perfect_align);
   _memory_bitmap = (uint32_t*)KERNEL_END;
   _used_frames = _max_frames = div_ceil(_memory_size, PMM_FRAME_SIZE);
+
   _memory_bitmap_size = div_ceil(_max_frames, PMM_FRAMES_PER_BYTE);
   memset(_memory_bitmap, 0xff, _memory_bitmap_size);
 
@@ -101,13 +110,18 @@ void pmm_init(multiboot_info_t* mbd) {
     if (mmmt->type == MULTIBOOT_MEMORY_AVAILABLE) {
       printf("Start Addr: %X | Length: %d | Size: %d | Type: %d\n",
              mmmt->addr_low, mmmt->len_low, mmmt->size, mmmt->type);
-
+      
       pmm_init_region(mmmt->addr_low, mmmt->len_low);
     }
   }
 
-  pmm_deinit_region(0x0, KERNEL_BOOT, true);
-  pmm_deinit_region(KERNEL_BOOT, KERNEL_END - KERNEL_START + _memory_bitmap_size, true);
+  if (_memory_bitmap_size > MAX_MEMORY_BITMAP_BYTES) {
+    printf("bitmapsize is too big");
+    return;
+  }
+
+  pmm_deinit_region(0x0, KERNEL_BOOT);
+  pmm_deinit_region(KERNEL_BOOT, KERNEL_END - KERNEL_START + MAX_MEMORY_BITMAP_BYTES);
 }
 
 /*
@@ -124,7 +138,7 @@ void pmm_init(uint32_t memSize, physical_addr bitmap) {
 
 void pmm_init_region(physical_addr base, uint32_t size) {
   uint32_t align = base / PMM_FRAME_SIZE;
-  uint32_t frames = size / PMM_FRAME_SIZE;  // div_ceil(size, PMM_FRAME_SIZE);
+  uint32_t frames = div_ceil(size, PMM_FRAME_SIZE);
 
   for (uint32_t i = 0; i < frames; ++i) {
     memory_bitmap_unset(align + i);
@@ -134,10 +148,9 @@ void pmm_init_region(physical_addr base, uint32_t size) {
   memory_bitmap_set(0);  // first frame is always set. This insures allocs cant be 0
 }
 
-void pmm_deinit_region(physical_addr base, uint32_t size, bool ceil) {
+void pmm_deinit_region(physical_addr base, uint32_t size) {
   uint32_t align = base / PMM_FRAME_SIZE;
-  uint32_t frames = ceil ? div_ceil(size, PMM_FRAME_SIZE) : size / PMM_FRAME_SIZE;
-  ;
+  uint32_t frames = div_ceil(size, PMM_FRAME_SIZE);
 
   for (uint32_t i = 0; i < frames; ++i) {
     memory_bitmap_set(align + i);
@@ -197,7 +210,7 @@ physical_addr pmm_get_PDBR() {
 }
 
 void* pmm_alloc_frames(uint32_t size) {
-  if (pmm_get_free_frame_count() <= size)
+  if (pmm_get_free_frame_count() < size)
     return 0;  // not enough space
 
   int32_t frame = memory_bitmap_first_free_s(size);
@@ -221,6 +234,12 @@ void pmm_free_frame(void* p) {
   memory_bitmap_unset(frame);
 
   _used_frames--;
+}
+
+void pmm_free_frames(void* p, uint32_t size) {
+  for (uint32_t i = 0; i < size; ++i) {
+    pmm_free_frame(p + i * PMM_FRAME_SIZE);
+  }
 }
 
 uint32_t pmm_get_memory_size() {

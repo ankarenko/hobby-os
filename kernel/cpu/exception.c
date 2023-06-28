@@ -26,7 +26,7 @@ void divide_by_zero_fault(interrupt_registers *registers) {
 
 //! single step
 void single_step_trap(struct interrupt_registers *registers) {
-  kernel_panic("Single step");
+  kernel_panic("\nException!");
   for (;;)
     ;
 }

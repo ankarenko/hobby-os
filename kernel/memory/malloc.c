@@ -69,6 +69,7 @@ void kfree(void *ptr) {
   block->free = true;
 }
 
+// malloc for kernel
 void *kmalloc(size_t size) {
   if (size <= 0)
     return NULL;

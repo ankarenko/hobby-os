@@ -67,38 +67,21 @@ void vmm_flush_tlb_entry(virtual_addr addr) {
       :);
 }
 
-void vmm_map_page(void* phys, void* virt) {
-  //! get page directory
-  struct pdirectory* pageDirectory = vmm_get_directory();
+void vmm_map_page(struct pdirectory* page_dir, void* phys, void* virt, uint32_t flags) {
 
   //! get page table
-  pd_entry* e = &pageDirectory->m_entries[PAGE_DIRECTORY_INDEX((uint32_t)virt)];
-  if ((*e & I86_PTE_PRESENT) != I86_PTE_PRESENT) {
-    //! page table not present, allocate it
-    struct ptable* table = (struct ptable*)pmm_alloc_frame();
-    if (!table)
-      return;
-
-    //! clear page table
-    memset(table, 0, sizeof(struct ptable));
-
-    //! create a new entry
-    pd_entry* entry = &pageDirectory->m_entries[PAGE_DIRECTORY_INDEX((uint32_t)virt)];
-
-    //! map in the table (Can also just do *entry |= 3) to enable these bits
-    pd_entry_add_attrib(entry, I86_PDE_PRESENT);
-    pd_entry_add_attrib(entry, I86_PDE_WRITABLE);
-    pd_entry_set_frame(entry, (physical_addr)table);
+  pd_entry* e = &page_dir->m_entries[PAGE_DIRECTORY_INDEX((uint32_t)virt)];
+  if (!pd_entry_is_present(e)) {
+    vmm_alloc_ptable(page_dir, PAGE_DIRECTORY_INDEX((uint32_t)virt), I86_PDE_PRESENT | flags);
   }
   //! get table
-  struct ptable* table = (struct ptable*)PAGE_GET_PHYSICAL_ADDRESS(e);
+  struct ptable* table = (struct ptable*)PAGE_PHYS_ADDR(e);
 
   //! get page
   pt_entry* page = &table->m_entries[PAGE_TABLE_INDEX((uint32_t)virt)];
 
-  //! map it in (Can also do (*page |= 3 to enable..)
   pt_entry_set_frame(page, (physical_addr)phys);
-  pt_entry_add_attrib(page, I86_PTE_PRESENT);
+  pt_entry_add_attrib(page, I86_PTE_PRESENT | flags);
 }
 
 void vmm_init_and_map(struct pdirectory* va_dir, uint32_t vaddr, uint32_t paddr, uint32_t num_of_pages) {
@@ -132,7 +115,7 @@ void vmm_init() {
 
   // NOTE: MQ 2019-11-21 Preallocate ptable for higher half kernel
   for (int i = PAGE_DIRECTORY_INDEX(KERNEL_HIGHER_HALF) + 1; i < PAGES_PER_DIR; ++i)
-    vmm_alloc_ptable(va_dir, i);
+    vmm_alloc_ptable(va_dir, i, I86_PTE_WRITABLE);
   
   // NOTE: MQ 2019-05-08 Using the recursive page directory trick when paging (map last entry to directory)
   pd_entry* entry = &va_dir->m_entries[PAGES_PER_DIR - 1];
@@ -142,16 +125,19 @@ void vmm_init() {
   vmm_paging(va_dir, pa_dir);
 }
 
-void vmm_alloc_ptable(struct pdirectory* va_dir, uint32_t index) {
+void vmm_alloc_ptable(struct pdirectory* va_dir, uint32_t index, uint32_t flags) {
   pd_entry entry = &va_dir->m_entries[index];
 
   if (pd_entry_is_present(entry))
     return;
 
   uint32_t pa_table = (uint32_t)pmm_alloc_frame();
+
+  //! clear page table
+  //memset(PAGE_TABLE_PHYS_ADDRESS(virt), 0, sizeof(struct ptable));
+
   pd_entry_set_frame(entry, pa_table);
-  pd_entry_add_attrib(entry, I86_PTE_PRESENT);
-  pd_entry_add_attrib(entry, I86_PTE_WRITABLE);
+  pd_entry_add_attrib(entry, I86_PTE_PRESENT | flags);
 }
 
 void vmm_paging(struct pdirectory* va_dir, uint32_t pa_dir) {

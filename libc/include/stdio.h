@@ -6,17 +6,19 @@
 
 #define EOF (-1)
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+struct FILE {
+
+};
+
+#define stdin 0
+#define stdout 0
+#define stderr 0
 
 int printf(const char* __restrict, ...);
+int fprintf(struct FILE *stream, const char *format, ...);
 int putchar(int);
+int fflush(struct FILE *stream);
 int puts(const char*);
 int32_t atoi(const char* str);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

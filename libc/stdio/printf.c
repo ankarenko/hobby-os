@@ -16,6 +16,12 @@ static bool print(const char* data, size_t length) {
 int printf(const char* restrict format, ...) {
   va_list parameters;
   va_start(parameters, format);
+	int result = _printf(format, parameters);
+	va_end(parameters);
+	return result;
+}
+
+int _printf(const char* restrict format, va_list parameters) {
 
   int written = 0;
 
@@ -103,7 +109,7 @@ int printf(const char* restrict format, ...) {
         return -1;
 
       written += len;
-    } else if (*format == 'd') {
+    } else if (*format == 'd' || *format == 'u') {
       uint8_t base = 10;
       format++;
       int32_t value = va_arg(parameters, const int32_t);
@@ -150,6 +156,17 @@ int printf(const char* restrict format, ...) {
     }
   }
 
-  va_end(parameters);
   return written;
+}
+
+int fprintf(struct FILE* stream, const char* format, ...) {
+	va_list parameters;
+  va_start(parameters, format);
+	int result = _printf(format, parameters);
+	va_end(parameters);
+	return result;
+}
+
+int fflush(struct FILE* stream) {
+  return 1;
 }
