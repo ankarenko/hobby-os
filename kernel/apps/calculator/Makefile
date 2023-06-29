@@ -13,5 +13,7 @@ calc.exe: $(OBJ) linker.ld
 	$(CC) -T linker.ld -o $@ $(CFLAGS) $(OBJ) -nostdlib -lk -lgcc
 
 install: calc.exe
+test: install
+clean:
 
 install-headers:

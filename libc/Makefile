@@ -1,12 +1,18 @@
 include ../rules/platform.mk
 include ../rules/variables.mk
+PATHS= *.c \
+	stdio/*.c \
+	stdlib/*.c \
+	string/*.c
 
-C_SOURCES = $(wildcard *.c stdio/*.c stdlib/*.c string/*.c)
+C_ALL_SOURCES = $(wildcard ${PATHS})
+C_SOURCES = $(filter-out ${C_ALL_SOURCES:.c=.test.c}, ${C_ALL_SOURCES})
+C_SOURCES_TEST = $(filter-out main.c, $(wildcard main.test.c ${C_ALL_SOURCES}))
 
-OBJS=$(ARCH_FREEOBJS) $(C_SOURCES:.c=.o)
+OBJS=$(ARCH_FREEOBJS) $(C_SOURCES_TEST:.c=.o)
 LIBK_OBJS=$(OBJS:.o=.libk.o)
 OUTPUT=libk.a
- 
+
 all: ${OUTPUT}
  
 libc.a: $(OBJS)
@@ -34,10 +40,12 @@ clean:
 
 install: install-headers install-libs
  
+test: install-headers install-libs
+
 install-headers:
 	mkdir -p $(SYSROOT)/usr/include
 	cp -R --preserve=timestamps include/. $(SYSROOT)/usr/include/
- 
+
 install-libs: $(OUTPUT)
 	mkdir -p $(SYSROOT)/usr/lib
 	cp $(OUTPUT) $(SYSROOT)/usr/lib

@@ -10,10 +10,9 @@ PATHS= \
 	fs/*.c fs/*/**.c \
 	proc/*.c proc/*/**.c
 
-C_SOURCES = $(wildcard ${PATHS})
-C_SOURCES_WITH_TEST = $(filter-out main.c, $(wildcard ${C_SOURCES:.c=.test.c}) ${C_SOURCES})
-
-# $(info $$var is [${C_SOURCES_TEST}])
+C_ALL_SOURCES = $(wildcard ${PATHS})
+C_SOURCES = $(filter-out ${C_ALL_SOURCES:.c=.test.c}, ${C_ALL_SOURCES})
+C_SOURCES_TEST = $(filter-out main.c, $(wildcard main.test.c ${C_ALL_SOURCES}))
 
 A_SOURCES = $(wildcard ${PATHS:.c=.s})
 HEADERS = $(wildcard ../test/greatest.h *.h ${PATHS:.c=.h})
@@ -23,6 +22,15 @@ OBJ = \
 	boot.o \
 	${A_SOURCES:.s=.o} \
 	${C_SOURCES:.c=.o} \
+	crtend.o \
+	crtn.o
+
+OBJ_TEST = \
+	crti.o \
+	crtbegin.o \
+	boot.o \
+	${A_SOURCES:.s=.o} \
+	${C_SOURCES_TEST:.c=.o} \
 	crtend.o \
 	crtn.o
 
@@ -36,19 +44,22 @@ myos.bin: $(OBJ) linker.ld
 	$(CC) -T linker.ld -o $@ $(CFLAGS) $(OBJ) -nostdlib -lk -lgcc
 	grub-file --is-x86-multiboot myos.bin
 
-myos.bin.test: $(OBJ) linker.ld
-	$(CC) -T linker.ld -o $@ $(CFLAGS) $(OBJ) -nostdlib -lk -lgcc
-	grub-file --is-x86-multiboot myos.bin
+test.bin: $(OBJ_TEST) linker.ld
+	$(CC) -T linker.ld -o $@ $(CFLAGS) $(OBJ_TEST) -nostdlib -lk -lgcc
+	grub-file --is-x86-multiboot test.bin
  
 crtbegin.o crtend.o:
 	OBJ=`$(CC) $(CFLAGS) $(LDFLAGS) -print-file-name=$(@F)` && cp "$$OBJ" $@
  
 clean:
 	rm -f myos.bin
+	rm -f test.bin
 	rm -f $(OBJ) *.o */*.o */*/*.o
 	rm -f $(OBJ:.o=.d) *.d */*.d */*/*.d
  
 install: install-headers install-kernel
+
+test: install-headers test-kernel
 
 install-headers:
 	mkdir -p $(SYSROOT)/usr/include/kernel
@@ -57,5 +68,9 @@ install-headers:
 install-kernel: myos.bin
 	mkdir -p $(SYSROOT)/boot
 	cp myos.bin $(SYSROOT)/boot
+
+test-kernel: test.bin
+	mkdir -p $(SYSROOT)/boot
+	cp test.bin $(SYSROOT)/boot
  
 -include $(OBJS:.o=.d)

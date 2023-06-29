@@ -4,8 +4,8 @@
 // #include <timer.h>
 #include <ctype.h>
 #include <math.h>
+#include <test/greatest.h>
 
-#include "../test/greatest.h"
 #include "./devices/tty.h"
 #include "./kernel/cpu/exception.h"
 #include "./kernel/cpu/gdt.h"
@@ -25,24 +25,15 @@
 #include "./kernel/system/sysapi.h"
 #include "./multiboot.h"
 
-TEST x_should_equal_1(void) {
-  int x = 1;
-  /* Compare, with an automatic "1 != x" failure message */
-  ASSERT_EQ(1, x);
 
-  /* Compare, with a custom failure message */
-  ASSERT_EQm("Yikes, x doesn't equal 1", 1, x);
-  PASS();
-}
+SUITE_EXTERN(SUITE_MEMORY_PMM);
+SUITE_EXTERN(SUITE_LIBC_STRING);
 
-TEST true_is_true(void) {
-  ASSERT_EQ(true, true);
-  PASS();
-}
-
-SUITE(suite) {
-  RUN_TEST(x_should_equal_1);
-  RUN_TEST(true_is_true);
+//! sleeps a little bit. This uses the HALs get_tick_count() which in turn uses the PIT
+void sleep(uint32_t ms) {
+  int32_t ticks = ms + get_tick_count();
+  while (ticks > get_tick_count())
+    ;
 }
 
 GREATEST_MAIN_DEFS();
@@ -58,7 +49,8 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
 
   GREATEST_MAIN_BEGIN();
 
-  RUN_SUITE(suite);
+  RUN_SUITE(SUITE_MEMORY_PMM);
+  RUN_SUITE(SUITE_LIBC_STRING);
 
   GREATEST_MAIN_END();
 
