@@ -1,0 +1,22 @@
+{
+    "env": {
+        "myDefaultIncludePath": [
+            "${workspaceFolder}",
+            "${workspaceFolder}/sysroot/usr/include"
+        ]
+    },
+    "configurations": [
+        {
+            "name": "Masc",
+            "includePath": [
+                "${workspaceFolder}",
+                "${workspaceFolder}/sysroot/usr/include"
+            ],
+            //"intelliSenseMode": "linux-gcc-x64",
+            //"compilerPath": "/usr/bin/gcc",
+            //"cStandard": "c17",
+            //"cppStandard": "gnu++17"
+        }
+    ],
+    "version": 4
+}

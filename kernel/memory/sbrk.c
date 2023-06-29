@@ -18,8 +18,10 @@ void *sbrk(size_t n) {
     _kernel_remaining_from_last_used -= n;
   } else {
     uint32_t phyiscal_addr = (uint32_t)pmm_alloc_frames(div_ceil(n - _kernel_remaining_from_last_used, PMM_FRAME_SIZE));
-    uint32_t page_addr = div_ceil(_kernel_heap_current, PMM_FRAME_SIZE) * PMM_FRAME_SIZE;
+    uint32_t page_addr = div_ceil(_kernel_heap_current, PMM_FRAME_SIZE) * PMM_FRAME_SIZE;\
+    // todo: check if page_addr is less than KERNEL_HEAP_BOTTOM, otherwise thrown an error
     for (; page_addr < _kernel_heap_current + n; page_addr += PMM_FRAME_SIZE, phyiscal_addr += PMM_FRAME_SIZE) {
+      // todo: check if page already mapped?
       vmm_map_address(vmm_get_directory(), page_addr, phyiscal_addr, I86_PTE_PRESENT | I86_PTE_WRITABLE);
     }
     
@@ -27,6 +29,6 @@ void *sbrk(size_t n) {
   }
 
   _kernel_heap_current += n;
-  memset(heap_base, 0, n);
+  memset(heap_base, 0, n); // clear garbage
   return heap_base;
 }

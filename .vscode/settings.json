@@ -7,6 +7,7 @@
     "typeinfo": "c",
     "ctype.h": "c",
     "exception.h": "c",
-    "idt.h": "c"
+    "idt.h": "c",
+    "cstdlib": "c"
   }
 }

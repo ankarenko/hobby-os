@@ -26,7 +26,7 @@
 #include "./multiboot.h"
 
 
-SUITE_EXTERN(SUITE_MEMORY_PMM);
+SUITE_EXTERN(SUITE_MEMORY);
 SUITE_EXTERN(SUITE_LIBC_STRING);
 
 //! sleeps a little bit. This uses the HALs get_tick_count() which in turn uses the PIT
@@ -41,18 +41,16 @@ GREATEST_MAIN_DEFS();
 void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   char** argv = 0;
   int argc = 0;
+  GREATEST_MAIN_BEGIN();
 
   hal_initialize();
   terminal_initialize();
   kkybrd_install(IRQ1);
   pmm_init(mbd);
 
-  GREATEST_MAIN_BEGIN();
-
-  RUN_SUITE(SUITE_MEMORY_PMM);
+  RUN_SUITE(SUITE_MEMORY);
   RUN_SUITE(SUITE_LIBC_STRING);
 
   GREATEST_MAIN_END();
-
   return 0;
 }

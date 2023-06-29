@@ -42,6 +42,47 @@
       "preLaunchTask": "Launch QEMU2",
       //"postDebugTask": "Kill QEMU"
     },
+    {
+      "name": "Test",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceRoot}/isodir/boot/test.bin",
+      "cwd": "${workspaceRoot}",
+      "args": [],
+      "sourceFileMap": {
+        //was built in a docker container so the compile path is different 
+        "/os/": "${workspaceRoot}/"
+      },
+      "targetArchitecture": "x86",
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "miDebuggerArgs": "",
+      "customLaunchSetupCommands": [
+        {
+          "text": "target remote localhost:1234",
+          "description": "Connect to QEMU remote debugger"
+        }
+      ],
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        },
+        {
+          "text": "file /home/sergey/Desktop/os/isodir/boot/test.bin",
+          "description": "Load binary."
+        },
+        /*
+        {
+          "text": "break isr_handler",
+          "description": "Break on exception handler."
+        }
+        */
+      ],
+      "preLaunchTask": "Launch test QEMU",
+      //"postDebugTask": "Kill QEMU"
+    },
         /*
     {
       "name": "GDB ATTACH QEMU",

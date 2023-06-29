@@ -16,10 +16,15 @@ then
   $ENVIRONMENT ./clean.sh && \
   $ENVIRONMENT ./build.sh install && \
   $ENVIRONMENT ./make_iso.sh myos
-elif [ "$1" = "build" ] 
+elif [ "$1" = "build" ]
 then 
   $ENVIRONMENT ./build.sh install && \
   $ENVIRONMENT ./make_iso.sh myos
+elif [ "$1" = "test-build" ]
+then
+  $ENVIRONMENT ./clean.sh && \
+  $ENVIRONMENT ./build.sh test && \
+  $ENVIRONMENT ./make_iso.sh test
 elif [ "$1" = "test" ]
 then
   $ENVIRONMENT ./clean.sh && \

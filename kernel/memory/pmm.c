@@ -35,10 +35,8 @@ bool memory_bitmap_test(uint32_t bit) {
 
 int32_t memory_bitmap_first_free() {
   //! find the first free bit
-  for (uint32_t i = 0; i < pmm_get_frame_count() / PMM_FRAMES_PER_4BYTES; i++) {
-    if (i == 119) {
-      int asds = 123;
-    }
+  for (uint32_t i = 0; i < div_ceil(pmm_get_frame_count(), PMM_FRAMES_PER_4BYTES); i++) {
+
     if (_memory_bitmap[i] != 0xffffffff) {
       for (uint32_t j = 0; j < PMM_FRAMES_PER_4BYTES; j++) {  //! test each bit in the dword
 
@@ -90,15 +88,15 @@ void pmm_init(multiboot_info_t* mbd) {
     printf("invalid memory map given by GRUB bootloader");
     return;
   }
-
+  
+  
   // make perfectly aligned and ignore some space to avoid mistakes in future
-  uint32_t perfect_align = PMM_FRAME_SIZE * PMM_FRAMES_PER_4BYTES;
-  _memory_size = ALIGN_DOWN((mbd->mem_lower + mbd->mem_upper) * 1024, perfect_align);
+  _memory_size = ALIGN_DOWN((mbd->mem_lower + mbd->mem_upper) * 1024, PMM_FRAME_ALIGN);
   _memory_bitmap = (uint32_t*)KERNEL_END;
   _used_frames = _max_frames = div_ceil(_memory_size, PMM_FRAME_SIZE);
 
   _memory_bitmap_size = div_ceil(_max_frames, PMM_FRAMES_PER_BYTE);
-  memset(_memory_bitmap, 0xff, _memory_bitmap_size);
+  memset(_memory_bitmap, 0xff, MAX_MEMORY_BITMAP_BYTES /*_memory_bitmap_size*/);
 
   mbd->mmap_addr += KERNEL_HIGHER_HALF;
   for (uint32_t i = 0; i < mbd->mmap_length; i += sizeof(multiboot_memory_map_t)) {
@@ -108,10 +106,14 @@ void pmm_init(multiboot_info_t* mbd) {
       break;
 
     if (mmmt->type == MULTIBOOT_MEMORY_AVAILABLE) {
-      printf("Start Addr: %X | Length: %d | Size: %d | Type: %d\n",
-             mmmt->addr_low, mmmt->len_low, mmmt->size, mmmt->type);
+      // for simplicity I align everything to PMM_FRAME_SIZE even thou it leads to a memory loss
+      physical_addr start_aligned = ALIGN_UP(mmmt->addr_low, PMM_FRAME_ALIGN);
+      uint32_t len_aligned = ALIGN_DOWN(mmmt->len_low, PMM_FRAME_ALIGN);
       
-      pmm_init_region(mmmt->addr_low, mmmt->len_low);
+      printf("Start Addr: %X | Length: %d | Size: %d | Type: %d\n",
+            start_aligned, len_aligned, mmmt->size, mmmt->type);
+
+      pmm_init_region(start_aligned, len_aligned);
     }
   }
 
@@ -121,7 +123,7 @@ void pmm_init(multiboot_info_t* mbd) {
   }
 
   pmm_deinit_region(0x0, KERNEL_BOOT);
-  pmm_deinit_region(KERNEL_BOOT, KERNEL_END - KERNEL_START + MAX_MEMORY_BITMAP_BYTES);
+  pmm_deinit_region(KERNEL_BOOT, KERNEL_END + MAX_MEMORY_BITMAP_BYTES - KERNEL_START);
 }
 
 /*
@@ -140,7 +142,7 @@ void pmm_init_region(physical_addr base, uint32_t size) {
   uint32_t align = base / PMM_FRAME_SIZE;
   uint32_t frames = div_ceil(size, PMM_FRAME_SIZE);
 
-  for (uint32_t i = 0; i < frames; ++i) {
+  for (uint32_t i = 0; i < frames; ++i) { 
     memory_bitmap_unset(align + i);
     _used_frames--;
   }

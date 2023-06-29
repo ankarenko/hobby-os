@@ -25,7 +25,7 @@
   |                         |
   | Kernel heap             |
   |                         |
-  |_________________________| KERNEL_END + BITMAP_SIZE_MAX
+  |_________________________| KERNEL_END + BITMAP_SIZE_MAX (128 Kbyte)
   |                         |
   | Bitmap                  |
   |_________________________| KERNEL_END

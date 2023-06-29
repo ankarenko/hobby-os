@@ -6,6 +6,7 @@
 #include "sbrk.h"
 
 #define BLOCK_MAGIC 0x464E
+#define BLOCK_ALIGNMENT 4
 
 extern uint32_t heap_current;
 static struct block_meta *_kblocklist = NULL;
@@ -76,7 +77,7 @@ void *kmalloc(size_t size) {
 
   struct block_meta *block;
 
-  size = ALIGN_UP(size, 4);
+  size = ALIGN_UP(size, BLOCK_ALIGNMENT);
 
   if (_kblocklist) {
     struct block_meta *last = _kblocklist;
