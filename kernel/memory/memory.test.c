@@ -1,6 +1,7 @@
 #include <test/greatest.h>
 #include "./pmm.h"
 #include "./malloc.h"
+#include "./vmm.h"
 
 TEST TEST_PMM(void) {
   uint32_t frames_total = pmm_get_free_frame_count();
@@ -43,20 +44,35 @@ TEST TEST_PMM(void) {
 }
 
 TEST TEST_KMALLOC() {
+  struct pdirectory* pd = vmm_get_directory();  
   uint32_t frames_total = pmm_get_free_frame_count();
-  uint8_t* allocated = kmalloc(10);
-  uint32_t size_after = pmm_get_free_frame_count();
-  kfree(allocated);
-  ASSERT_EQ(pmm_get_free_frame_count(), frames_total);
+  uint8_t* block1 = kmalloc(PMM_FRAME_SIZE - sizeof(struct block_meta));
+
+
+  //ASSERT_EQ(pd_entry_is_present(pd->m_entries[PAGE_DIRECTORY_INDEX((uint32_t)block1)]), true);
   
+  uint32_t size_after = pmm_get_free_frame_count();
+  ASSERT_EQ(pmm_get_free_frame_count(), frames_total - 1);
+  
+  // allocating the same block
+  uint8_t* block2 = kmalloc(1);
+  ASSERT_EQ(pmm_get_free_frame_count(), frames_total - 2);
+
+  // bitmap does not get freed after kfree, it just sets 
+  // flag as "free" so it can be used next time
+  kfree(block2);
+  ASSERT_EQ(pmm_get_free_frame_count(), frames_total - 2);
+  // allocating another block
+  //allocated = kmalloc(PMM_FRAME_SIZE - * sizeof(struct block_meta));
+  //ASSERT_EQ(pmm_get_free_frame_count(), frames_total - 1);
   PASS();
 }
 
-SUITE(SUITE_MEMORY) {
+SUITE(SUITE_PMM) {
   RUN_TEST(TEST_PMM);
 }
 
 // requires virtual memory enabled
-SUITE(SUITE_KMALLOC) {
+SUITE(SUITE_MALLOC) {
   RUN_TEST(TEST_KMALLOC);
 }

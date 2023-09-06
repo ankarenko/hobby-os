@@ -110,8 +110,8 @@ void pmm_init(multiboot_info_t* mbd) {
       physical_addr start_aligned = ALIGN_UP(mmmt->addr_low, PMM_FRAME_ALIGN);
       uint32_t len_aligned = ALIGN_DOWN(mmmt->len_low, PMM_FRAME_ALIGN);
       
-      printf("Start Addr: %X | Length: %d | Size: %d | Type: %d\n",
-            start_aligned, len_aligned, mmmt->size, mmmt->type);
+      printf("Start Addr: %X | Length: %d bytes | Size: %d mb \n",
+            start_aligned, len_aligned, len_aligned / 1024 / 1024, mmmt->type);
 
       pmm_init_region(start_aligned, len_aligned);
     }

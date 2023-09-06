@@ -61,6 +61,7 @@ struct block_meta *get_block_ptr(void *ptr) {
   return (struct block_meta *)ptr - 1;
 }
 
+// todo: probably not the best
 void kfree(void *ptr) {
   if (!ptr)
     return;
@@ -102,4 +103,19 @@ void *kcalloc(size_t n, size_t size) {
   if (block)
     memset(block, 0, n * size);
   return block;
+}
+
+void *krealloc(void *ptr, size_t size)
+{
+	if (!ptr && size == 0)
+	{
+		kfree(ptr);
+		return NULL;
+	}
+	else if (!ptr)
+		return kcalloc(size, sizeof(char));
+
+	void *newptr = kcalloc(size, sizeof(char));
+	memcpy(newptr, ptr, size);
+	return newptr;
 }

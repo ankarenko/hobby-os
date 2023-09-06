@@ -5,7 +5,7 @@
       "label": "Launch QEMU2",
       "type": "shell",
       //"command": "echo Hello",
-      "command": "qemu-system-i386 -S -gdb tcp::1234 -no-reboot -daemonize -blockdev driver=file,node-name=f0,filename=./floppy_fat12.img -device floppy,drive=f0 -boot d -kernel isodir/boot/myos.bin -m 16 || exit 0",
+      "command": "qemu-system-i386 -S -gdb tcp::1234 -no-reboot -daemonize -blockdev driver=file,node-name=f0,filename=./floppy_fat12.img -device floppy,drive=f0 -boot d -kernel isodir/boot/myos.bin -m 128 || exit 0",
       "dependsOn": [
         "Build"
       ]
@@ -15,7 +15,7 @@
       "label": "Launch test QEMU",
       "type": "shell",
       //"command": "echo Hello",
-      "command": "qemu-system-i386 -S -gdb tcp::1234 -no-reboot -daemonize -blockdev driver=file,node-name=f0,filename=./floppy_fat12.img -device floppy,drive=f0 -boot d -kernel isodir/boot/test.bin -m 16 || exit 0",
+      "command": "qemu-system-i386 -S -gdb tcp::1234 -no-reboot -daemonize -blockdev driver=file,node-name=f0,filename=./floppy_fat12.img -device floppy,drive=f0 -boot d -kernel isodir/boot/test.bin -m 128 || exit 0",
       "dependsOn": [
         "Build-TEST"
       ]
@@ -39,7 +39,7 @@
     {
       "label": "Launch QEMU",
       "command": "qemu-system-i386",
-      "args": ["-S", "-gdb", "tcp::1234", "-m", "16", "-daemonize", "-monitor", "unix:qemu-monitor-socket,server,nowait", "-boot", "d", "-kernel", "isodir/boot/myos.bin"],
+      "args": ["-S", "-gdb", "tcp::1234", "-m", "128", "-daemonize", "-monitor", "unix:qemu-monitor-socket,server,nowait", "-boot", "d", "-kernel", "isodir/boot/myos.bin"],
       "dependsOn": [
         "Build"
       ]

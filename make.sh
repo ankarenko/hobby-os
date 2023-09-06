@@ -30,12 +30,12 @@ then
   $ENVIRONMENT ./clean.sh && \
   $ENVIRONMENT ./build.sh test && \
   $ENVIRONMENT ./make_iso.sh test && \
-  qemu-system-i386 -m 16 -monitor unix:qemu-monitor-socket,server,nowait -blockdev driver=file,node-name=f0,filename=$DISK -device floppy,drive=f0 -no-reboot -kernel isodir/boot/test.bin
+  qemu-system-i386 -m 128 -monitor unix:qemu-monitor-socket,server,nowait -blockdev driver=file,node-name=f0,filename=$DISK -device floppy,drive=f0 -no-reboot -kernel isodir/boot/test.bin
 elif [ "$1" = "run" ] 
 then
   $ENVIRONMENT ./build.sh install && \
   $ENVIRONMENT ./make_iso.sh myos && \
-  qemu-system-i386 -m 16 -monitor unix:qemu-monitor-socket,server,nowait -blockdev driver=file,node-name=f0,filename=$DISK -device floppy,drive=f0 -no-reboot -kernel isodir/boot/myos.bin
+  qemu-system-i386 -m 128 -monitor unix:qemu-monitor-socket,server,nowait -blockdev driver=file,node-name=f0,filename=$DISK -device floppy,drive=f0 -no-reboot -kernel isodir/boot/myos.bin
 else 
   echo "Unknown param: clean, build, run"
 fi
