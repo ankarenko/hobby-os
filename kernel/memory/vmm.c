@@ -110,10 +110,10 @@ void vmm_init() {
   memset(va_dir, 0, sizeof(struct pdirectory));
 
   //make identity map of first MB and mark it used 
-  vmm_init_and_map(va_dir, 0x00000000, 0x00000000, PAGES_PER_TABLE >> 2);
-  vmm_init_and_map(va_dir, KERNEL_HIGHER_HALF, 0x00000000, PAGES_PER_TABLE);
+  vmm_init_and_map(va_dir, 0x00000000, 0x00000000, PAGES_PER_TABLE >> 2); // 1mb
+  vmm_init_and_map(va_dir, KERNEL_HIGHER_HALF, 0x00000000, PAGES_PER_TABLE); // 4mb
 
-  // NOTE: MQ 2019-11-21 Preallocate ptable for higher half kernel
+  // NOTE: MQ 2019-11-21 Preallocate ptable for higher halkernel
   for (int i = PAGE_DIRECTORY_INDEX(KERNEL_HIGHER_HALF) + 1; i < PAGES_PER_DIR; ++i)
     vmm_alloc_ptable(va_dir, i, I86_PTE_WRITABLE);
   
@@ -126,7 +126,7 @@ void vmm_init() {
 }
 
 void vmm_alloc_ptable(struct pdirectory* va_dir, uint32_t index, uint32_t flags) {
-  pd_entry entry = &va_dir->m_entries[index];
+  pd_entry* entry = &va_dir->m_entries[index];
 
   if (pd_entry_is_present(entry))
     return;

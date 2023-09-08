@@ -96,7 +96,7 @@ void pmm_init(multiboot_info_t* mbd) {
   _used_frames = _max_frames = div_ceil(_memory_size, PMM_FRAME_SIZE);
 
   _memory_bitmap_size = div_ceil(_max_frames, PMM_FRAMES_PER_BYTE);
-  memset(_memory_bitmap, 0xff, MAX_MEMORY_BITMAP_BYTES /*_memory_bitmap_size*/);
+  memset(_memory_bitmap, 0xff, BITMAP_SIZE /*_memory_bitmap_size*/);
 
   mbd->mmap_addr += KERNEL_HIGHER_HALF;
   for (uint32_t i = 0; i < mbd->mmap_length; i += sizeof(multiboot_memory_map_t)) {
@@ -117,13 +117,13 @@ void pmm_init(multiboot_info_t* mbd) {
     }
   }
 
-  if (_memory_bitmap_size > MAX_MEMORY_BITMAP_BYTES) {
+  if (_memory_bitmap_size > BITMAP_SIZE) {
     printf("bitmapsize is too big");
     return;
   }
 
   pmm_deinit_region(0x0, KERNEL_BOOT);
-  pmm_deinit_region(KERNEL_BOOT, KERNEL_END + MAX_MEMORY_BITMAP_BYTES - KERNEL_START);
+  pmm_deinit_region(KERNEL_BOOT, KERNEL_END + BITMAP_SIZE - KERNEL_START);
 }
 
 /*

@@ -68,8 +68,8 @@ kernel_enable_paging:
 start_in_higher_half:
 	# Unmap the identity-mapped first 4MB of physical address space. It should not be needed
 	# anymore.
-	movl $0, [boot_page_directory]
-	invlpg [0]
+	# movl $0, [boot_page_directory]
+	# invlpg [0]
 
 	# NOTE: From now on, paging should be enabled. The first 4MB of physical address space is
 	# mapped starting at KERNEL_VIRTUAL_BASE. Everything is linked to this address, so no more
@@ -96,6 +96,7 @@ start_in_higher_half:
 1:	hlt
 	jmp 1b
 .size _start, . - _start
+
 
 
 

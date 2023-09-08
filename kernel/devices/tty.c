@@ -12,7 +12,7 @@
 
 static const size_t VGA_WIDTH = 80;
 static const size_t VGA_HEIGHT = 25;
-static uint16_t* const VGA_MEMORY = (uint16_t*)(0xB8000 + KERNEL_HIGHER_HALF);
+static uint16_t* const VGA_MEMORY = (uint16_t*)(0xB8000);
 static const size_t VIDEO_MEMORY_SIZE = VGA_WIDTH * VGA_HEIGHT << 2;
 static uint16_t BLANK;
 static size_t video_memory_index;

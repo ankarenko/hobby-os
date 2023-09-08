@@ -1,12 +1,15 @@
 #ifndef MALLOC_H
 #define MALLOC_H
 
+#include <math.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include "./kernel_info.h"
+#include "./pmm.h"
 
 #define KERNEL_HEAP_TOP 0xE0000000
-#define KERNEL_HEAP_BOTTOM 0xC8000000 // TODO: KERNEL_END + BITMAP_SIZE_MAX (128 Kbyte)
+#define KERNEL_HEAP_BOTTOM 0xC8000000 // we can do as well KERNEL_AND_BITMAP_END + 4096
 #define USER_HEAP_TOP 0x40000000
 
 struct block_meta

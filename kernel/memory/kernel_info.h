@@ -25,4 +25,10 @@ extern void* kernel_higher_half;
 #define KERNEL_HIGHER_HALF (uint32_t)(&kernel_higher_half)
 #define KERNEL_BOOT (uint32_t)(&kernel_boot)
 
+#define BITMAP_SIZE 0x400 * 128 // 1024 * 128
+
+// TODO: MAKE DYNAMIC KERNEL_AND_BITMAP_END ALIGN_UP(KERNEL_END + BITMAP_SIZE, 4096) 
+// doesn't work with const assignments
+#define KERNEL_AND_BITMAP_END ALIGN_UP(KERNEL_END + BITMAP_SIZE, 4096)
+
 #endif

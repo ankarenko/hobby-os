@@ -24,8 +24,10 @@
   |                         |
   |                         |
   | Kernel heap             |
+  |_________________________| 0xC8000000                    
   |                         |
-  |_________________________| KERNEL_END + BITMAP_SIZE_MAX (128 Kbyte)
+  | Not used                | 
+  |_________________________| KERNEL_END + BITMAP_SIZE_MAX (128 Kbyte)                       
   |                         |
   | Bitmap                  |
   |_________________________| KERNEL_END

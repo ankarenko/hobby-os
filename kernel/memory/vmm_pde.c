@@ -4,15 +4,15 @@ void pd_entry_add_attrib (pd_entry* e, uint32_t attrib) {
 	*e |= attrib;
 }
 
-void pd_entry_del_attrib (pd_entry* e, uint32_t attrib) {
+void pd_entry_del_attrib(pd_entry* e, uint32_t attrib) {
 	*e &= ~attrib;
 }
 
-void pd_entry_set_frame (pd_entry* e, physical_addr addr) {
+void pd_entry_set_frame(pd_entry* e, physical_addr addr) {
 	*e = (*e & ~I86_PDE_FRAME) | addr;
 }
 
-bool pd_entry_is_present (pd_entry* e) {
+bool pd_entry_is_present(pd_entry* e) {
 	return *e & I86_PDE_PRESENT;
 }
 

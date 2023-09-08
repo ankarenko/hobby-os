@@ -65,6 +65,11 @@ TEST TEST_KMALLOC() {
   // allocating another block
   //allocated = kmalloc(PMM_FRAME_SIZE - * sizeof(struct block_meta));
   //ASSERT_EQ(pmm_get_free_frame_count(), frames_total - 1);
+
+  uint8_t* block3 = kmalloc(pmm_get_free_frame_count() * 4096 - sizeof(struct block_meta));
+  printf("%d", pmm_get_free_frame_count());
+
+  ASSERT_EQ(pmm_get_free_frame_count(), 0);
   PASS();
 }
 

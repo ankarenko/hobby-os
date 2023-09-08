@@ -134,7 +134,7 @@ enum FLPYDSK_SECTOR_DTL {
 #define FLOPPY_IRQ 6
 #define FLPY_SECTORS_PER_TRACK 18
 #define FLPY_HEADS_PER_CYLINDER 2
-#define DMA_BUFFER 0x1000  // make it virtual address
+#define DMA_BUFFER 0x1000  // TODO: make it virtual address, adding KERNEL_HIGH_HALF doesnt work
 #define FDC_DMA_CHANNEL 2
 
 //! used to wait in miliseconds
