@@ -85,11 +85,14 @@ struct pdirectory {
 
 void vmm_init();
 
+
 //! maps phys to virtual address
+/*
 void vmm_map_page(
   struct pdirectory* page_directory, 
   void* phys, void* virt, uint32_t flags
 );
+*/
 
 //! allocates a page in physical memory
 bool vmm_alloc_page(pt_entry*);

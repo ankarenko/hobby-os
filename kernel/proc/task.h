@@ -18,6 +18,7 @@
 
 #define PROCESS_STATE_SLEEP 0
 #define PROCESS_STATE_ACTIVE 1
+#define PROC_INVALID_ID -1
 
 typedef struct _trap_frame {
   uint32_t esp;
@@ -59,8 +60,9 @@ typedef struct _process {
 //extern int create_thread(int (*entry)(void), uint32_t stackBase);
 //extern int terminate_thread(thread* handle);
 
-extern int32_t create_process(char* appname);
-extern void execute_process();
+int32_t create_process(char* appname);
+void execute_process();
+process* get_current_process();
 
 // extern "C" void TerminateProcess ();
 

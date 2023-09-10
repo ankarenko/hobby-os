@@ -164,9 +164,13 @@ struct Elf32_Layout
 {
 	uint32_t stack;
 	uint32_t entry;
+  uint32_t image_size;
+  uint8_t* base;
+  uint8_t* image_start;
+  uint8_t* address_space;
 };
 
-struct Elf32_Layout *elf_load(const char *path);
+struct Elf32_Layout elf_load(const char *path);
 void elf_unload();
 
 #endif

@@ -1,6 +1,11 @@
+static int param = 123;
+
+int sum(int a, int b) {
+  return a + b;
+}
+
 int main()
 {
-  int a = 32;
-  int b = 50;
-	return a + b;
+  int res = sum(1, param);
+  return res;
 }

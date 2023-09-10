@@ -26,3 +26,27 @@ user_start:
   add $4, %esp            #point esp to return address (?)
   ret                     #restore EIP from the stack
                           #(return back to C code where we invoked enter_usermode)
+
+.global jump_to_process
+.type jump_to_process, @function
+jump_to_process:
+  cli                     # TODO: not sure about this, because https://forum.osdev.org/viewtopic.php?f=1&t=20572
+  mov 8(%esp), %ebx   # get proc_stack
+  mov 4(%esp), %ecx   # get entry_point
+  
+	mov $0x23, %ax	        # user mode data selector is 0x20 (GDT entry 3). Also sets RPL to 3
+	mov %ax, %ds
+  mov %ax, %es
+  mov %ax, %fs
+  mov %ax, %gs
+  
+  # create stack frame
+  push $0x23				# SS, notice it uses same selector as above
+  push %ebx		    # stack
+
+  push $0x200
+
+  push $0x1b			  # CS, user mode code selector is 0x18. With RPL 3 this is 0x1b
+  push %ecx	      # EIP
+  iret
+  

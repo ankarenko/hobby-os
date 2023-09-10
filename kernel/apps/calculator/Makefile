@@ -10,7 +10,7 @@ $(info $$var is [${PWD}])
 	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS)
 
 calc.exe: $(OBJ) linker.ld
-	$(CC) -T linker.ld -o $@ $(CFLAGS) $(OBJ) -nostdlib -lk -lgcc
+	$(CC) -T linker.ld -o $@ $(CFLAGS) $(OBJ) -nostdlib -lk -lgcc -fPIC
 
 install: calc.exe
 test: install
