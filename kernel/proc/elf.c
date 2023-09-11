@@ -112,7 +112,7 @@ struct Elf32_Layout elf_load(const char *path) {
   for (int i = 0; i < frames; ++i) {
     vmm_map_address(
       address_space, 
-      vimage + PMM_FRAME_SIZE * i, phys, 
+      vimage + PMM_FRAME_SIZE * i, phys + PMM_FRAME_SIZE * i, 
       I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PTE_USER
     );
   }

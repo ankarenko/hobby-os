@@ -1,3 +1,5 @@
+hello_world:    .asciz "HELLO MY FIRENDS \n"
+
 .global enter_usermode
 .type enter_usermode, @function
 enter_usermode:
@@ -50,3 +52,9 @@ jump_to_process:
   push %ecx	      # EIP
   iret
   
+.global asm_syscall_print
+.type asm_syscall_print, @function
+asm_syscall_print:
+  mov $512, %eax
+  lea [hello_world], %ebx
+  int $0x80

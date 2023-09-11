@@ -26,6 +26,7 @@
 #include "./multiboot.h"
 
 extern void enter_usermode();
+extern void asm_syscall_print();
 
 //! sleeps a little bit. This uses the HALs get_tick_count() which in turn uses the PIT
 void sleep(uint32_t ms) {
@@ -95,6 +96,7 @@ void cmd_user() {
 
   enter_usermode();
   int32_t a = 2;
+  asm_syscall_print();
   syscall_printf("\nIn user mode\n");
 }
 
