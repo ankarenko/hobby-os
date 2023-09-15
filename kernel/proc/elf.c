@@ -60,6 +60,7 @@ static int elf_verify(struct Elf32_Ehdr *elf_header) {
 struct Elf32_Layout elf_load(const char *path) {
   FILE file = vol_open_file(path);
   struct Elf32_Layout layout;
+  //addressSpace = vmmngr_createAddressSpace ();
   struct pdirectory* address_space = vmm_get_directory();
 
   layout.entry = 0;
@@ -105,10 +106,13 @@ struct Elf32_Layout elf_load(const char *path) {
     image_size = max(image_size, segment_end);
   }
 
+ 
+
   // allocating segments and mapping to virtual addresses
   uint8_t* vimage = 0x40000000;
   uint32_t frames = div_ceil(image_size, PMM_FRAME_SIZE);
   uint8_t* phys = pmm_alloc_frames(frames);
+ 
   for (int i = 0; i < frames; ++i) {
     vmm_map_address(
       address_space, 
@@ -117,9 +121,12 @@ struct Elf32_Layout elf_load(const char *path) {
     );
   }
 
+  
+
   // allocate stack
   uint8_t* pstack = pmm_alloc_frame();
   uint8_t* vstack = ALIGN_UP((uint32_t)vimage + image_size, PMM_FRAME_SIZE);
+  
   vmm_map_address(
     address_space, 
     vstack, pstack, 

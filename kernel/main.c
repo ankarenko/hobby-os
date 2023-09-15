@@ -94,10 +94,30 @@ void cmd_user() {
                        : "=r"(esp));
   tss_set_stack(0x10, esp);
 
+  uint8_t* phys = pmm_alloc_frame();
+  uint8_t* virt = 0x40002000;
+  
+  
+  vmm_map_address(vmm_get_directory(), 
+    virt, phys, 
+    I86_PDE_PRESENT | I86_PDE_PRESENT| I86_PDE_WRITABLE
+  );
+
+  
+
+
   enter_usermode();
-  int32_t a = 2;
-  asm_syscall_print();
-  syscall_printf("\nIn user mode\n");
+  int32_t a = 1;
+  //asm_syscall_print();
+
+  __asm__ __volatile__(
+      "mov %0, %%eax;	      \n"
+      "int $0x80;           \n"
+      : "=a"(a)
+  );
+
+  //syscall_printf("\nIn user mode\n");
+  
 }
 
 //! our simple command parser
@@ -160,7 +180,7 @@ void cmd_read_file() {
   printf("\n___________________EOF_________________________\n");
 }
 
-void cmd_init() {
+extern void cmd_init() {
   char cmd_buf[100];
 
   while (1) {
@@ -257,6 +277,8 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
     printf(buf);
   }
   */
+
+
   cmd_init();
 
   /*

@@ -62,6 +62,7 @@ typedef struct _process {
 
 int32_t create_process(char* appname);
 void execute_process();
+void terminate_process();
 process* get_current_process();
 
 // extern "C" void TerminateProcess ();

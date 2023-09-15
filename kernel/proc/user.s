@@ -49,7 +49,8 @@ jump_to_process:
   push $0x200
 
   push $0x1b			  # CS, user mode code selector is 0x18. With RPL 3 this is 0x1b
-  push %ecx	      # EIP
+  push %ecx	        # EIP
+
   iret
   
 .global asm_syscall_print
@@ -58,3 +59,15 @@ asm_syscall_print:
   mov $512, %eax
   lea [hello_world], %ebx
   int $0x80
+
+.global restore_kernel
+.type restore_kernel, @function
+restore_kernel:
+  cli
+  mov $0x10, %ax	     
+	mov %ax, %ds
+  mov %ax, %es
+  mov %ax, %fs
+  mov %ax, %gs
+  sti
+  ret

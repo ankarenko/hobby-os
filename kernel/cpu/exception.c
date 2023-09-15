@@ -112,10 +112,22 @@ void general_protection_fault(struct interrupt_registers *registers) {
 void page_fault(interrupt_registers *registers) {
   //_asm cli _asm sub ebp, 4
 
-  int faultAddr=0;
+  uint32_t faultAddr = 0;
+	int error_code = registers->err_code;
 
-  kernel_panic ("Page Fault at %x:%x refrenced memory at %x", registers->cs, registers->eip, faultAddr);
+	__asm__ __volatile__("mov %%cr2, %%eax	\n"
+	 										 "mov %%eax, %0			\n"
+	 										 : "=r"(faultAddr));
 
+  printf("\nPage Fault at 0x%x", faultAddr);
+	printf("\nReason: %s, %s, %s%s%s",
+	 						error_code & 0b1 ? "protection violation" : "non-present page",
+	 						error_code & 0b10 ? "write" : "read",
+	 						error_code & 0b100 ? "user mode" : "supervisor mode",
+	 						error_code & 0b1000 ? ", reserved" : "",
+	 						error_code & 0b10000 ? ", instruction fetch" : "");
+
+  kernel_panic ("");
   for (;;)
     ;
   //_asm popad _asm sti _asm iretd

@@ -1,12 +1,20 @@
 #include <stdio.h>
-
+#include "../proc/task.h"
 #include "../cpu/idt.h"
 #include "sysapi.h"
 
 #define __NR_dprintf 512
+#define __NR_dterminate 1
 
 static int32_t sys_debug_printf(/*enum debug_level level,*/ const char *out) {
+
+
   printf(out);
+  return 1;
+}
+
+static int32_t sys_debug_terminate() {
+  terminate_process();
   return 1;
 }
 
@@ -33,10 +41,12 @@ int32_t syscall_printf(char *str) {
 
 static void *syscalls[] = {
     [__NR_dprintf] = sys_debug_printf,
+    [__NR_dterminate] = sys_debug_terminate,
     0
 };
 
 static int32_t syscall_dispatcher(interrupt_registers *regs) {
+
   int idx = regs->eax;
 
   uint32_t (*func)(unsigned int, ...) = syscalls[idx];

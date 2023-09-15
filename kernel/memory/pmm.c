@@ -109,9 +109,11 @@ void pmm_init(multiboot_info_t* mbd) {
       // for simplicity I align everything to PMM_FRAME_SIZE even thou it leads to a memory loss
       physical_addr start_aligned = ALIGN_UP(mmmt->addr_low, PMM_FRAME_ALIGN);
       uint32_t len_aligned = ALIGN_DOWN(mmmt->len_low, PMM_FRAME_ALIGN);
-      
-      printf("Start Addr: %X | Length: %d bytes | Size: %d mb \n",
-            start_aligned, len_aligned, len_aligned / 1024 / 1024, mmmt->type);
+
+      float mb = (float)len_aligned / 1024 / 1024;
+
+      printf("Start Addr: %X | Length: %d bytes | Size: %.3f mb \n",
+            start_aligned, len_aligned, mb);
 
       pmm_init_region(start_aligned, len_aligned);
     }
