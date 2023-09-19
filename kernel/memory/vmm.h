@@ -123,6 +123,7 @@ uint32_t vmm_pdirectory_virt_to_index(virtual_addr addr);
 
 //! clears a page directory table
 void vmm_pdirectory_clear(struct pdirectory* dir);
+void vmm_clone_kernel_space(struct pdirectory* dir);
 
 //! get directory entry from directory table
 pd_entry* vmm_pdirectory_lookup_entry(struct pdirectory* p, virtual_addr addr);

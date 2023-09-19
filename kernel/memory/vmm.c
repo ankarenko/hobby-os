@@ -237,3 +237,25 @@ virtual_addr vmm_alloc_size(virtual_addr from, uint32_t size, uint32_t flags) {
   return page_addr - PMM_FRAME_SIZE + size;
   */
 }
+
+void vmm_pdirectory_clear(struct pdirectory* dir) {
+  if (dir) {
+    memset(dir, sizeof(struct pdirectory), 0);
+  }
+}
+
+void vmm_clone_kernel_space(struct pdirectory* dir) { 
+  if (dir) {
+    uint32_t kernel_dir_index = PAGE_DIRECTORY_INDEX(KERNEL_HIGHER_HALF);
+    pd_entry* kernel = &vmm_get_directory()->m_entries[kernel_dir_index];
+
+    /* copy kernel page tables into this new page directory.
+    Recall that KERNEL SPACE is 0xc0000000, which starts at
+    entry 768. */
+    memcpy(
+      dir->m_entries[kernel_dir_index], 
+      kernel, 
+      (PAGES_PER_DIR - kernel_dir_index) * sizeof(pd_entry)
+    );
+  }
+}

@@ -7,6 +7,8 @@
 #include "pic.h"
 #include "pit.h"
 
+uint32_t _sel = 0x8;
+
 char *i86_cpu_get_vender() {
   static char vender[32] = {0};
   __asm__ __volatile__(
@@ -50,7 +52,7 @@ uint32_t hal_initialize() {
   disable_interrupts();
 
   i86_gdt_initialize();
-  i86_idt_initialize(0x8);
+  i86_idt_initialize(_sel);
   i86_pic_initialize(0x20, 0x28);
   i86_pit_initialize();
   i86_pit_start_counter(100, I86_PIT_OCW_COUNTER_0, I86_PIT_OCW_MODE_SQUAREWAVEGEN);
@@ -63,4 +65,26 @@ uint32_t hal_initialize() {
 
 uint32_t get_tick_count() {
   return i86_pit_get_tick_count();
+}
+
+//! sets new interrupt vector
+void setvect(int intno, void (vect)(), int flags) {
+	//! install interrupt handler! This overwrites prev interrupt descriptor
+	i86_install_ir(intno, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32 | flags,
+		_sel, vect);
+}
+
+//! returns current interrupt vector
+void (*getvect(int intno))() {
+	//! get the descriptor from the idt
+	idt_entry_t* desc = i86_get_ir(intno);
+	if (!desc)
+		return 0;
+
+	//! get address of interrupt handler
+	uint32_t addr = desc->base_lo | (desc->base_hi << 16);
+
+	//! return interrupt handler
+	I86_IRQ_HANDLER irq = (I86_IRQ_HANDLER)addr;
+	return irq;
 }

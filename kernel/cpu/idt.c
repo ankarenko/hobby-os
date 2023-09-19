@@ -12,7 +12,6 @@
 #define IDT_INIT_ISR(i, sel) i86_install_ir(i, (uint32_t)isr##i, sel, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32)
 #define IDT_INIT_IRQ(i, sel) i86_install_ir(i + 32, (uint32_t)irq##i, sel, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32)
 #define IDT_INIT_SYSCALL(i, sel) i86_install_ir(i, (uint32_t)isr##i, sel, I86_IDT_DESC_RING3 | I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32)
-  
 
 ISR(0);
 ISR(1);
@@ -72,12 +71,13 @@ static idt_entry_t _idt_entries[I86_MAX_INTERRUPTS];
 static I86_IRQ_HANDLER _interrupt_handlers[I86_MAX_INTERRUPTS];
 static idt_ptr_t _idt_ptr;
 
+
 uint32_t i86_idt_initialize(uint16_t sel) {
   _idt_ptr.limit = sizeof(idt_entry_t) * I86_MAX_INTERRUPTS - 1;
   _idt_ptr.base = (uint32_t)&_idt_entries;
 
   memset(&_idt_entries, 0, sizeof(idt_entry_t) * I86_MAX_INTERRUPTS);
-
+  
   IDT_INIT_ISR(0, sel);
   IDT_INIT_ISR(1, sel);
   IDT_INIT_ISR(2, sel);
@@ -113,7 +113,9 @@ uint32_t i86_idt_initialize(uint16_t sel) {
 
   //pic_remap();
 
-  IDT_INIT_IRQ(0, sel);
+  // IDT_INIT_IRQ(0, sel);
+  // setting up scheduler
+
   IDT_INIT_IRQ(1, sel);
   IDT_INIT_IRQ(2, sel);
   IDT_INIT_IRQ(3, sel);
@@ -137,6 +139,15 @@ uint32_t i86_idt_initialize(uint16_t sel) {
   idt_flush((uint32_t)&_idt_ptr);
 
   return 0;
+}
+
+//! returns interrupt descriptor
+idt_entry_t* i86_get_ir(uint32_t i) {
+
+	if (i > I86_MAX_INTERRUPTS)
+		return 0;
+
+	return &_idt_entries[i];
 }
 
 int32_t i86_install_ir(uint8_t i, uint32_t base, uint16_t sel, uint8_t flags) {

@@ -107,5 +107,7 @@ int32_t hal_shutdown();
 
 uint32_t hal_initialize();
 uint32_t get_tick_count();
+void (*getvect(int intno))();
+void setvect(int intno, void (vect)(), int flags);
 
 #endif

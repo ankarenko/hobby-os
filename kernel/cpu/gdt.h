@@ -3,6 +3,12 @@
 
 #include <stdint.h>
 
+/* kernel and user selectors. */
+#define USER_DATA   0x23
+#define USER_CODE   0x1b
+#define KERNEL_DATA 0x10
+#define KERNEL_CODE 8
+
 //! maximum amount of descriptors allowed
 #define MAX_DESCRIPTORS 6
 

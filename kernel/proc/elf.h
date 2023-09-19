@@ -2,8 +2,10 @@
 #define PROC_ELF_H
 
 //#include <fs/vfs.h>
-//#include <memory/vmm.h>
+#include <stdbool.h>
 #include <stdint.h>
+#include "../memory/vmm.h"
+
 
 typedef uint16_t Elf32_Half;  // Unsigned half int
 typedef uint32_t Elf32_Off;	  // Unsigned offset
@@ -170,7 +172,12 @@ struct Elf32_Layout
   uint8_t* address_space;
 };
 
-struct Elf32_Layout elf_load(const char *path);
-void elf_unload();
-
+bool elf_load_image(
+  char* app_path, 
+  struct pdirectory* space, 
+  virtual_addr* image_base, 
+  uint32_t* image_size, 
+  virtual_addr* entry
+);
+void elf_unload_image();
 #endif

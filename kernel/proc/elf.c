@@ -57,18 +57,20 @@ static int elf_verify(struct Elf32_Ehdr *elf_header) {
   return NO_ERROR;
 }
 
-struct Elf32_Layout elf_load(const char *path) {
-  FILE file = vol_open_file(path);
-  struct Elf32_Layout layout;
-  //addressSpace = vmmngr_createAddressSpace ();
-  struct pdirectory* address_space = vmm_get_directory();
-
-  layout.entry = 0;
-  layout.stack = 0;
+// load elf program into the user userspace 
+// which is provided in params
+bool elf_load_image(
+  char* app_path, 
+  struct pdirectory* space, 
+  virtual_addr* image_base, 
+  uint32_t* image_size, 
+  virtual_addr* entry
+) {
+  FILE file = vol_open_file(app_path);
 
   if (file.flags == FS_INVALID) {
     printf("\n*** File not found ***\n");
-    return;
+    return false;
   }
 
   const uint8_t* elf_file = kmalloc(file.file_length);
@@ -85,44 +87,42 @@ struct Elf32_Layout elf_load(const char *path) {
   struct Elf32_Ehdr *elf_header = (struct Elf32_Ehdr *)elf_file;
 
   if (elf_verify(elf_header) != NO_ERROR || elf_header->e_phoff == 0) {
-    // log("ELF: %s is not correct format", path);
-    return layout;
+    return false;
   }
 
-  uint8_t* base = UINT32_MAX;
+  // where elf wants us to put the image
+  virtual_addr base = UINT32_MAX;
 
   // finding base address
   for (int i = 0; i < elf_header->e_phnum; ++i) {
     struct Elf32_Phdr *ph = elf_file + elf_header->e_phoff + elf_header->e_phentsize * i;
-    
     base = min(base, ph->p_vaddr);
   }
 
-  uint32_t image_size = 0;
   // figuting out, how much memory to allocate
+  *image_size = 0;
   for (int i = 0; i < elf_header->e_phnum; ++i) {
     struct Elf32_Phdr *ph = elf_file + elf_header->e_phoff + elf_header->e_phentsize * i;
     uint32_t segment_end = ph->p_vaddr - (uint32_t)base + ph->p_memsz;
-    image_size = max(image_size, segment_end);
+    *image_size = max(*image_size, segment_end);
   }
 
- 
-
   // allocating segments and mapping to virtual addresses
-  uint8_t* vimage = 0x40000000;
-  uint32_t frames = div_ceil(image_size, PMM_FRAME_SIZE);
-  uint8_t* phys = pmm_alloc_frames(frames);
- 
+  // *image_base = base; for absolute
+  *image_base = 0x40000000; // for PIC (or malloc(image_size))
+
+  uint32_t frames = div_ceil(*image_size, PMM_FRAME_SIZE);
+  physical_addr phys_image_base = pmm_alloc_frames(frames);
+  
   for (int i = 0; i < frames; ++i) {
     vmm_map_address(
-      address_space, 
-      vimage + PMM_FRAME_SIZE * i, phys + PMM_FRAME_SIZE * i, 
+      space, 
+      *image_base + PMM_FRAME_SIZE * i, phys_image_base + PMM_FRAME_SIZE * i, 
       I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PTE_USER
     );
   }
 
-  
-
+  /*
   // allocate stack
   uint8_t* pstack = pmm_alloc_frame();
   uint8_t* vstack = ALIGN_UP((uint32_t)vimage + image_size, PMM_FRAME_SIZE);
@@ -132,33 +132,25 @@ struct Elf32_Layout elf_load(const char *path) {
     vstack, pstack, 
     I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PTE_USER
   );
+  */
 
-  // iterating trough segments
+  // iterating trough segments and copying them to our address space
   for (int i = 0; i < elf_header->e_phnum; ++i) {
     struct Elf32_Phdr *ph = elf_file + elf_header->e_phoff + elf_header->e_phentsize * i;
     
     if (ph->p_type != PT_LOAD || ph->p_filesz == 0)
 			continue;
 
-    // data segment
-		// if ((ph->p_flags & PF_W) != 0 && (ph->p_flags & PF_R) != 0) {
-    // text segment
-		// if ((ph->p_flags & PF_X) != 0 && (ph->p_flags & PF_R) != 0) {
-    uint8_t* vaddr = vimage + ph->p_vaddr - base;
+    virtual_addr vaddr = *image_base + ph->p_vaddr - base;
 
     memset(vaddr, 0, ph->p_memsz);
     memcpy(vaddr, elf_file + ph->p_offset, ph->p_filesz);
   }
   
-  layout.entry = vimage + elf_header->e_entry - base;
-  layout.stack = vstack;
-  layout.image_size = image_size;
-  layout.base = base;
-  layout.image_start = vimage;
-  layout.address_space = address_space;
+  *entry = *image_base + elf_header->e_entry - base;
 
   kfree(elf_file);
-  return layout;
+  return false;
 }
 
 void elf_unload() {

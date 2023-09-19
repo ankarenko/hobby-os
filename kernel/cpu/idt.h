@@ -67,5 +67,6 @@ typedef struct idt_ptr_struct idt_ptr_t;
 void register_interrupt_handler(uint8_t n, I86_IRQ_HANDLER handler);
 int32_t i86_install_ir(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags);
 uint32_t i86_idt_initialize(uint16_t sel);
+idt_entry_t* i86_get_ir(uint32_t i);
 
 #endif
