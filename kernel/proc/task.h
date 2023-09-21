@@ -88,6 +88,7 @@ bool queue_insert(thread t);
 thread thread_create(void (*entry)(void), uint32_t esp, bool is_kernel);
 void thread_execute(thread t);
 void execute_idle();
+void thread_sleep(uint32_t ms);
 // extern "C" void TerminateProcess ();
 
 #endif

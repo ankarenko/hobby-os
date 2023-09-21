@@ -421,7 +421,8 @@ void kthread_1 () {
 	int col = 0;
 	bool dir = true;
 	while(1) {
-		printf("Thread 1");
+    printf("Thread 1\n");
+    thread_sleep(300);
 	}
 }
 
@@ -430,7 +431,8 @@ void kthread_2 () {
 	int col = 0;
 	bool dir = true;
 	while(1) {
-		printf("Thread 2");
+    printf("Thread 2\n");
+    thread_sleep(300);
 	}
 }
 
@@ -439,6 +441,7 @@ void kthread_3 () {
 	int col = 0;
 	bool dir = true;
 	while(1) {
-		printf("Thread 3");
+		printf("Thread 3\n");
+    thread_sleep(300);
 	}
 }

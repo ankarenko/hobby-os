@@ -101,7 +101,7 @@ struct pdirectory* create_address_space() {
 
 /* create a new kernel space stack. */
 int _kernel_stack_index = 0;
-bool create_kernel_stack(virtual_addr* kernel_stack) {
+bool create_kernel_stack_static(virtual_addr* kernel_stack) {
 
 	physical_addr       p;
 	virtual_addr        location;
@@ -136,24 +136,24 @@ bool create_kernel_stack(virtual_addr* kernel_stack) {
 
 
 /* create a new kernel space stack. */
-/*
+
 bool create_kernel_stack(virtual_addr* kernel_stack) {
   uint32_t stack_size = PMM_FRAME_SIZE;
 	void* ret;
 
   /* allocate a 4k frame for the stack. */
-	/**kernel_stack = kmalloc(stack_size);
+	*kernel_stack = kmalloc(stack_size);
 
   if (!*kernel_stack) {
     return false;
   }
 
 	/* moving pointer to the top of the stack */
-	/**kernel_stack += stack_size;
+	*kernel_stack += stack_size;
 
 	return true;
 }
-*/
+
 
 /* creates user stack for main thread. */
 bool create_user_stack(
@@ -241,7 +241,7 @@ void thread_remove_state(thread* t, uint32_t flags) {
 void schedule() {
 
 	/* force a task switch. */
-	//__asm volatile ("int 33");
+	__asm volatile("int $32");
 }
 
 /* set thread state flags. */
@@ -254,7 +254,7 @@ void thread_set_state(thread* t, uint32_t flags) {
 void thread_sleep(uint32_t ms) {
 
 	/* go to sleep. */
-	thread_set_state(_current_task,THREAD_BLOCK_SLEEP);
+	thread_set_state(_current_task, THREAD_BLOCK_SLEEP);
 	_current_task->sleep_time_delta = ms;
 	schedule();
 }
