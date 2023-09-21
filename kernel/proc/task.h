@@ -78,11 +78,16 @@ typedef struct _process {
 //extern int create_thread(int (*entry)(void), uint32_t stackBase);
 //extern int terminate_thread(thread* handle);
 
-int32_t create_process(char* appname);
+bool create_process(char* appname);
 void execute_process();
 void terminate_process();
 process* get_current_process();
-
+bool scheduler_initialize(void);
+bool create_kernel_stack(virtual_addr* kernel_stack);
+bool queue_insert(thread t);
+thread thread_create(void (*entry)(void), uint32_t esp, bool is_kernel);
+void thread_execute(thread t);
+void execute_idle();
 // extern "C" void TerminateProcess ();
 
 #endif

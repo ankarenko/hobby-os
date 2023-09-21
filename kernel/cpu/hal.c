@@ -70,8 +70,7 @@ uint32_t get_tick_count() {
 //! sets new interrupt vector
 void setvect(int intno, void (vect)(), int flags) {
 	//! install interrupt handler! This overwrites prev interrupt descriptor
-	i86_install_ir(intno, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32 | flags,
-		_sel, vect);
+	i86_install_ir(intno, vect, _sel, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32 | flags);
 }
 
 //! returns current interrupt vector

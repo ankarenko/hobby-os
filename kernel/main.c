@@ -29,6 +29,11 @@
 extern void enter_usermode();
 extern void asm_syscall_print();
 
+void kthread_1();
+void kthread_2();
+void kthread_3();
+
+
 //! sleeps a little bit. This uses the HALs get_tick_count() which in turn uses the PIT
 void sleep(uint32_t ms) {
   int32_t ticks = ms + get_tick_count();
@@ -150,6 +155,26 @@ bool run_cmd(char* cmd_buf) {
   } else if (strcmp(cmd_buf, "process") == 0) {
     create_process("a:/calc.exe");
     execute_process();
+  } else if (strcmp(cmd_buf, "thread") == 0) {
+    /* create kernel threads. */
+    virtual_addr stack1 = 0;
+    virtual_addr stack2 = 0;
+    virtual_addr stack3 = 0;
+    
+    if (
+      !create_kernel_stack(&stack1) ||
+      !create_kernel_stack(&stack2) || 
+      !create_kernel_stack(&stack3)
+    ) {
+      return false;
+    }
+
+    queue_insert(thread_create(kthread_1, stack1, true));
+    queue_insert(thread_create(kthread_2, stack2, true));
+    queue_insert(thread_create(kthread_3, stack3, true));
+
+    /* execute idle thread. */
+    execute_idle();
   }
 
   else {
@@ -302,6 +327,8 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   syscall_init();
   install_tss(5, 0x10, 0);
 
+  scheduler_initialize();
+
   // char* path = "/folder/content.txt";
   // char* path2 = "names.txt";
 
@@ -386,4 +413,32 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   // asm volatile ("int $0x10");
   // asm volatile ("int $0x3");
   // asm volatile ("int $0x4");
+}
+
+
+/* thread cycles through colors of red. */
+void kthread_1 () {
+	int col = 0;
+	bool dir = true;
+	while(1) {
+		printf("Thread 1");
+	}
+}
+
+/* thread cycles through colors of green. */
+void kthread_2 () {
+	int col = 0;
+	bool dir = true;
+	while(1) {
+		printf("Thread 2");
+	}
+}
+
+/* thread cycles through colors of blue. */
+void kthread_3 () {
+	int col = 0;
+	bool dir = true;
+	while(1) {
+		printf("Thread 3");
+	}
 }

@@ -113,7 +113,7 @@ uint32_t i86_idt_initialize(uint16_t sel) {
 
   //pic_remap();
 
-  // IDT_INIT_IRQ(0, sel);
+  IDT_INIT_IRQ(0, sel);
   // setting up scheduler
 
   IDT_INIT_IRQ(1, sel);
