@@ -217,6 +217,10 @@ void vmm_create_page_table(struct pdirectory* va_dir, uint32_t virt, uint32_t fl
   pd_entry_set_frame(entry, pa_table);
   vmm_flush_tlb_entry(virt);
   virtual_addr va_table = PAGE_TABLE_VIRT_ADDRESS(virt);
+
+  // we can't access directly, 
+  // because the directory maybe is not set to cr3 yet
+  // but we can always have a recursive table hack
   memset(va_table, 0, sizeof(struct ptable));
   //return va_table;
 }

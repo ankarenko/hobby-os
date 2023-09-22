@@ -1,6 +1,11 @@
 // this does not work!
 // static char* str = "Priver!";
 
+int cal(int a, int b) {
+  int c = a + b;
+  return c;
+}
+
 int main()
 {
   int a = 512;

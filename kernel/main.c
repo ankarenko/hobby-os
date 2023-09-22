@@ -32,6 +32,7 @@ extern void asm_syscall_print();
 void kthread_1();
 void kthread_2();
 void kthread_3();
+void cmd_init();
 
 
 //! sleeps a little bit. This uses the HALs get_tick_count() which in turn uses the PIT
@@ -153,13 +154,14 @@ bool run_cmd(char* cmd_buf) {
   } else if (strcmp(cmd_buf, "ls") == 0) {
     cmd_read_ls();
   } else if (strcmp(cmd_buf, "process") == 0) {
-    create_process("a:/calc.exe");
-    execute_process();
+    // loads process in user space and puts it in a schedule que
+    process_load("a:/calc.exe");
   } else if (strcmp(cmd_buf, "thread") == 0) {
     /* create kernel threads. */
     virtual_addr stack1 = 0;
     virtual_addr stack2 = 0;
     virtual_addr stack3 = 0;
+    virtual_addr stack4 = 0;
     
     if (
       !create_kernel_stack(&stack1) ||
@@ -169,10 +171,11 @@ bool run_cmd(char* cmd_buf) {
       return false;
     }
 
-    queue_insert(thread_create(kthread_1, stack1, true));
-    queue_insert(thread_create(kthread_2, stack2, true));
-    queue_insert(thread_create(kthread_3, stack3, true));
-
+    queue_insert(thread_create(0, (virtual_addr)kthread_1, stack1, true));
+    queue_insert(thread_create(0, (virtual_addr)kthread_2, stack2, true));
+    //queue_insert(thread_create(0, (virtual_addr)kthread_3, stack3, true));
+    queue_insert(thread_create(0, (virtual_addr)cmd_init, stack4, true));
+    
     /* execute idle thread. */
     execute_idle();
   }
@@ -422,7 +425,7 @@ void kthread_1 () {
 	bool dir = true;
 	while(1) {
     printf("Thread 1\n");
-    thread_sleep(300);
+    thread_sleep(200);
 	}
 }
 
@@ -432,7 +435,7 @@ void kthread_2 () {
 	bool dir = true;
 	while(1) {
     printf("Thread 2\n");
-    thread_sleep(300);
+    thread_sleep(200);
 	}
 }
 
@@ -442,6 +445,6 @@ void kthread_3 () {
 	bool dir = true;
 	while(1) {
 		printf("Thread 3\n");
-    thread_sleep(300);
+    thread_sleep(200);
 	}
 }

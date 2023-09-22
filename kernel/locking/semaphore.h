@@ -1,0 +1,6 @@
+#ifndef LOCKING_SEMAPHORE_H
+#define LOCKING_SEMAPHORE_H
+
+
+
+#endif

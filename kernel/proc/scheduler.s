@@ -35,14 +35,12 @@ scheduler_isr:
 
   # call tss_set_stack (kernelSS, kernelESP).
   # this code will be needed later for user tasks.
-
   push 8(%eax)  # kernel esp
   push 12(%eax) # kernel ss
   call tss_set_stack
   add $8, %esp // remove params from the stack
 
   # send EOI and restore context.
-
   pop %gs
   pop %fs
   pop %es
@@ -67,7 +65,7 @@ chain_interrupt:
   push [old_pic_isr]
   ret
 
-
+/*
 .global idle_task
 .type idle_task, @function
 idle_task:
@@ -79,4 +77,5 @@ again:
 
   leave
   ret
+*/
 

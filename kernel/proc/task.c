@@ -1,10 +1,10 @@
+#include <math.h>
 #include "task.h"
 #include "../memory/vmm.h"
 #include "../cpu/hal.h"
 #include "../cpu/tss.h"
 #include "../memory/malloc.h"
 #include "../cpu/gdt.h"
-#include <math.h>
 #include "elf.h"
 
 #define THREAD_MAX 10
@@ -16,6 +16,9 @@ thread   _idle_thread;
 thread*  _current_task;
 thread   _current_thread_local;
 process  _process_list [PROC_MAX];
+
+static uint32_t next_pid = 0;
+static uint32_t next_tid = 0;
 
 void scheduler_isr();
 void (*old_pic_isr)();
@@ -35,6 +38,15 @@ process* add_process(process p) {
 		/* id's of -1 are free. */
 		if (_process_list[c].id != PROC_INVALID_ID) {
 			_process_list[c] = p;
+			return &_process_list[c];
+		}
+	}
+	return 0;
+}
+
+process* get_process(uint32_t id) {
+  for (int c = 0; c < PROC_MAX; c++) {
+		if (_process_list[c].id == id) {
 			return &_process_list[c];
 		}
 	}
@@ -91,7 +103,7 @@ struct pdirectory* create_address_space() {
 	struct pdirectory* space;
 
 	/* allocate from bitmap. */
-	space = (struct pdirectory*)pmm_alloc_frame();
+	space = kmalloc(PAGE_SIZE); // (struct pdirectory*)pmm_alloc_frame();
 
 	/* clear page directory and clone kernel space. */
 	vmm_pdirectory_clear(space);
@@ -268,23 +280,26 @@ void thread_wake() {
 }
 
 /* creates thread. */
-thread thread_create(void (*entry)(void), uint32_t esp, bool is_kernel) {
-	trap_frame* frame;
+thread thread_create(
+  process *parent, 
+  virtual_addr eip, 
+  virtual_addr esp, 
+  bool is_kernel
+) {
+	lock_scheduler();
+
+  trap_frame* frame;
 	thread t;
 
-	/* for chapter 25, this paramater is ignored. */
-	is_kernel = is_kernel;
-
 	/* adjust stack. We are about to push data on it. */
-  uint32_t a = sizeof(trap_frame);
-	esp -= sizeof(trap_frame); // ????ALIGN_UP(sizeof(trap_frame), 16);
+  esp -= sizeof(trap_frame); // ????ALIGN_UP(sizeof(trap_frame), 16);
 
 	/* initialize task frame. */
 	frame = ((trap_frame*) esp);
 	// makes sure when doing iret, interrupts are enabled, 2th bit is just a parity bit
 	// https://stackoverflow.com/questions/25707130/what-is-the-purpose-of-the-parity-flag-on-a-cpu
   frame->flags = 0x202;  
-  frame->eip = (uint32_t)entry;
+  frame->eip = eip;
 	frame->ebp = 0;
 	frame->esp = 0;
 	frame->edi = 0;
@@ -305,15 +320,16 @@ thread thread_create(void (*entry)(void), uint32_t esp, bool is_kernel) {
 	/* set stack. */
 	t.esp = esp;
 
-	/* ignore other fields. */
-	t.parent = 0;
+	t.parent = parent;
 	t.priority = 0;
 	t.state = THREAD_RUN;
 	t.sleep_time_delta = 0;
+
+  unlock_scheduler();
 	return t;
 }
 
-bool create_process(char* app_path) {
+bool create_process(char* app_path, uint32_t* proc_id) {
   process pcb;
   struct pdirectory* address_space = 0;
   virtual_addr image_base;
@@ -326,6 +342,7 @@ bool create_process(char* app_path) {
   address_space = create_address_space();
   
   // try to load image into our address space
+  // TODO: mos make it differently check it out
   if (!elf_load_image(app_path, address_space, &image_base, &image_size, &entry)) {
     return false;
   }
@@ -337,17 +354,17 @@ bool create_process(char* app_path) {
   }
 
   /* create process. */
-  pcb.id = 1;
+  pcb.id = next_pid++;
 	pcb.image_base = image_base;
 	pcb.page_directory = address_space;
 
 	/* create main thread. */
 	pcb.thread_count = 1;
-  pcb.threads[0] = thread_create(entry, user_esp, false);
-	pcb.threads[0].parent = add_process(pcb);
+  pcb.threads[0] = thread_create(
+    &pcb, (virtual_addr)entry, user_esp, false
+  );
+	add_process(pcb);
 
-	/* schedule thread to run. */
-	queue_insert(pcb.threads[0]);
 	return true;
 
 /*
@@ -372,6 +389,21 @@ bool create_process(char* app_path) {
   mthread->frame.esp = layout.stack;
   mthread->frame.ebp = mthread->frame.esp;
 */
+}
+
+bool process_load(char* app_path) {
+  lock_scheduler();
+  uint32_t proc_id;
+  create_process(app_path, &proc_id);
+  process* proc = get_process(proc_id);
+
+  if (!proc) {
+    return false;
+  }
+
+  /* schedule thread to run. */
+	queue_insert(proc->threads[0]);
+  unlock_scheduler();
 }
 
 void execute_process() {
@@ -421,7 +453,7 @@ process* get_current_process() {
 
 /* idle thread. */
 
-void idle_task_1() {
+void idle_task() {
 	/* loop forever and yield to cpu. */
 	while(1) 
     __asm volatile ("pause" ::: "memory");
@@ -441,7 +473,12 @@ bool scheduler_initialize(void) {
   }
 
   /* create idle thread and add it. */
-  _idle_thread = thread_create(idle_task, (uint32_t)kernel_stack, true);
+  _idle_thread = thread_create(
+    0, 
+    (virtual_addr)idle_task, 
+    (virtual_addr)kernel_stack, 
+    true
+  );
 
   /* set current thread to idle task and add it. */
   _current_thread_local = _idle_thread;
