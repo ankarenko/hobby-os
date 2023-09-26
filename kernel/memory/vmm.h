@@ -101,7 +101,8 @@ bool vmm_alloc_page(pt_entry*);
 void vmm_free_page(pt_entry* e);
 
 //! switch to a new page directory
-// bool vmm_switch_pdirectory(struct pdirectory* dir, struct pdirectory* virt);
+bool vmm_switch_pdirectory(struct pdirectory* dir);
+bool vmm_switch_back();
 
 //! get current page directory
 struct pdirectory* vmm_get_directory();
@@ -132,6 +133,8 @@ void vmm_map_address(struct pdirectory *va_dir, uint32_t virt, uint32_t phys, ui
 //virtual_addr vmm_alloc_size(virtual_addr from, uint32_t size, uint32_t flags);
 void vmm_unmap_address(struct pdirectory *va_dir, uint32_t virt);
 
+void vmm_set_rec_table(physical_addr new_dir);
+void vmm_set_rec_table_to_kernel();
 
 // map (page_directory, virt, phys, pages_amount, flags)
 

@@ -150,7 +150,7 @@ bool elf_load_image(
   *entry = *image_base + elf_header->e_entry - base;
 
   kfree(elf_file);
-  return false;
+  return true;
 }
 
 void elf_unload() {

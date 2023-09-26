@@ -1,5 +1,6 @@
 #include <math.h>
 #include "task.h"
+#include <string.h>
 #include "../memory/vmm.h"
 #include "../cpu/hal.h"
 #include "../cpu/tss.h"
@@ -102,12 +103,24 @@ thread queue_get() {
 struct pdirectory* create_address_space() {
 	struct pdirectory* space;
 
-	/* allocate from bitmap. */
+	/* we need our page directory to be aligned, 0-11 bits should be zero */
+  virtual_addr aligned_object = kalign_heap(PMM_FRAME_SIZE);
 	space = kmalloc(PAGE_SIZE); // (struct pdirectory*)pmm_alloc_frame();
+  if (aligned_object)
+		kfree(aligned_object);
 
 	/* clear page directory and clone kernel space. */
 	vmm_pdirectory_clear(space);
 	vmm_clone_kernel_space(space);
+
+  // recursive trick
+  
+  space->m_entries[PAGES_PER_DIR - 1] = 
+    vmm_get_physical_address(space, true) | 
+    I86_PDE_PRESENT | 
+    I86_PDE_WRITABLE | 
+    I86_PDE_USER;
+
 	return space;
 }
 
@@ -329,9 +342,11 @@ thread thread_create(
 	return t;
 }
 
+
 bool create_process(char* app_path, uint32_t* proc_id) {
   process pcb;
   struct pdirectory* address_space = 0;
+  struct pdirectory* kernel_space = vmm_get_directory();
   virtual_addr image_base;
   uint32_t image_size;
   virtual_addr user_esp;
@@ -341,29 +356,33 @@ bool create_process(char* app_path, uint32_t* proc_id) {
   // create userspace
   address_space = create_address_space();
   
-  // try to load image into our address space
-  // TODO: mos make it differently check it out
-  if (!elf_load_image(app_path, address_space, &image_base, &image_size, &entry)) {
-    return false;
+  vmm_switch_pdirectory(address_space);
+  {
+    // try to load image into our address space
+    // TODO: mos make it differently check it out
+    if (!elf_load_image(app_path, address_space, &image_base, &image_size, &entry)) {
+      return false;
+    }
+
+    /* create stack space for main thread at the end of the program */
+    // dont forget that the stack grows up from down
+    if (!create_user_stack(address_space, &user_esp, image_end)) {
+      return false;
+    }
+
+    /* create process. */
+    pcb.id = next_pid++;
+    pcb.image_base = image_base;
+    pcb.page_directory = address_space;
+
+    /* create main thread. */
+    pcb.thread_count = 1;
+    pcb.threads[0] = thread_create(
+      &pcb, (virtual_addr)entry, user_esp, false
+    );
+    add_process(pcb);
   }
-
-  /* create stack space for main thread at the end of the program */
-  // dont forget that the stack grows up from down
-	if (!create_user_stack(address_space, &user_esp, image_end)) {
-		return false;
-  }
-
-  /* create process. */
-  pcb.id = next_pid++;
-	pcb.image_base = image_base;
-	pcb.page_directory = address_space;
-
-	/* create main thread. */
-	pcb.thread_count = 1;
-  pcb.threads[0] = thread_create(
-    &pcb, (virtual_addr)entry, user_esp, false
-  );
-	add_process(pcb);
+  vmm_switch_back();
 
 	return true;
 

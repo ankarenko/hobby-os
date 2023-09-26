@@ -12,20 +12,30 @@
 
 //! current directory table (global)
 struct pdirectory* _current_dir = 0;
+struct pdirectory* _kernel_dir = 0;
+physical_addr _kernel_dir_phys = 0;
+physical_addr _current_dir_phys = 0;
 
-/*
-bool vmm_switch_pdirectory(struct pdirectory* dir, struct pdirectory* virt) {
+
+bool vmm_switch_pdirectory(struct pdirectory* dir) {
   if (!dir)
     return false;
 
-  //_current_dir = dir;
-  //_current_dir = virt;
-  _cur_pdbr = (physical_addr)&dir->m_entries;
+  _current_dir = dir;
+  _current_dir_phys = vmm_get_physical_address(dir, false); // pmm_get_PDBR();
 
-  pmm_load_PDBR(_cur_pdbr);
+  pmm_load_PDBR(_current_dir_phys);
+
   return true;
 }
-*/
+
+bool vmm_switch_back() {
+  _current_dir = _kernel_dir;
+  _current_dir_phys = _kernel_dir_phys;
+
+  pmm_load_PDBR(_current_dir_phys);
+  return true;
+}
 
 bool vmm_alloc_page(pt_entry* e) {
   //! allocate a free physical frame
@@ -152,6 +162,27 @@ void vmm_init() {
   vmm_paging(va_dir, pa_dir);
 }
 
+void vmm_invalidate_page_tables(void) {
+	asm volatile (
+			"movl %%cr3, %%eax\n"
+			"movl %%eax, %%cr3\n"
+			::: "%eax");
+}
+
+// useful when need to edit userspace table
+void vmm_set_rec_table(virtual_addr new_dir) {
+  pd_entry* entry = &vmm_get_directory()->m_entries[PAGES_PER_DIR - 1];
+  physical_addr addr = vmm_get_physical_address(new_dir, true);
+  pd_entry_set_frame(entry, addr);
+  pd_entry_add_attrib(entry, I86_PDE_PRESENT | I86_PDE_WRITABLE);
+
+  vmm_invalidate_page_tables();
+}
+
+void vmm_set_rec_table_to_kernel() {
+  vmm_set_rec_table_to_kernel(vmm_get_physical_address(vmm_get_directory(), false));
+}
+
 void vmm_alloc_ptable(struct pdirectory* va_dir, uint32_t index, uint32_t flags) {
   pd_entry* entry = &va_dir->m_entries[index];
 
@@ -169,6 +200,9 @@ void vmm_alloc_ptable(struct pdirectory* va_dir, uint32_t index, uint32_t flags)
 
 void vmm_paging(struct pdirectory* va_dir, uint32_t pa_dir) {
   _current_dir = va_dir;
+  _current_dir_phys = pa_dir;
+  _kernel_dir = va_dir;
+  _kernel_dir_phys = pa_dir;
 
   __asm__ __volatile__(
       "mov %0, %%cr3           \n"
@@ -252,14 +286,20 @@ void vmm_clone_kernel_space(struct pdirectory* dir) {
   if (dir) {
     uint32_t kernel_dir_index = PAGE_DIRECTORY_INDEX(KERNEL_HIGHER_HALF);
     pd_entry* kernel = &vmm_get_directory()->m_entries[kernel_dir_index];
-
+      
     /* copy kernel page tables into this new page directory.
     Recall that KERNEL SPACE is 0xc0000000, which starts at
     entry 768. */
     memcpy(
-      dir->m_entries[kernel_dir_index], 
+      &dir->m_entries[0], 
+      &vmm_get_directory()->m_entries[0],
+      sizeof(pd_entry)
+    );
+    memcpy(
+      &dir->m_entries[kernel_dir_index], 
       kernel, 
       (PAGES_PER_DIR - kernel_dir_index) * sizeof(pd_entry)
     );
+    
   }
 }

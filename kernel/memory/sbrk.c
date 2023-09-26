@@ -31,7 +31,7 @@ void *sbrk(size_t n) {
     if (phyiscal_addr == 0) { // error while allocating frames
       return 0;
     }
-    
+
     uint32_t page_addr = div_ceil(_kernel_heap_current, PMM_FRAME_SIZE) * PMM_FRAME_SIZE;\
     // todo: check if page_addr is less than KERNEL_HEAP_BOTTOM, otherwise thrown an error
     for (; page_addr < _kernel_heap_current + n; page_addr += PMM_FRAME_SIZE, phyiscal_addr += PMM_FRAME_SIZE) {
