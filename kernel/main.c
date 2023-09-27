@@ -171,10 +171,10 @@ bool run_cmd(char* cmd_buf) {
       return false;
     }
 
-    queue_insert(thread_create(0, (virtual_addr)kthread_1, stack1, true));
-    queue_insert(thread_create(0, (virtual_addr)kthread_2, stack2, true));
+    queue_insert(thread_create(0, (virtual_addr)kthread_1, 0, stack1, true));
+    queue_insert(thread_create(0, (virtual_addr)kthread_2, 0, stack2, true));
     //queue_insert(thread_create(0, (virtual_addr)kthread_3, stack3, true));
-    queue_insert(thread_create(0, (virtual_addr)cmd_init, stack4, true));
+    queue_insert(thread_create(0, (virtual_addr)cmd_init, 0, stack3, true));
     
     /* execute idle thread. */
     execute_idle();

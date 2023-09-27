@@ -22,7 +22,7 @@ bool vmm_switch_pdirectory(struct pdirectory* dir) {
     return false;
 
   _current_dir = dir;
-  _current_dir_phys = vmm_get_physical_address(dir, false); // pmm_get_PDBR();
+  _current_dir_phys = vmm_get_physical_address(dir, true); // pmm_get_PDBR();
 
   pmm_load_PDBR(_current_dir_phys);
 

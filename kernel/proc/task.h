@@ -46,18 +46,19 @@ typedef struct _trap_frame {
 	uint32_t cs;
 	uint32_t flags;
 	/* used only when coming from/to user mode. */
-  //	uint32_t user_stack;
-  //	uint32_t user_ss;
+  //uint32_t user_stack;
+  //uint32_t user_ss;
 } trap_frame;
 
 struct _process;
 typedef unsigned int ktime_t;
 
 typedef struct _thread {
-  uint32_t  esp; // user stack
-  uint32_t  ss; // user stack segment
   uint32_t  kernel_esp;
   uint32_t  kernel_ss;
+  uint32_t  user_esp; // user stack
+  uint32_t  user_ss; // user stack segment
+
   struct _process*  parent;
   uint32_t  priority;
   int32_t   state;
@@ -88,7 +89,8 @@ bool queue_insert(thread t);
 thread thread_create(
   process *parent, 
   virtual_addr eip, 
-  virtual_addr esp, 
+  virtual_addr user_esp,
+  virtual_addr kernel_esp,
   bool is_kernel
 );
 bool process_load(char* app_path);

@@ -27,6 +27,8 @@ scheduler_isr:
   mov [_current_task], %eax
   mov %esp, (%eax) 
 
+  # load kernel_ss and kernel_stack
+
   call scheduler_tick
   
   # restore esp
@@ -40,6 +42,10 @@ scheduler_isr:
   call tss_set_stack
   add $8, %esp // remove params from the stack
 
+  #mov 16(%eax), %edx // load parent process
+  #mov 8(%edx), %edx
+  #mov %edx, %cr3 
+
   # send EOI and restore context.
   pop %gs
   pop %fs
@@ -50,7 +56,7 @@ interrupt_return:
   # test if we need to call old isr
   mov [old_pic_isr], %eax 
   cmp $0, %eax
-  jne chain_interrupt
+  //jne chain_interrupt
 
   # # if old_scheduler_isr is null, send EOI and return.
   mov $0x20, %al 

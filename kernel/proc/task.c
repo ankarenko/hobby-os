@@ -11,6 +11,8 @@
 #define THREAD_MAX 10
 #define PROC_MAX 10
 
+process _kernel_proc = { .id = 0 };
+
 thread   _ready_queue  [THREAD_MAX];
 int32_t  _queue_last, _queue_first;
 thread   _idle_thread;
@@ -37,7 +39,7 @@ static process _proc = {
 process* add_process(process p) {
 	for (int c = 0; c < PROC_MAX; c++) {
 		/* id's of -1 are free. */
-		if (_process_list[c].id != PROC_INVALID_ID) {
+		if (_process_list[c].id == PROC_INVALID_ID) {
 			_process_list[c] = p;
 			return &_process_list[c];
 		}
@@ -161,13 +163,18 @@ bool create_kernel_stack_static(virtual_addr* kernel_stack) {
 
 
 /* create a new kernel space stack. */
-
 bool create_kernel_stack(virtual_addr* kernel_stack) {
   uint32_t stack_size = PMM_FRAME_SIZE;
 	void* ret;
 
   /* allocate a 4k frame for the stack. */
+  // https://forum.osdev.org/viewtopic.php?f=1&t=22014
+  // stack is better to be aligned 16byte
+  virtual_addr aligned = kalign_heap(16); 
 	*kernel_stack = kmalloc(stack_size);
+  if (aligned) {
+    kfree(aligned);
+  }
 
   if (!*kernel_stack) {
     return false;
@@ -215,7 +222,7 @@ void thread_execute(thread t) {
 											 "pop %%es			\n"
 											 "pop %%ds			\n"
 											 "popal					\n"
-											 "iret					\n" ::"r"(t.esp));
+											 "iret					\n" ::"r"(t.kernel_esp));
 }
 
 /* execute idle thread. */
@@ -235,8 +242,9 @@ void dispatch () {
 	/* We do Round Robin here, just remove and insert. */
 next_thread:
 	queue_remove();
-	queue_insert(_current_thread_local);
-	_current_thread_local = queue_get();
+	thread prev = _current_thread_local;
+  queue_insert(_current_thread_local);
+  _current_thread_local = queue_get();
 
 	/* make sure this thread is not blocked. */
 	if (_current_thread_local.state & THREAD_BLOCK_STATE) {
@@ -248,12 +256,18 @@ next_thread:
 		/* should we wake thread? */
 		if (_current_thread_local.sleep_time_delta == 0) {
 			thread_wake();
-			return;
+			goto exec_thread;
 		}
 
 		/* not yet, go to next thread. */
 		goto next_thread;
 	}
+exec_thread:
+  // check if we need to change address space
+  if (prev.parent->id != _current_thread_local.parent->id) {
+    struct pgdirectory* space = _current_thread_local.parent->page_directory;
+    vmm_switch_pdirectory(space);
+  }
 }
 
 /* remove thread state flags. */
@@ -296,7 +310,8 @@ void thread_wake() {
 thread thread_create(
   process *parent, 
   virtual_addr eip, 
-  virtual_addr esp, 
+  virtual_addr user_esp,
+  virtual_addr kernel_esp,
   bool is_kernel
 ) {
 	lock_scheduler();
@@ -305,10 +320,10 @@ thread thread_create(
 	thread t;
 
 	/* adjust stack. We are about to push data on it. */
-  esp -= sizeof(trap_frame); // ????ALIGN_UP(sizeof(trap_frame), 16);
+  kernel_esp -= sizeof(trap_frame); // ????ALIGN_UP(sizeof(trap_frame), 16);
 
 	/* initialize task frame. */
-	frame = ((trap_frame*) esp);
+	frame = ((trap_frame*) kernel_esp);
 	// makes sure when doing iret, interrupts are enabled, 2th bit is just a parity bit
 	// https://stackoverflow.com/questions/25707130/what-is-the-purpose-of-the-parity-flag-on-a-cpu
   frame->flags = 0x202;  
@@ -328,15 +343,16 @@ thread thread_create(
 	frame->es = is_kernel? KERNEL_DATA : USER_DATA;
 	frame->fs = is_kernel? KERNEL_DATA : USER_DATA;
 	frame->gs = is_kernel? KERNEL_DATA : USER_DATA;
-	t.ss = is_kernel? KERNEL_DATA : USER_DATA;
-
-	/* set stack. */
-	t.esp = esp;
-
-	t.parent = parent;
+	
+  
+	t.parent = parent == 0? &_kernel_proc : parent;
 	t.priority = 0;
 	t.state = THREAD_RUN;
 	t.sleep_time_delta = 0;
+  t.kernel_esp = kernel_esp;
+  t.kernel_ss = KERNEL_DATA;
+  t.user_ss = USER_DATA;
+  t.user_esp = user_esp;
 
   unlock_scheduler();
 	return t;
@@ -370,15 +386,22 @@ bool create_process(char* app_path, uint32_t* proc_id) {
       return false;
     }
 
+    virtual_addr* kernel_esp;
+    if (!create_kernel_stack(kernel_esp)) {
+      return false;
+    }
+
     /* create process. */
-    pcb.id = next_pid++;
+    pcb.id = ++next_pid;
+    *proc_id = pcb.id;
     pcb.image_base = image_base;
     pcb.page_directory = address_space;
 
     /* create main thread. */
     pcb.thread_count = 1;
     pcb.threads[0] = thread_create(
-      &pcb, (virtual_addr)entry, user_esp, false
+      &pcb, (virtual_addr)entry, 
+      user_esp, kernel_esp, false
     );
     add_process(pcb);
   }
@@ -495,6 +518,7 @@ bool scheduler_initialize(void) {
   _idle_thread = thread_create(
     0, 
     (virtual_addr)idle_task, 
+    (virtual_addr)kernel_stack,
     (virtual_addr)kernel_stack, 
     true
   );
