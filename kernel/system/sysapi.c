@@ -5,16 +5,20 @@
 
 #define __NR_dprintf 512
 #define __NR_dterminate 1
+#define __NR_thread_sleep 2
 
 static int32_t sys_debug_printf(/*enum debug_level level,*/ const char *out) {
-
-
   printf(out);
   return 1;
 }
 
 static int32_t sys_debug_terminate() {
   terminate_process();
+  return 1;
+}
+ 
+static int32_t sys_debug_sleep_thread(uint32_t msec) {
+  thread_sleep(msec);
   return 1;
 }
 
@@ -42,6 +46,7 @@ int32_t syscall_printf(char *str) {
 static void *syscalls[] = {
     [__NR_dprintf] = sys_debug_printf,
     [__NR_dterminate] = sys_debug_terminate,
+    [__NR_thread_sleep] = sys_debug_sleep_thread,
     0
 };
 

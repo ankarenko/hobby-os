@@ -343,16 +343,19 @@ thread thread_create(
 	frame->es = is_kernel? KERNEL_DATA : USER_DATA;
 	frame->fs = is_kernel? KERNEL_DATA : USER_DATA;
 	frame->gs = is_kernel? KERNEL_DATA : USER_DATA;
+
+  frame->user_ss = USER_DATA;
+  frame->user_stack = user_esp;
+
+  t.user_ss = USER_DATA;
+  t.user_esp = user_esp;
 	
-  
 	t.parent = parent == 0? &_kernel_proc : parent;
 	t.priority = 0;
 	t.state = THREAD_RUN;
 	t.sleep_time_delta = 0;
   t.kernel_esp = kernel_esp;
   t.kernel_ss = KERNEL_DATA;
-  t.user_ss = USER_DATA;
-  t.user_esp = user_esp;
 
   unlock_scheduler();
 	return t;
@@ -367,8 +370,7 @@ bool create_process(char* app_path, uint32_t* proc_id) {
   uint32_t image_size;
   virtual_addr user_esp;
   virtual_addr entry;
-  virtual_addr image_end = ALIGN_UP(image_base + image_size, PMM_FRAME_SIZE);
-      
+
   // create userspace
   address_space = create_address_space();
   
@@ -380,14 +382,15 @@ bool create_process(char* app_path, uint32_t* proc_id) {
       return false;
     }
 
+    virtual_addr image_end = ALIGN_UP(image_base + image_size, PMM_FRAME_SIZE);  
     /* create stack space for main thread at the end of the program */
     // dont forget that the stack grows up from down
     if (!create_user_stack(address_space, &user_esp, image_end)) {
       return false;
     }
 
-    virtual_addr* kernel_esp;
-    if (!create_kernel_stack(kernel_esp)) {
+    virtual_addr kernel_esp;
+    if (!create_kernel_stack(&kernel_esp)) {
       return false;
     }
 

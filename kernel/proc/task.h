@@ -46,8 +46,9 @@ typedef struct _trap_frame {
 	uint32_t cs;
 	uint32_t flags;
 	/* used only when coming from/to user mode. */
-  //uint32_t user_stack;
-  //uint32_t user_ss;
+  // also pushed by cpu
+  uint32_t user_stack;
+  uint32_t user_ss;
 } trap_frame;
 
 struct _process;

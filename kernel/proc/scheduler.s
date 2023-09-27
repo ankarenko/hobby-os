@@ -28,7 +28,7 @@ scheduler_isr:
   mov %esp, (%eax) 
 
   # load kernel_ss and kernel_stack
-
+  
   call scheduler_tick
   
   # restore esp
@@ -37,8 +37,8 @@ scheduler_isr:
 
   # call tss_set_stack (kernelSS, kernelESP).
   # this code will be needed later for user tasks.
-  push 8(%eax)  # kernel esp
-  push 12(%eax) # kernel ss
+  push 0(%eax)  # kernel esp
+  push 4(%eax) # kernel ss
   call tss_set_stack
   add $8, %esp // remove params from the stack
 
@@ -56,7 +56,7 @@ interrupt_return:
   # test if we need to call old isr
   mov [old_pic_isr], %eax 
   cmp $0, %eax
-  //jne chain_interrupt
+  jne chain_interrupt
 
   # # if old_scheduler_isr is null, send EOI and return.
   mov $0x20, %al 
