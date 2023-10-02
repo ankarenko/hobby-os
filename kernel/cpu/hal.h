@@ -56,6 +56,13 @@ static __inline void outportw(unsigned short _port, unsigned short _data) {
                : "dN"(_port), "a"(_data));
 }
 
+static __inline unsigned int ESP() {
+  uint32_t esp;
+  asm volatile("mov %%esp, %0"
+               : "=r"(esp));
+  return esp;
+}
+
 static __inline unsigned int inportl(unsigned short _port) {
   unsigned int rv;
   asm volatile("inl %%dx, %%eax"

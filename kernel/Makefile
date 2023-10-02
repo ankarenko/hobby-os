@@ -16,7 +16,7 @@ C_SOURCES = $(filter-out ${C_ALL_SOURCES:.c=.test.c}, ${C_ALL_SOURCES})
 C_SOURCES_TEST = $(filter-out main.c, $(wildcard main.test.c ${C_ALL_SOURCES}))
 
 A_SOURCES = $(wildcard ${PATHS:.c=.s})
-HEADERS = $(wildcard ../test/greatest.h *.h ${PATHS:.c=.h})
+HEADERS = $(wildcard ../test/greatest.h *.h ${PATHS:.c=.h} include/*.h)
 OBJ = \
 	crti.o \
 	crtbegin.o \

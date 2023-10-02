@@ -85,6 +85,14 @@ static inline bool __list_del_entry_valid(struct list_head *entry) {
 }
 
 /**
+ * list_empty - tests whether a list is empty
+ * @head: the list to test.
+ */
+static inline int list_empty(const struct list_head *head) {
+	return head->next == head;
+}
+
+/**
  * list_del - deletes entry from list.
  * @entry: the element to delete from the list.
  * Note: list_empty() on entry does not return true after this, the entry is

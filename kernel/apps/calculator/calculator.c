@@ -31,10 +31,10 @@ void terminate() {
 int main()
 {
   int a = 0;
-  char* str = "Hello from user process!";
+  char* str = "Hello from user process!\n";
 
   // print message
-  while (1) {
+  //while (1) {
     // sleep
     a = 200;
     __asm__ __volatile__(
@@ -52,8 +52,8 @@ int main()
         : "=m"(str)
         : "a"(a)
     );
-  }
-  
+  //}
+
   //terminate
   a = 1;
   __asm__ __volatile__(

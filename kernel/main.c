@@ -279,7 +279,20 @@ struct just_item {
   struct list_head list; /* kernel's list structure */	
 };
 
+extern void switch_to_task(thread* next_task);
+void kthread_4() {
+  while (1) {
+    printf("\n Thread: 4");
+    make_schedule();
+  }
+}
 
+void kthread_5() {
+  while (1) {
+    //printf("\n Thread: 5");
+    make_schedule();
+  }
+}
 
 void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   char** argv = 0;
@@ -330,7 +343,49 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   syscall_init();
   install_tss(5, 0x10, 0);
 
-  scheduler_initialize();
+  initialise_multitasking();
+  create_system_process(&kthread_1);
+  create_system_process(&kthread_2);
+  create_system_process(&kthread_3);
+
+  thread* th = pop_next_thread_to_run();
+	//_current_task = get_next_thread_to_run(); //3355447388 3222337952
+  queue_thread(th);
+
+  
+
+  //create_system_process(&kthread_5);
+  //0xc0101f05
+  /*
+  while (1) {
+    printf("\n Thread: main");
+    make_schedule();
+  }
+  */
+  /*
+  list_for_each_entry(th, get_thread_list(), sched_sibling) {
+    printf("\n t: %d, esp: %x", th->tid, th->esp);
+  }
+  */
+
+ 
+  
+  
+  
+
+  /*
+  process* proc = NULL ; 
+  list_for_each_entry(proc, get_proc_list(), proc_siblings) { 
+    printf("\nProcess: %d\n" , proc->id); 
+    
+    list_for_each_entry(th, &proc->threads, th_sibling) {
+      printf("Thread: %d\n", th->tid);
+      printf("ESP: %x", th->esp);
+    }
+  }
+  */
+  
+  //scheduler_initialize();
 
   // char* path = "/folder/content.txt";
   // char* path2 = "names.txt";
@@ -435,7 +490,7 @@ void kthread_2 () {
 	bool dir = true;
 	while(1) {
     printf("Thread 2\n");
-    thread_sleep(200);
+    thread_sleep(100);
 	}
 }
 
@@ -445,6 +500,6 @@ void kthread_3 () {
 	bool dir = true;
 	while(1) {
 		printf("Thread 3\n");
-    thread_sleep(200);
+    thread_sleep(100);
 	}
 }

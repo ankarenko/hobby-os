@@ -7,18 +7,27 @@
 #include "../memory/malloc.h"
 #include "../cpu/gdt.h"
 #include "elf.h"
+#include "../include/list.h"
 
 #define THREAD_MAX 10
 #define PROC_MAX 10
+#define ORPHAN_THREAD 0
+#define PROCESS_TRAPPED_PAGE_FAULT 0xFFFFFFFF
 
 process _kernel_proc = { .id = 0 };
 
 thread   _ready_queue  [THREAD_MAX];
 int32_t  _queue_last, _queue_first;
 thread   _idle_thread;
-thread*  _current_task;
+thread*  _idle_thread_mos;
+extern thread*  _current_task;
 thread   _current_thread_local;
 process  _process_list [PROC_MAX];
+LIST_HEAD(_proc_list);
+
+struct list_head* get_proc_list() {
+  return &_proc_list;
+}
 
 static uint32_t next_pid = 0;
 static uint32_t next_tid = 0;
@@ -86,6 +95,10 @@ bool queue_insert(thread t) {
 	_ready_queue[_queue_last % THREAD_MAX] = t;
 	_queue_last++;
 	return true;
+}
+
+bool queue_insert_mos(thread* t) {
+  return true;
 }
 
 /* remove thread. */
@@ -231,22 +244,23 @@ void execute_idle() {
 	thread_execute(_idle_thread);
 }
 
-/* gets called for each clock tick. */
-void scheduler_tick() {
-	/* just run dispatcher. */
-	dispatch();
-}
-
 /* schedule next task. */
 void dispatch () {
 	/* We do Round Robin here, just remove and insert. */
 next_thread:
 	queue_remove();
 	thread prev = _current_thread_local;
-  queue_insert(_current_thread_local);
-  _current_thread_local = queue_get();
+  // check if it is orphan
+  if (_current_thread_local.parent != ORPHAN_THREAD) {
+    queue_insert(_current_thread_local);
+  }
 
-	/* make sure this thread is not blocked. */
+  _current_thread_local = queue_get();
+  if (_current_thread_local.parent == ORPHAN_THREAD) {
+    goto next_thread;
+  }
+	
+  /* make sure this thread is not blocked. */
 	if (_current_thread_local.state & THREAD_BLOCK_STATE) {
 
 		/* adjust time delta. */
@@ -270,40 +284,52 @@ exec_thread:
   }
 }
 
-/* remove thread state flags. */
-void thread_remove_state(thread* t, uint32_t flags) {
-	/* remove flags. */
-	t->state &= ~flags;
+void kernel_thread_entry(thread *th, void *flow()) {
+  // we are not returning from PIT interrupt, 
+  // so we need to enable interrupts manually
+  unlock_scheduler(); 
+  flow();
+  schedule();
 }
 
-/* schedule new task to run. */
-void schedule() {
+thread* kernel_thread_create(
+  process* parent, 
+  virtual_addr eip
+) {
+  lock_scheduler();
 
-	/* force a task switch. */
-	__asm volatile("int $32");
-}
+  thread *th = kcalloc(1, sizeof(thread));
+  virtual_addr kernel_stack;
 
-/* set thread state flags. */
-void thread_set_state(thread* t, uint32_t flags) {
+  if (!create_kernel_stack(&kernel_stack)) {
+    return NULL;
+  }
 
-	/* set flags. */
-	t->state |= flags;
-}
-/* PUBLIC definition. */
-void thread_sleep(uint32_t ms) {
+  th->parent = parent;
+	th->priority = 0;
+  th->tid = ++next_tid;
+	th->state = THREAD_RUN;
+	th->sleep_time_delta = 0;
+  th->kernel_esp = kernel_stack;
+  INIT_LIST_HEAD(&th->sched_sibling);
+  INIT_LIST_HEAD(&th->th_sibling);
+  th->kernel_ss = KERNEL_DATA;
 
-	/* go to sleep. */
-	thread_set_state(_current_task, THREAD_BLOCK_SLEEP);
-	_current_task->sleep_time_delta = ms;
-	schedule();
-}
+  /* adjust stack. We are about to push data on it. */
+  th->esp = th->kernel_esp - sizeof(trap_frame_mos); // ????ALIGN_UP(sizeof(trap_frame), 16);
+  trap_frame_mos* frame = ((trap_frame_mos*) th->esp);
+  memset(frame, 0, sizeof(trap_frame_mos));
 
-/* PUBLIC definition. */
-void thread_wake() {
+  frame->parameter2 = eip;
+	frame->parameter1 = (uint32_t)th;
+	frame->return_address = PROCESS_TRAPPED_PAGE_FAULT;
+	frame->eip = kernel_thread_entry;
 
-	/* wake up. */
-	thread_remove_state(_current_task, THREAD_BLOCK_SLEEP);
-	_current_task->sleep_time_delta = 0;
+  th->parent = parent;
+
+  unlock_scheduler();
+
+  return th;
 }
 
 /* creates thread. */
@@ -352,6 +378,7 @@ thread thread_create(
 	
 	t.parent = parent == 0? &_kernel_proc : parent;
 	t.priority = 0;
+  t.tid = ++next_tid;
 	t.state = THREAD_RUN;
 	t.sleep_time_delta = 0;
   t.kernel_esp = kernel_esp;
@@ -402,10 +429,12 @@ bool create_process(char* app_path, uint32_t* proc_id) {
 
     /* create main thread. */
     pcb.thread_count = 1;
+    /*
     pcb.threads[0] = thread_create(
       &pcb, (virtual_addr)entry, 
       user_esp, kernel_esp, false
     );
+    */
     add_process(pcb);
   }
   vmm_switch_back();
@@ -447,7 +476,7 @@ bool process_load(char* app_path) {
   }
 
   /* schedule thread to run. */
-	queue_insert(proc->threads[0]);
+	//queue_insert(proc->threads[0]);
   unlock_scheduler();
 }
 
@@ -540,42 +569,79 @@ extern void cmd_init();
 extern void restore_kernel();
 
 void terminate_process() {
-  /*
-  process* cur = get_current_process();
+  lock_scheduler();
+  process* cur = _current_task->parent;
 	if (cur->id == PROC_INVALID_ID)
 		return;
 
 	/* release threads */
   /*
-	uint32_t i = 0;
-	thread* pThread = &cur->threads[i];
-
-  uint8_t* addr = pThread->initial_stack;
-
-  //*addr = 123;
-  vmm_unmap_address(cur->page_directory, pThread->initial_stack);
-
+  for (uint32_t i = 0; i < cur->thread_count; ++i) {
+    thread* pThread = &cur->threads[i];
+    vmm_unmap_address(cur->page_directory, pThread->kernel_esp);
+    vmm_unmap_address(cur->page_directory, pThread->user_esp);
+    // make it orphan, so it will be deleetd from the queue
+    pThread->parent = ORPHAN_THREAD;
+  }
+  */
+	
   /* unmap and release image memory */
-  /*
-	for (uint32_t page = 0; page < div_ceil(pThread->image_size, PAGE_SIZE); page++) {
+  
+	for (uint32_t page = 0; page < div_ceil(cur->image_size, PAGE_SIZE); page++) {
 		
     physical_addr phys = 0;
 		virtual_addr virt = 0;
 
 		/* get virtual address of page */
-  /*
-		virt = pThread->image_base + (page * PAGE_SIZE);
+  
+		virt = cur->image_base + (page * PAGE_SIZE);
 		vmm_unmap_address(cur->page_directory, virt);
 	}
 
-  disable_interrupts();
-  restore_kernel();
-  enable_interrupts();
-
+  remove_process(*cur);
+  unlock_scheduler();
+  
 	/* return to kernel command shell */
   /*
 	cmd_init();
 
 	for (;;);
   */
+}
+//0xC0101FE5
+process* create_system_process(virtual_addr entry) {
+  process* process = kmalloc(sizeof(process));
+  thread* th = kernel_thread_create(process, entry);
+  
+  if (!th) {
+    return false;
+  }
+
+  process->id = ++next_pid;
+  process->thread_count = 1;
+  process->page_directory = vmm_get_directory();
+  //INIT_LIST_HEAD(&process->threads);
+  //INIT_LIST_HEAD(&process->proc_siblings);
+  //list_add(&th->th_sibling, &process->threads);
+  //list_add(&process->proc_siblings, get_proc_list());
+
+  queue_thread(th);
+  return process;
+}
+
+bool initialise_multitasking() {
+  sched_init();
+
+  process* parent = kmalloc(sizeof(process));
+  parent->id = ++next_pid;
+  parent->thread_count = 1;
+  parent->page_directory = vmm_get_directory();
+  _current_task = kernel_thread_create(parent, &idle_task);
+  queue_thread(_current_task);
+
+  /* register isr */
+  old_pic_isr = getvect(IRQ0);
+  setvect(IRQ0, scheduler_isr, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32);
+
+  return true;
 }

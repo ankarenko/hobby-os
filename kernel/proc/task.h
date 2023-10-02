@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include "../memory/vmm.h"
+#include "../include/list.h"
 
 /*
 0x00000000-0x00100000 � Kernel reserved
@@ -51,6 +52,14 @@ typedef struct _trap_frame {
   uint32_t user_ss;
 } trap_frame;
 
+
+typedef struct _trap_frame_mos {
+	uint32_t epb, edi, esi, ebx;  // Pushed by pusha.
+	uint32_t eip;									  // eip is saved on stack by the caller's "CALL" instruction
+	uint32_t return_address;
+	uint32_t parameter1, parameter2, parameter3;
+} trap_frame_mos;
+
 struct _process;
 typedef unsigned int ktime_t;
 
@@ -59,12 +68,16 @@ typedef struct _thread {
   uint32_t  kernel_ss;
   uint32_t  user_esp; // user stack
   uint32_t  user_ss; // user stack segment
+  uint32_t  esp;
 
   struct _process*  parent;
   uint32_t  priority;
   int32_t   state;
   ktime_t   sleep_time_delta;
-}thread;
+  uint32_t tid;
+  struct list_head sched_sibling;
+  struct list_head th_sibling;
+} thread;
 
 typedef struct _process {
   int32_t id;
@@ -74,7 +87,9 @@ typedef struct _process {
   uint32_t  image_base;
   uint32_t  image_size;
   int32_t thread_count;
-  struct _thread  threads[MAX_THREAD];
+  //struct _thread  threads[MAX_THREAD];
+  struct list_head threads;
+  struct list_head proc_siblings;
 } process;
 
 //extern int create_thread(int (*entry)(void), uint32_t stackBase);
@@ -98,10 +113,22 @@ bool process_load(char* app_path);
 void thread_execute(thread t);
 void execute_idle();
 void thread_sleep(uint32_t ms);
+bool initialise_multitasking();
+thread* kernel_thread_create(
+  process* parent, 
+  virtual_addr eip
+);
+process* create_system_process(virtual_addr entry);
+struct list_head* get_proc_list();
 // extern "C" void TerminateProcess ();
 
 // sched.c
 void lock_scheduler();
 void unlock_scheduler();
+void queue_thread(thread *th);
+void make_schedule();
+void sched_init();
+struct list_head* get_thread_list();
+thread *pop_next_thread_to_run();
 
 #endif
