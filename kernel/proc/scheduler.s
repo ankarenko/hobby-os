@@ -68,8 +68,9 @@ switch_to_task:
   push %esi
   push %edi
   push %ebp
-
+  
   mov [_current_task], %edi        # edi = address of the previous task's "thread control block"
+  
   mov $4, %eax
   mov %esp, (%edi, %eax, 4)        # Save ESP for previous task's kernel stack in the thread's TCB
 
@@ -108,3 +109,12 @@ switch_to_task:
   pop %ebx
 
   ret                              # Load next task's EIP from its kernel stack
+
+
+.global start_kernel_task
+.type start_kernel_task, @function
+start_kernel_task:
+  mov 4(%esp), %ecx        # esi = address of the next task's "thread control block" (parameter passed on stack)
+  mov $4, %eax
+  mov (%ecx, %eax, 4), %esp        # Load ESP for next task's kernel stack from the thread's TCB
+  jmp .doneVAS

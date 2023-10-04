@@ -42,6 +42,15 @@ void sleep(uint32_t ms) {
     ;
 }
 
+
+static PFILE _cur_dir = NULL;
+
+void user_syscall() {
+  asm volatile("int $0x3");
+  int32_t a = 2;
+  syscall_printf("\nIn user mode");
+}
+
 //! wait for key stroke
 enum KEYCODE getch() {
   enum KEYCODE key = KEY_UNKNOWN;
@@ -87,13 +96,6 @@ void get_cmd(char* buf, int n) {
   }
 }
 
-static PFILE _cur_dir = NULL;
-
-void user_syscall() {
-  asm volatile("int $0x3");
-  int32_t a = 2;
-  syscall_printf("\nIn user mode");
-}
 
 void cmd_user() {
   int32_t esp;
@@ -104,6 +106,7 @@ void cmd_user() {
   uint8_t* phys = pmm_alloc_frame();
   uint8_t* virt = 0x40002000;
   
+
   
   vmm_map_address(vmm_get_directory(), 
     virt, phys, 
@@ -129,7 +132,28 @@ void cmd_user() {
 
 //! our simple command parser
 bool run_cmd(char* cmd_buf) {
-  if (strcmp(cmd_buf, "user") == 0) {
+  if (strcmp(cmd_buf, "lst") == 0) {
+    thread* th = NULL;
+    printf("\nThreads running: [ ");
+    list_for_each_entry(th, get_thread_list(), sched_sibling) {
+      printf("%d, ", th->tid);
+    }
+    printf("]");
+
+    printf("\nProcesses running: [ ");
+    process* proc = NULL;
+    list_for_each_entry(proc, get_proc_list(), proc_sibling) {
+      printf("%d (", proc->id);
+      
+
+      list_for_each_entry(th, &proc->threads, th_sibling) {
+        printf("%d ", th->tid);
+      }
+      printf("), ");
+    }
+    printf("]");
+
+  } else if (strcmp(cmd_buf, "user") == 0) {
     cmd_user();
   } else if (strcmp(cmd_buf, "exit") == 0) {
     printf("Goodbuy!");
@@ -213,6 +237,8 @@ extern void cmd_init() {
   char cmd_buf[100];
 
   while (1) {
+    //thread_sleep(300);
+    //printf("\n CMD");
     get_cmd(cmd_buf, 98);
 
     if (run_cmd(cmd_buf) == true)
@@ -294,6 +320,16 @@ void kthread_5() {
   }
 }
 
+void main_thread() {
+  thread* th = NULL;
+
+  create_system_process(&kthread_2);
+  create_system_process(&cmd_init);
+  create_system_process(&kthread_1);
+
+  idle_task();
+}
+
 void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   char** argv = 0;
   int argc = 0;
@@ -343,15 +379,11 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   syscall_init();
   install_tss(5, 0x10, 0);
 
-  initialise_multitasking();
-  create_system_process(&kthread_1);
-  create_system_process(&kthread_2);
-  create_system_process(&kthread_3);
-
-  thread* th = pop_next_thread_to_run();
-	//_current_task = get_next_thread_to_run(); //3355447388 3222337952
-  queue_thread(th);
-
+  
+  initialise_multitasking(&main_thread);
+  
+  //_current_task = get_next_thread_to_run(); //3355447388 3222337952
+  
   
 
   //create_system_process(&kthread_5);
@@ -403,7 +435,7 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   */
 
 
-  cmd_init();
+  //cmd_init();
 
   /*
   initialise_paging();
@@ -431,7 +463,13 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   /* Make sure the magic number matches for memory mapping*/
 
   // get_memory_info(mbd, magic);
-  
+  /*
+  for (;;) {
+    printf("Thread main \n");
+    thread_sleep(300);
+  }
+  */
+
   return 0;
 
   // terminal_putchar((int)'a');
@@ -480,7 +518,7 @@ void kthread_1 () {
 	bool dir = true;
 	while(1) {
     printf("Thread 1\n");
-    thread_sleep(200);
+    thread_sleep(300);
 	}
 }
 
@@ -490,7 +528,7 @@ void kthread_2 () {
 	bool dir = true;
 	while(1) {
     printf("Thread 2\n");
-    thread_sleep(100);
+    thread_sleep(300);
 	}
 }
 
@@ -500,6 +538,6 @@ void kthread_3 () {
 	bool dir = true;
 	while(1) {
 		printf("Thread 3\n");
-    thread_sleep(100);
+    thread_sleep(300);
 	}
 }

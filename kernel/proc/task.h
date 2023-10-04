@@ -71,10 +71,11 @@ typedef struct _thread {
   uint32_t  esp;
 
   struct _process*  parent;
+  uint32_t tid;
+
   uint32_t  priority;
   int32_t   state;
   ktime_t   sleep_time_delta;
-  uint32_t tid;
   struct list_head sched_sibling;
   struct list_head th_sibling;
 } thread;
@@ -89,7 +90,7 @@ typedef struct _process {
   int32_t thread_count;
   //struct _thread  threads[MAX_THREAD];
   struct list_head threads;
-  struct list_head proc_siblings;
+  struct list_head proc_sibling;
 } process;
 
 //extern int create_thread(int (*entry)(void), uint32_t stackBase);
@@ -113,7 +114,7 @@ bool process_load(char* app_path);
 void thread_execute(thread t);
 void execute_idle();
 void thread_sleep(uint32_t ms);
-bool initialise_multitasking();
+bool initialise_multitasking(virtual_addr entry);
 thread* kernel_thread_create(
   process* parent, 
   virtual_addr eip

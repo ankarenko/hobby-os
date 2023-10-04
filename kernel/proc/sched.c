@@ -112,6 +112,7 @@ void thread_wake() {
 void make_schedule() {
 next_thread:
   thread* th = pop_next_thread_to_run();
+  
   queue_thread(th);
   /*
   if (th->parent == ORPHAN_THREAD) {
@@ -136,6 +137,13 @@ next_thread:
 		goto next_thread;
 	}
 exec_thread:
+  /*
+  thread* tha = NULL;
+  list_for_each_entry(tha, get_thread_list(), th_sibling) {
+    printf("\n t: %d", tha->tid);
+  }
+  */
+
   switch_to_task(th);
 }
 

@@ -29,6 +29,8 @@ struct list_head* get_proc_list() {
   return &_proc_list;
 }
 
+void start_kernel_task(thread* th);
+
 static uint32_t next_pid = 0;
 static uint32_t next_tid = 0;
 
@@ -287,7 +289,9 @@ exec_thread:
 void kernel_thread_entry(thread *th, void *flow()) {
   // we are not returning from PIT interrupt, 
   // so we need to enable interrupts manually
-  unlock_scheduler(); 
+  enable_interrupts();
+  interruptdone(IRQ0);
+
   flow();
   schedule();
 }
@@ -319,7 +323,7 @@ thread* kernel_thread_create(
   th->esp = th->kernel_esp - sizeof(trap_frame_mos); // ????ALIGN_UP(sizeof(trap_frame), 16);
   trap_frame_mos* frame = ((trap_frame_mos*) th->esp);
   memset(frame, 0, sizeof(trap_frame_mos));
-
+  
   frame->parameter2 = eip;
 	frame->parameter1 = (uint32_t)th;
 	frame->return_address = PROCESS_TRAPPED_PAGE_FAULT;
@@ -328,7 +332,6 @@ thread* kernel_thread_create(
   th->parent = parent;
 
   unlock_scheduler();
-
   return th;
 }
 
@@ -465,6 +468,17 @@ bool create_process(char* app_path, uint32_t* proc_id) {
 */
 }
 
+
+/* idle thread. */
+
+void idle_task() {
+	/* loop forever and yield to cpu. */
+	while(1) {
+    //printf(".");
+    __asm volatile ("pause" ::: "memory");
+  }
+}
+
 bool process_load(char* app_path) {
   lock_scheduler();
   uint32_t proc_id;
@@ -523,14 +537,6 @@ void execute_process() {
 */
 process* get_current_process() {
 	return &_proc;
-}
-
-/* idle thread. */
-
-void idle_task() {
-	/* loop forever and yield to cpu. */
-	while(1) 
-    __asm volatile ("pause" ::: "memory");
 }
 
 /* initialize scheduler. */
@@ -600,15 +606,8 @@ void terminate_process() {
 
   remove_process(*cur);
   unlock_scheduler();
-  
-	/* return to kernel command shell */
-  /*
-	cmd_init();
-
-	for (;;);
-  */
 }
-//0xC0101FE5
+
 process* create_system_process(virtual_addr entry) {
   process* process = kmalloc(sizeof(process));
   thread* th = kernel_thread_create(process, entry);
@@ -620,28 +619,32 @@ process* create_system_process(virtual_addr entry) {
   process->id = ++next_pid;
   process->thread_count = 1;
   process->page_directory = vmm_get_directory();
-  //INIT_LIST_HEAD(&process->threads);
-  //INIT_LIST_HEAD(&process->proc_siblings);
-  //list_add(&th->th_sibling, &process->threads);
-  //list_add(&process->proc_siblings, get_proc_list());
+  INIT_LIST_HEAD(&process->threads);
+  INIT_LIST_HEAD(&process->proc_sibling);
+  list_add(&th->th_sibling, &process->threads);
+  list_add(&process->proc_sibling, get_proc_list());
 
   queue_thread(th);
   return process;
 }
 
-bool initialise_multitasking() {
+bool initialise_multitasking(virtual_addr entry) {
   sched_init();
 
   process* parent = kmalloc(sizeof(process));
   parent->id = ++next_pid;
   parent->thread_count = 1;
   parent->page_directory = vmm_get_directory();
-  _current_task = kernel_thread_create(parent, &idle_task);
+  INIT_LIST_HEAD(&parent->proc_sibling);
+  INIT_LIST_HEAD(&parent->threads);
+  list_add(&parent->proc_sibling, get_proc_list());
+  _current_task = kernel_thread_create(parent, entry);
+  list_add(&_current_task->th_sibling, &parent->threads);
   queue_thread(_current_task);
 
   /* register isr */
   old_pic_isr = getvect(IRQ0);
   setvect(IRQ0, scheduler_isr, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32);
 
-  return true;
+  start_kernel_task(_current_task);
 }
