@@ -246,46 +246,6 @@ void execute_idle() {
 	thread_execute(_idle_thread);
 }
 
-/* schedule next task. */
-void dispatch () {
-	/* We do Round Robin here, just remove and insert. */
-next_thread:
-	queue_remove();
-	thread prev = _current_thread_local;
-  // check if it is orphan
-  if (_current_thread_local.parent != ORPHAN_THREAD) {
-    queue_insert(_current_thread_local);
-  }
-
-  _current_thread_local = queue_get();
-  if (_current_thread_local.parent == ORPHAN_THREAD) {
-    goto next_thread;
-  }
-	
-  /* make sure this thread is not blocked. */
-	if (_current_thread_local.state & THREAD_BLOCK_STATE) {
-
-		/* adjust time delta. */
-		if (_current_thread_local.sleep_time_delta > 0)
-			_current_thread_local.sleep_time_delta--;
-
-		/* should we wake thread? */
-		if (_current_thread_local.sleep_time_delta == 0) {
-			thread_wake();
-			goto exec_thread;
-		}
-
-		/* not yet, go to next thread. */
-		goto next_thread;
-	}
-exec_thread:
-  // check if we need to change address space
-  if (prev.parent->id != _current_thread_local.parent->id) {
-    struct pgdirectory* space = _current_thread_local.parent->page_directory;
-    vmm_switch_pdirectory(space);
-  }
-}
-
 void kernel_thread_entry(thread *th, void *flow()) {
   // we are not returning from PIT interrupt, 
   // so we need to enable interrupts manually
@@ -312,7 +272,7 @@ thread* kernel_thread_create(
   th->parent = parent;
 	th->priority = 0;
   th->tid = ++next_tid;
-	th->state = THREAD_RUN;
+	th->state = THREAD_READY;
 	th->sleep_time_delta = 0;
   th->kernel_esp = kernel_stack;
   INIT_LIST_HEAD(&th->sched_sibling);
@@ -331,6 +291,9 @@ thread* kernel_thread_create(
 
   th->parent = parent;
 
+  list_add(&th->th_sibling, &parent->threads);
+  parent->thread_count += 1;
+  
   unlock_scheduler();
   return th;
 }
@@ -382,7 +345,7 @@ thread thread_create(
 	t.parent = parent == 0? &_kernel_proc : parent;
 	t.priority = 0;
   t.tid = ++next_tid;
-	t.state = THREAD_RUN;
+	//t.state = THREAD_RUN;
 	t.sleep_time_delta = 0;
   t.kernel_esp = kernel_esp;
   t.kernel_ss = KERNEL_DATA;
@@ -391,6 +354,14 @@ thread thread_create(
 	return t;
 }
 
+typedef struct _thread_info {
+
+} thread_info;
+
+union thread_union {
+  thread_info info;
+  uint64_t stack[1024];
+};
 
 bool create_process(char* app_path, uint32_t* proc_id) {
   process pcb;
@@ -443,38 +414,10 @@ bool create_process(char* app_path, uint32_t* proc_id) {
   vmm_switch_back();
 
 	return true;
-
-/*
-  proc->id = 1;
-  proc->page_directory = layout.address_space;
-  proc->priority = 1;
-  proc->state = PROCESS_STATE_ACTIVE;
-  proc->thread_count = 1;
-
-  mthread = &proc->threads[0];
-  mthread->kernel_stack = 0;
-  mthread->parent = proc;
-  mthread->priority = 1;
-  mthread->state = PROCESS_STATE_ACTIVE;
-  mthread->initial_stack = layout.stack;
-  mthread->stack_limit = (void*) ((uint32_t) mthread->initial_stack + 4096);
-  mthread->image_base = layout.image_start;
-  mthread->image_size = layout.image_size;
-  //memset (&mthread->frame, 0, sizeof (trapFrame));
-  mthread->frame.eip = layout.entry;
-  mthread->frame.flags = 0x200;  
-  mthread->frame.esp = layout.stack;
-  mthread->frame.ebp = mthread->frame.esp;
-*/
 }
 
-
-/* idle thread. */
-
 void idle_task() {
-	/* loop forever and yield to cpu. */
 	while(1) {
-    //printf(".");
     __asm volatile ("pause" ::: "memory");
   }
 }
@@ -539,40 +482,27 @@ process* get_current_process() {
 	return &_proc;
 }
 
-/* initialize scheduler. */
-bool scheduler_initialize(void) {
-  /* clear ready queue. */
-  clear_queue();
-
-  /* clear process list. */
-  init_process_list();
-
-  virtual_addr kernel_stack;
-  if (!create_kernel_stack(&kernel_stack)) {
-    return false;
-  }
-
-  /* create idle thread and add it. */
-  _idle_thread = thread_create(
-    0, 
-    (virtual_addr)idle_task, 
-    (virtual_addr)kernel_stack,
-    (virtual_addr)kernel_stack, 
-    true
-  );
-
-  /* set current thread to idle task and add it. */
-  _current_thread_local = _idle_thread;
-  _current_task = &_current_thread_local;
-  queue_insert(_idle_thread);
-
-  /* register isr */
-  old_pic_isr = getvect(IRQ0);
-  setvect(IRQ0, scheduler_isr, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32);
-}
-
 extern void cmd_init();
 extern void restore_kernel();
+
+bool free_thread(thread* th) {
+  kfree(th->kernel_esp - PMM_FRAME_SIZE);
+  //vmm_unmap_address(th->parent->page_directory, th->kernel_esp - PMM_FRAME_SIZE);
+  return true;
+}
+
+void garbage_worker_task() {
+  while (1) {
+    thread* th = pop_next_thread_to_terminate();
+
+    if (th == NULL) {
+      thread_sleep(300);
+      continue;
+    }
+
+    free_thread(th);
+  }
+}
 
 void terminate_process() {
   lock_scheduler();
@@ -582,6 +512,13 @@ void terminate_process() {
 
 	/* release threads */
   /*
+  thread* th = NULL;
+  list_for_each_entry(th, &cur->threads, th_sibling) {
+    vmm_unmap_address(cur->page_directory, th->kernel_esp - PMM_FRAME_SIZE);
+  }
+  */
+  
+  /*
   for (uint32_t i = 0; i < cur->thread_count; ++i) {
     thread* pThread = &cur->threads[i];
     vmm_unmap_address(cur->page_directory, pThread->kernel_esp);
@@ -590,6 +527,7 @@ void terminate_process() {
     pThread->parent = ORPHAN_THREAD;
   }
   */
+  
 	
   /* unmap and release image memory */
   
@@ -624,7 +562,7 @@ process* create_system_process(virtual_addr entry) {
   list_add(&th->th_sibling, &process->threads);
   list_add(&process->proc_sibling, get_proc_list());
 
-  queue_thread(th);
+  sched_push_queue(th, THREAD_READY);
   return process;
 }
 
@@ -639,8 +577,10 @@ bool initialise_multitasking(virtual_addr entry) {
   INIT_LIST_HEAD(&parent->threads);
   list_add(&parent->proc_sibling, get_proc_list());
   _current_task = kernel_thread_create(parent, entry);
-  list_add(&_current_task->th_sibling, &parent->threads);
-  queue_thread(_current_task);
+  sched_push_queue(_current_task, THREAD_READY);
+  
+  thread* garbage_worker = kernel_thread_create(parent, garbage_worker_task);
+  sched_push_queue(garbage_worker, THREAD_READY);
 
   /* register isr */
   old_pic_isr = getvect(IRQ0);

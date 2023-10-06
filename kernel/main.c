@@ -130,13 +130,38 @@ void cmd_user() {
   
 }
 
+void kthread () {
+	int col = 0;
+	bool dir = true;
+	while(1) {
+    printf("New thread 10");
+    thread_sleep(300);
+	}
+}
+
+
 //! our simple command parser
 bool run_cmd(char* cmd_buf) {
-  if (strcmp(cmd_buf, "lst") == 0) {
+  if (strcmp(cmd_buf, "create") == 0) {
+    printf("\nNew thread: \n");
+    create_system_process(&kthread);
+  }
+  else if (strcmp(cmd_buf, "kill") == 0) {
+    char id[10];
+
+    printf("\nPlease id: \n");
+    get_cmd(id, 10);
+
+    if (id) {
+      int32_t id_num = atoi(id);
+      thread_kill(id_num);
+    }
+  }
+  else if (strcmp(cmd_buf, "lst") == 0) {
     thread* th = NULL;
     printf("\nThreads running: [ ");
-    list_for_each_entry(th, get_thread_list(), sched_sibling) {
-      printf("%d, ", th->tid);
+    list_for_each_entry(th, get_ready_threads(), sched_sibling) {
+      printf("%d ", th->tid);
     }
     printf("]");
 
@@ -147,9 +172,9 @@ bool run_cmd(char* cmd_buf) {
       
 
       list_for_each_entry(th, &proc->threads, th_sibling) {
-        printf("%d ", th->tid);
+        printf(" %d", th->tid);
       }
-      printf("), ");
+      printf(") ");
     }
     printf("]");
 
@@ -181,27 +206,7 @@ bool run_cmd(char* cmd_buf) {
     // loads process in user space and puts it in a schedule que
     process_load("a:/calc.exe");
   } else if (strcmp(cmd_buf, "thread") == 0) {
-    /* create kernel threads. */
-    virtual_addr stack1 = 0;
-    virtual_addr stack2 = 0;
-    virtual_addr stack3 = 0;
-    virtual_addr stack4 = 0;
     
-    if (
-      !create_kernel_stack(&stack1) ||
-      !create_kernel_stack(&stack2) || 
-      !create_kernel_stack(&stack3)
-    ) {
-      return false;
-    }
-
-    queue_insert(thread_create(0, (virtual_addr)kthread_1, 0, stack1, true));
-    queue_insert(thread_create(0, (virtual_addr)kthread_2, 0, stack2, true));
-    //queue_insert(thread_create(0, (virtual_addr)kthread_3, stack3, true));
-    queue_insert(thread_create(0, (virtual_addr)cmd_init, 0, stack3, true));
-    
-    /* execute idle thread. */
-    execute_idle();
   }
 
   else {
@@ -324,8 +329,8 @@ void main_thread() {
   thread* th = NULL;
 
   create_system_process(&kthread_2);
-  create_system_process(&cmd_init);
   create_system_process(&kthread_1);
+  create_system_process(&cmd_init);
 
   idle_task();
 }

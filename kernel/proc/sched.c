@@ -4,8 +4,13 @@
 #include "./task.h"
 
 struct list_head process_list;
-struct list_head thread_list;
-thread*  _current_task;
+
+struct list_head ready_threads;
+struct list_head waiting_threads;
+struct list_head terminated_threads;
+
+// TODO: put it in th kernel stack, it's is more efficient
+thread* _current_task;
 
 extern void switch_to_task(thread* next_task);
 extern void scheduler_tick();
@@ -23,33 +28,49 @@ void unlock_scheduler() {
 		enable_interrupts();
 }
 
-static struct thread* get_next_thread_from_list(struct list_head* list) {
+static struct list_head* get_list_from_state(enum thread_state state) {
+  switch (state) {
+    case THREAD_TERMINATED:
+      return &terminated_threads;
+    case THREAD_READY:
+      return &ready_threads;
+    case THREAD_WAITING:
+      return &waiting_threads;
+    default:
+      return NULL;
+  }
+}
+
+static struct thread* get_next_thread_from_list(enum thread_state state) {
+  struct list_head* list = get_list_from_state(state);
+
 	if (list_empty(list))
 		return NULL;
 
 	return list_entry(list->next, thread, sched_sibling);
 }
 
-void queue_thread(thread *th) {
-	struct list_head *h = get_thread_list();
+void sched_push_queue(thread *th, enum thread_state state) {
+  struct list_head *h = get_list_from_state(state);
 
 	if (h)
 		list_add_tail(&th->sched_sibling, h);
 }
 
-static void remove_thread(thread *th) {
-	struct list_head *h = &thread_list;
+void sched_remove_queue(thread* th, enum thread_state state) {
+  struct list_head *h = &ready_threads;
 
 	if (h)
 		list_del(&th->sched_sibling);
 }
 
 static struct thread *get_next_thread_to_run() {
-	struct thread *nt = get_next_thread_from_list(&thread_list);
-	return nt;
+	return get_next_thread_from_list(THREAD_READY);
 }
 
-static struct thread *pop_next_thread_from_list(struct list_head *list) {
+static struct thread *pop_next_thread_from_list(enum thread_state state) {
+  struct list_head* list = get_list_from_state(state);
+
 	if (list_empty(list))
 		return NULL;
 
@@ -58,97 +79,92 @@ static struct thread *pop_next_thread_from_list(struct list_head *list) {
 	return th;
 }
 
-thread *pop_next_thread_to_run() {
-	struct thread *nt = pop_next_thread_from_list(&thread_list);
-	return nt;
+static thread *pop_next_thread_to_run() {
+	return pop_next_thread_from_list(THREAD_READY);
 }
 
-struct list_head* get_thread_list() {
-  return &thread_list;
+thread *pop_next_thread_to_terminate() {
+  return pop_next_thread_from_list(THREAD_TERMINATED);
 }
 
-/* gets called for each clock tick. */
+struct list_head* get_ready_threads() {
+  return &ready_threads;
+}
+
 void scheduler_tick() {
 	make_schedule();
 }
 
-/* remove thread state flags. */
-void thread_remove_state(thread* t, uint32_t flags) {
-	/* remove flags. */
-	t->state &= ~flags;
+void thread_remove_state(thread* t, enum thread_state state) {
+	t->state &= ~state;
 }
 
 /* schedule new task to run. */
 void schedule() {
-
-	/* force a task switch. */
 	__asm volatile("int $32");
 }
 
-/* set thread state flags. */
-void thread_set_state(thread* t, uint32_t flags) {
-
-	/* set flags. */
-	t->state |= flags;
+void thread_set_state(thread* t, enum thread_state state) {
+	t->state = state;
 }
-/* PUBLIC definition. */
-void thread_sleep(uint32_t ms) {
 
-	/* go to sleep. */
-	thread_set_state(_current_task, THREAD_BLOCK_SLEEP);
+void thread_sleep(uint32_t ms) {
+	thread_set_state(_current_task, THREAD_WAITING);
 	_current_task->sleep_time_delta = ms;
 	schedule();
 }
 
-/* PUBLIC definition. */
 void thread_wake() {
-
-	/* wake up. */
-	thread_remove_state(_current_task, THREAD_BLOCK_SLEEP);
+  thread_set_state(_current_task, THREAD_READY);
+	//thread_remove_state(_current_task, THREAD_WAITING);
 	_current_task->sleep_time_delta = 0;
 }
 
+bool thread_kill(uint32_t id) {
+  thread* th = NULL;
+  list_for_each_entry(th, get_list_from_state(THREAD_READY), sched_sibling) {
+    if (id == th->tid) {
+      thread_set_state(th, THREAD_TERMINATED);
+      return true;
+    }
+  }
+  
+  return false;
+}
 
 void make_schedule() {
 next_thread:
+  uint32_t a = list_count(get_list_from_state(THREAD_READY));
   thread* th = pop_next_thread_to_run();
-  
-  queue_thread(th);
-  /*
-  if (th->parent == ORPHAN_THREAD) {
+  a = list_count(get_list_from_state(THREAD_READY));
+
+  if (th->state == THREAD_TERMINATED) {
+    // put it in a queue for a worker thread to purge
+    sched_push_queue(th, THREAD_TERMINATED);
     goto next_thread;
   }
-  */
-	
-  /* make sure this thread is not blocked. */
-	if (th->state & THREAD_BLOCK_STATE) {
 
-		/* adjust time delta. */
+  sched_push_queue(th, THREAD_READY);
+  
+	if (th->state == THREAD_WAITING) {
 		if (th->sleep_time_delta > 0)
 			th->sleep_time_delta--;
 
-		/* should we wake thread? */
 		if (th->sleep_time_delta == 0) {
 			thread_wake();
-			goto exec_thread;
+			goto do_switch;
 		}
 
-		/* not yet, go to next thread. */
 		goto next_thread;
 	}
-exec_thread:
-  /*
-  thread* tha = NULL;
-  list_for_each_entry(tha, get_thread_list(), th_sibling) {
-    printf("\n t: %d", tha->tid);
-  }
-  */
-
+do_switch:
   switch_to_task(th);
 }
 
 void sched_init()
 {
-	INIT_LIST_HEAD(&process_list);
-  INIT_LIST_HEAD(&thread_list);
+  INIT_LIST_HEAD(&waiting_threads);
+  INIT_LIST_HEAD(&ready_threads);
+  INIT_LIST_HEAD(&terminated_threads);
+  INIT_LIST_HEAD(&process_list);
 }

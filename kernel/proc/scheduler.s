@@ -2,13 +2,13 @@
 .type scheduler_isr, @function
 scheduler_isr:
   cli
-  pusha         # if no current task, then just return
+  pusha         
 
-  // we are accesing 0 byte at address of current task, which is esp
-  mov [_current_task], %eax
-  mov (%eax), %eax 
-  cmp $0, %eax
-  jz  interrupt_return
+  # we are accesing 0 byte at address of current task, which is esp
+  #mov [_current_task], %eax
+  #mov (%eax), %eax 
+  #cmp $0, %eax
+  #jz  interrupt_return
 
   push %ds
   push %es
@@ -35,7 +35,7 @@ interrupt_return:
   cmp $0, %eax
   jne chain_interrupt
 
-  # # if old_scheduler_isr is null, send EOI and return.
+  ## if old_scheduler_isr is null, send EOI and return.
   mov $0x20, %al 
   out %al, $0x20
 
@@ -44,15 +44,14 @@ interrupt_return:
 
 chain_interrupt:
   popa
-  // alternative to jmp [old_pic_isr] it did not work for me though
+  # simple jmp [old_pic_isr] did't work for me
   push [old_pic_isr]
   ret
 
-#C declaration:
+# C declaration:
 #   void switch_to_task(thread_control_block *next_thread)#
 #
-#WARNING: Caller is expected to disable IRQs before calling, and enable IRQs again after function returns
-
+# WARNING: Caller is expected to disable IRQs before calling, and enable IRQs again after function returns
 .global switch_to_task
 .type switch_to_task, @function
 switch_to_task:

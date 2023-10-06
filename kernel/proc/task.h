@@ -21,11 +21,6 @@
 #define PROCESS_STATE_ACTIVE 1
 #define PROC_INVALID_ID -1
 
-#define THREAD_RUN 1
-#define THREAD_BLOCK_SLEEP 2
-/* we may have multiple block state flags. */
-#define THREAD_BLOCK_STATE THREAD_BLOCK_SLEEP
-
 /* be very careful with modifying this. Reference tss.cpp ISR. */
 typedef struct _trap_frame {
 	/* pushed by isr. */
@@ -52,6 +47,13 @@ typedef struct _trap_frame {
   uint32_t user_ss;
 } trap_frame;
 
+enum thread_state {
+	THREAD_NEW,
+	THREAD_READY,
+	THREAD_RUNNING,
+	THREAD_WAITING,
+	THREAD_TERMINATED,
+};
 
 typedef struct _trap_frame_mos {
 	uint32_t epb, edi, esi, ebx;  // Pushed by pusha.
@@ -74,7 +76,8 @@ typedef struct _thread {
   uint32_t tid;
 
   uint32_t  priority;
-  int32_t   state;
+  //uint32_t state;
+  enum thread_state state;
   ktime_t   sleep_time_delta;
   struct list_head sched_sibling;
   struct list_head th_sibling;
@@ -126,10 +129,11 @@ struct list_head* get_proc_list();
 // sched.c
 void lock_scheduler();
 void unlock_scheduler();
-void queue_thread(thread *th);
 void make_schedule();
 void sched_init();
-struct list_head* get_thread_list();
-thread *pop_next_thread_to_run();
+struct list_head* get_ready_threads();
+void sched_push_queue(thread *th, enum thread_state state);
+thread *pop_next_thread_to_terminate();
+bool thread_kill(uint32_t id);
 
 #endif
