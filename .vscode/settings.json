@@ -9,6 +9,7 @@
     "exception.h": "c",
     "idt.h": "c",
     "cstdlib": "c",
-    "kernel_info.h": "c"
+    "kernel_info.h": "c",
+    "list.h": "c"
   }
 }

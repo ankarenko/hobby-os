@@ -9,7 +9,8 @@ PATHS= \
 	memory/*.c \
 	fs/*.c fs/*/**.c \
 	proc/*.c proc/*/**.c \
-	locking/*.c locking/*/**.c
+	locking/*.c locking/*/**.c \
+	include/*.c
 
 C_ALL_SOURCES = $(wildcard ${PATHS})
 C_SOURCES = $(filter-out ${C_ALL_SOURCES:.c=.test.c}, ${C_ALL_SOURCES})

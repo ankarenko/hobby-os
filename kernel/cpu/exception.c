@@ -5,6 +5,8 @@
 #include "idt.h"
 #include "panic.h"
 
+extern uint32_t DEBUG_LAST_TID = 0;
+ 
 //! divide by 0 fault
 void divide_by_zero_fault(interrupt_registers *registers) {
   /*
@@ -119,6 +121,7 @@ void page_fault(interrupt_registers *registers) {
 	 										 "mov %%eax, %0			\n"
 	 										 : "=r"(faultAddr));
 
+  printf("\nLast tid: %d", DEBUG_LAST_TID);
   printf("\nPage Fault at 0x%x", faultAddr);
 	printf("\nReason: %s, %s, %s%s%s",
 	 						error_code & 0b1 ? "protection violation" : "non-present page",

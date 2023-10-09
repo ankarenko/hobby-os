@@ -186,7 +186,7 @@ bool create_kernel_stack(virtual_addr* kernel_stack) {
   // https://forum.osdev.org/viewtopic.php?f=1&t=22014
   // stack is better to be aligned 16byte
   virtual_addr aligned = kalign_heap(16); 
-	*kernel_stack = kmalloc(stack_size);
+	*kernel_stack = kcalloc(1, stack_size);
   if (aligned) {
     kfree(aligned);
   }
@@ -256,6 +256,7 @@ void kernel_thread_entry(thread *th, void *flow()) {
   schedule();
 }
 
+extern uint32_t DEBUG_LAST_TID;
 thread* kernel_thread_create(
   process* parent, 
   virtual_addr eip
@@ -485,9 +486,26 @@ process* get_current_process() {
 extern void cmd_init();
 extern void restore_kernel();
 
+bool free_process(process* proc) {
+  kfree(proc);
+  list_del(&proc->proc_sibling);
+  return true;
+}
+
+// TODO: bug, when kill 2 times and then create
 bool free_thread(thread* th) {
   kfree(th->kernel_esp - PMM_FRAME_SIZE);
   //vmm_unmap_address(th->parent->page_directory, th->kernel_esp - PMM_FRAME_SIZE);
+  process* parent = th->parent;
+
+  parent->thread_count -= 1;
+  
+  list_del(&th->th_sibling);
+  
+  // if there are no threads, then there is no process
+  if (parent->thread_count == 0) {
+    free_process(parent);
+  }
   return true;
 }
 
@@ -547,23 +565,23 @@ void terminate_process() {
 }
 
 process* create_system_process(virtual_addr entry) {
-  process* process = kmalloc(sizeof(process));
-  thread* th = kernel_thread_create(process, entry);
+  process* proc = kcalloc(1, sizeof(process));
+  INIT_LIST_HEAD(&proc->threads);
+  INIT_LIST_HEAD(&proc->proc_sibling);
+  list_add(&proc->proc_sibling, get_proc_list());
+
+  thread* th = kernel_thread_create(proc, entry);
   
   if (!th) {
     return false;
   }
 
-  process->id = ++next_pid;
-  process->thread_count = 1;
-  process->page_directory = vmm_get_directory();
-  INIT_LIST_HEAD(&process->threads);
-  INIT_LIST_HEAD(&process->proc_sibling);
-  list_add(&th->th_sibling, &process->threads);
-  list_add(&process->proc_sibling, get_proc_list());
+  proc->id = ++next_pid;
+  proc->thread_count = 1;
+  proc->page_directory = vmm_get_directory();
 
   sched_push_queue(th, THREAD_READY);
-  return process;
+  return proc;
 }
 
 bool initialise_multitasking(virtual_addr entry) {

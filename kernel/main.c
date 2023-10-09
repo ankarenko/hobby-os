@@ -134,7 +134,7 @@ void kthread () {
 	int col = 0;
 	bool dir = true;
 	while(1) {
-    printf("New thread 10");
+    printf("\nNew thread 10");
     thread_sleep(300);
 	}
 }
@@ -304,12 +304,6 @@ void cmd_read_sect() {
 
 GREATEST_MAIN_DEFS();
 
-
-struct just_item {
-	int data;
-  struct list_head list; /* kernel's list structure */	
-};
-
 extern void switch_to_task(thread* next_task);
 void kthread_4() {
   while (1) {
@@ -328,8 +322,8 @@ void kthread_5() {
 void main_thread() {
   thread* th = NULL;
 
-  create_system_process(&kthread_2);
-  create_system_process(&kthread_1);
+  //create_system_process(&kthread_2);
+  //create_system_process(&kthread_1);
   create_system_process(&cmd_init);
 
   idle_task();
@@ -343,37 +337,15 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   terminal_initialize();
   kkybrd_install(IRQ1);
 
-	
-  /*
-  int items_size = 10;
-  struct just_item items[items_size];
-  LIST_HEAD(items_head);
-
-  for (int i = 0; i < items_size; ++i) {
-    tmp = (struct just_item *)malloc(sizeof(struct just_item));
-    items[i].data = i;
-    INIT_LIST_HEAD(&items[i].list);
-    list_add_tail(&items[i].list, &items_head);
-  }
-  
-  struct list_head* pos; 
-  list_for_each(pos, &items_head) { 
-    printf("surfing the linked list next = %x and prev = %x\n" , 
-      pos->next, 
-      pos->prev 
-    );
-  }
-
-  struct just_item* ret = list_entry(items_head.prev, typeof(*ret), list);
-  printf("erased: %d\n", ret->data);
-
-  struct just_item* item = NULL ; 
-  list_for_each_entry(item, &items_head, list) { 
-    printf("data  =  %d\n" , item->data); 
-  }
-  */
+  printf("Kernel size: %.3f mb.\nEnds in 0x%x (DIR: %d, INDEX: %d)  \n\n", 
+    (float)(KERNEL_END - KERNEL_START) / 1024 / 1024, 
+    KERNEL_END, 
+    PAGE_DIRECTORY_INDEX(KERNEL_END), 
+    PAGE_TABLE_INDEX(KERNEL_END)
+  );
 
   pmm_init(mbd);
+
 
   vmm_init();
 
@@ -384,6 +356,7 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   syscall_init();
   install_tss(5, 0x10, 0);
 
+  
   
   initialise_multitasking(&main_thread);
   

@@ -5,6 +5,8 @@
 
 struct list_head process_list;
 
+extern uint32_t DEBUG_LAST_TID;
+
 struct list_head ready_threads;
 struct list_head waiting_threads;
 struct list_head terminated_threads;
@@ -134,9 +136,7 @@ bool thread_kill(uint32_t id) {
 
 void make_schedule() {
 next_thread:
-  uint32_t a = list_count(get_list_from_state(THREAD_READY));
   thread* th = pop_next_thread_to_run();
-  a = list_count(get_list_from_state(THREAD_READY));
 
   if (th->state == THREAD_TERMINATED) {
     // put it in a queue for a worker thread to purge
@@ -158,6 +158,10 @@ next_thread:
 		goto next_thread;
 	}
 do_switch:
+  DEBUG_LAST_TID = th->tid;
+  if (DEBUG_LAST_TID == 6) {
+    uint32_t a = 1;
+  } 
   switch_to_task(th);
 }
 
