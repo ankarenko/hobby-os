@@ -13,18 +13,16 @@
 #define PROC_MAX 10
 #define ORPHAN_THREAD 0
 #define PROCESS_TRAPPED_PAGE_FAULT 0xFFFFFFFF
+#define KERNEL_STACK_SIZE 0x1000
+extern void enter_usermode(
+  virtual_addr entry,
+  virtual_addr user_esp, 
+  virtual_addr return_addr
+);
 
-process _kernel_proc = { .id = 0 };
-
-thread   _ready_queue  [THREAD_MAX];
-int32_t  _queue_last, _queue_first;
-thread   _idle_thread;
-thread*  _idle_thread_mos;
 extern thread*  _current_task;
-thread   _current_thread_local;
-process  _process_list [PROC_MAX];
-LIST_HEAD(_proc_list);
 
+LIST_HEAD(_proc_list);
 struct list_head* get_proc_list() {
   return &_proc_list;
 }
@@ -37,84 +35,6 @@ static uint32_t next_tid = 0;
 void scheduler_isr();
 void (*old_pic_isr)();
 void idle_task();
-
-extern void jump_to_process(virtual_addr entry, virtual_addr stack);
-
-static process _proc = {
-	PROC_INVALID_ID,0,0,0,0
-};
-
-/*** PROCESS LIST ***********************************/
-
-/* add process to list. */
-process* add_process(process p) {
-	for (int c = 0; c < PROC_MAX; c++) {
-		/* id's of -1 are free. */
-		if (_process_list[c].id == PROC_INVALID_ID) {
-			_process_list[c] = p;
-			return &_process_list[c];
-		}
-	}
-	return 0;
-}
-
-process* get_process(uint32_t id) {
-  for (int c = 0; c < PROC_MAX; c++) {
-		if (_process_list[c].id == id) {
-			return &_process_list[c];
-		}
-	}
-	return 0;
-}
-
-/* remove process from list. */
-void remove_process(process p) {
-	for (int c = 0; c < PROC_MAX; c++) {
-		if (_process_list[c].id == p.id) {
-			/* id's of -1 are free. */
-			_process_list[c].id = PROC_INVALID_ID;
-			return;
-		}
-	}
-}
-
-/* init process list. */
-void init_process_list() {
-	for (int c = 0; c < PROC_MAX; c++)
-		_process_list[c].id = PROC_INVALID_ID;
-}
-
-/*** READY QUEUE ************************************/
-
-/* clear queue. */
-void clear_queue() {
-	_queue_first = 0;
-	_queue_last  = 0;
-}
-
-/* insert thread. */
-bool queue_insert(thread t) {
-	_ready_queue[_queue_last % THREAD_MAX] = t;
-	_queue_last++;
-	return true;
-}
-
-bool queue_insert_mos(thread* t) {
-  return true;
-}
-
-/* remove thread. */
-thread queue_remove() {
-	thread t;
-	t = _ready_queue[_queue_first % THREAD_MAX];
-	_queue_first++;
-	return t;
-}
-
-/* get top of queue. */
-thread queue_get() {
-	return _ready_queue[_queue_first % THREAD_MAX];
-}
 
 /* create new address space. */
 struct pdirectory* create_address_space() {
@@ -142,51 +62,14 @@ struct pdirectory* create_address_space() {
 }
 
 /* create a new kernel space stack. */
-int _kernel_stack_index = 0;
-bool create_kernel_stack_static(virtual_addr* kernel_stack) {
-
-	physical_addr       p;
-	virtual_addr        location;
-	void*               ret;
-
-	/* we are reserving this area for 4k kernel stacks. */
-#define KERNEL_STACK_ALLOC_BASE 0xe0000000
-
-	/* allocate a 4k frame for the stack. */
-	p = (physical_addr)pmm_alloc_frame();
-	if (!p)
-		return false;
-
-	/* next free 4k memory block. */
-	location = KERNEL_STACK_ALLOC_BASE + _kernel_stack_index * PAGE_SIZE;
-
-	/* map it into kernel space. */
-	vmm_map_address(
-    vmm_get_directory(), location, 
-    p, I86_PTE_PRESENT | I86_PTE_WRITABLE
-  );
-
-	/* we are returning top of stack. */
-	*kernel_stack = (void*) (location + PAGE_SIZE);
-
-	/* prepare to allocate next 4k if we get called again. */
-	_kernel_stack_index++;
-
-	/* and return top of stack. */
-	return true;
-}
-
-
-/* create a new kernel space stack. */
 bool create_kernel_stack(virtual_addr* kernel_stack) {
-  uint32_t stack_size = PMM_FRAME_SIZE;
 	void* ret;
 
   /* allocate a 4k frame for the stack. */
   // https://forum.osdev.org/viewtopic.php?f=1&t=22014
   // stack is better to be aligned 16byte
   virtual_addr aligned = kalign_heap(16); 
-	*kernel_stack = kcalloc(1, stack_size);
+	*kernel_stack = kcalloc(KERNEL_STACK_SIZE, sizeof(char));
   if (aligned) {
     kfree(aligned);
   }
@@ -196,11 +79,10 @@ bool create_kernel_stack(virtual_addr* kernel_stack) {
   }
 
 	/* moving pointer to the top of the stack */
-	*kernel_stack += stack_size;
+	*kernel_stack += KERNEL_STACK_SIZE;
 
 	return true;
 }
-
 
 /* creates user stack for main thread. */
 bool create_user_stack(
@@ -226,26 +108,6 @@ bool create_user_stack(
   return true;
 }
 
-/* 
-  executes thread, remember that switching thread is just a matter 
-  of switching stack pointer 
-*/
-void thread_execute(thread t) {
-	__asm__ __volatile__("mov %0, %%esp \n"
-											 "pop %%gs			\n"
-											 "pop %%fs			\n"
-											 "pop %%es			\n"
-											 "pop %%ds			\n"
-											 "popal					\n"
-											 "iret					\n" ::"r"(t.kernel_esp));
-}
-
-/* execute idle thread. */
-void execute_idle() {
-	/* just run idle thread. */
-	thread_execute(_idle_thread);
-}
-
 void kernel_thread_entry(thread *th, void *flow()) {
   // we are not returning from PIT interrupt, 
   // so we need to enable interrupts manually
@@ -257,9 +119,11 @@ void kernel_thread_entry(thread *th, void *flow()) {
 }
 
 extern uint32_t DEBUG_LAST_TID;
-thread* kernel_thread_create(
+
+static thread* _thread_create(
   process* parent, 
-  virtual_addr eip
+  virtual_addr eip,
+  virtual_addr entry
 ) {
   lock_scheduler();
 
@@ -281,14 +145,14 @@ thread* kernel_thread_create(
   th->kernel_ss = KERNEL_DATA;
 
   /* adjust stack. We are about to push data on it. */
-  th->esp = th->kernel_esp - sizeof(trap_frame_mos); // ????ALIGN_UP(sizeof(trap_frame), 16);
-  trap_frame_mos* frame = ((trap_frame_mos*) th->esp);
-  memset(frame, 0, sizeof(trap_frame_mos));
+  th->esp = th->kernel_esp - sizeof(trap_frame); // ????ALIGN_UP(sizeof(trap_frame), 16);
+  trap_frame* frame = ((trap_frame*) th->esp);
+  memset(frame, 0, sizeof(trap_frame));
   
   frame->parameter2 = eip;
 	frame->parameter1 = (uint32_t)th;
 	frame->return_address = PROCESS_TRAPPED_PAGE_FAULT;
-	frame->eip = kernel_thread_entry;
+	frame->eip = entry;
 
   th->parent = parent;
 
@@ -299,122 +163,72 @@ thread* kernel_thread_create(
   return th;
 }
 
-/* creates thread. */
-thread thread_create(
-  process *parent, 
-  virtual_addr eip, 
-  virtual_addr user_esp,
-  virtual_addr kernel_esp,
-  bool is_kernel
-) {
-	lock_scheduler();
+static void user_thread_elf_entry(thread *th) {
+  enable_interrupts();
+  interruptdone(IRQ0);
 
-  trap_frame* frame;
-	thread t;
+  process* parent = th->parent;
+  char* path = parent->path;
+  virtual_addr entry = NULL;
 
-	/* adjust stack. We are about to push data on it. */
-  kernel_esp -= sizeof(trap_frame); // ????ALIGN_UP(sizeof(trap_frame), 16);
+  // try to load image into our address space
+  // TODO: mos make it differently check it out
+  if (!elf_load_image(
+    path, 
+    parent->page_directory, 
+    &parent->image_base, 
+    &parent->image_size, 
+    &entry)
+  ) {
+    return false;
+  }
 
-	/* initialize task frame. */
-	frame = ((trap_frame*) kernel_esp);
-	// makes sure when doing iret, interrupts are enabled, 2th bit is just a parity bit
-	// https://stackoverflow.com/questions/25707130/what-is-the-purpose-of-the-parity-flag-on-a-cpu
-  frame->flags = 0x202;  
-  frame->eip = eip;
-	frame->ebp = 0;
-	frame->esp = 0;
-	frame->edi = 0;
-	frame->esi = 0;
-	frame->edx = 0;
-	frame->ecx = 0;
-	frame->ebx = 0;
-	frame->eax = 0;
+  virtual_addr image_end = ALIGN_UP(
+    parent->image_base + parent->image_size, 
+    PMM_FRAME_SIZE
+  );  
 
-	/* set up segment selectors. */
-	frame->cs = is_kernel? KERNEL_CODE : USER_CODE;
-	frame->ds = is_kernel? KERNEL_DATA : USER_DATA;
-	frame->es = is_kernel? KERNEL_DATA : USER_DATA;
-	frame->fs = is_kernel? KERNEL_DATA : USER_DATA;
-	frame->gs = is_kernel? KERNEL_DATA : USER_DATA;
-
-  frame->user_ss = USER_DATA;
-  frame->user_stack = user_esp;
-
-  t.user_ss = USER_DATA;
-  t.user_esp = user_esp;
-	
-	t.parent = parent == 0? &_kernel_proc : parent;
-	t.priority = 0;
-  t.tid = ++next_tid;
-	//t.state = THREAD_RUN;
-	t.sleep_time_delta = 0;
-  t.kernel_esp = kernel_esp;
-  t.kernel_ss = KERNEL_DATA;
-
-  unlock_scheduler();
-	return t;
+  /* create stack space for main thread at the end of the program */
+  // dont forget that the stack grows up from down
+  th->user_ss = USER_DATA;
+  if (!create_user_stack(parent->page_directory, &th->user_esp, image_end)) {
+    return false;
+  }
+  //0x40000000 0x40003000
+  tss_set_stack(KERNEL_DATA, th->kernel_esp);
+  enter_usermode(entry, th->user_esp, PROCESS_TRAPPED_PAGE_FAULT);
 }
 
-typedef struct _thread_info {
+thread* user_thread_create(process* parent) {
+  thread* th = _thread_create(parent, NULL, user_thread_elf_entry);
+  return th;
+}
 
-} thread_info;
+thread* kernel_thread_create(process* parent, virtual_addr eip) {
+  thread* th = _thread_create(parent, eip, kernel_thread_entry);
+  return th;
+}
 
-union thread_union {
-  thread_info info;
-  uint64_t stack[1024];
-};
+static process* _create_process(char* app_path, struct pdirectory* pdir) {
+  lock_scheduler();
 
-bool create_process(char* app_path, uint32_t* proc_id) {
-  process pcb;
-  struct pdirectory* address_space = 0;
-  struct pdirectory* kernel_space = vmm_get_directory();
-  virtual_addr image_base;
-  uint32_t image_size;
-  virtual_addr user_esp;
-  virtual_addr entry;
-
-  // create userspace
-  address_space = create_address_space();
+  process* proc = kcalloc(1, sizeof(process));
+  INIT_LIST_HEAD(&proc->threads);
+  INIT_LIST_HEAD(&proc->proc_sibling);
+  list_add(&proc->proc_sibling, get_proc_list());
+  proc->id = ++next_pid;
+  proc->thread_count = 0;
+  proc->path = app_path;
   
-  vmm_switch_pdirectory(address_space);
-  {
-    // try to load image into our address space
-    // TODO: mos make it differently check it out
-    if (!elf_load_image(app_path, address_space, &image_base, &image_size, &entry)) {
-      return false;
-    }
-
-    virtual_addr image_end = ALIGN_UP(image_base + image_size, PMM_FRAME_SIZE);  
-    /* create stack space for main thread at the end of the program */
-    // dont forget that the stack grows up from down
-    if (!create_user_stack(address_space, &user_esp, image_end)) {
-      return false;
-    }
-
-    virtual_addr kernel_esp;
-    if (!create_kernel_stack(&kernel_esp)) {
-      return false;
-    }
-
-    /* create process. */
-    pcb.id = ++next_pid;
-    *proc_id = pcb.id;
-    pcb.image_base = image_base;
-    pcb.page_directory = address_space;
-
-    /* create main thread. */
-    pcb.thread_count = 1;
-    /*
-    pcb.threads[0] = thread_create(
-      &pcb, (virtual_addr)entry, 
-      user_esp, kernel_esp, false
-    );
-    */
-    add_process(pcb);
+  if (pdir) {
+    proc->page_directory = pdir;
+  } else {
+    proc->page_directory = create_address_space();
   }
-  vmm_switch_back();
 
-	return true;
+  unlock_scheduler();
+
+	return proc;
 }
 
 void idle_task() {
@@ -424,103 +238,11 @@ void idle_task() {
 }
 
 bool process_load(char* app_path) {
-  lock_scheduler();
-  uint32_t proc_id;
-  create_process(app_path, &proc_id);
-  process* proc = get_process(proc_id);
-
-  if (!proc) {
-    return false;
-  }
-
-  /* schedule thread to run. */
-	//queue_insert(proc->threads[0]);
-  unlock_scheduler();
-}
-
-void execute_process() {
-  /*
-  process* proc = 0;
-  virtual_addr entry_point = 0;
-  virtual_addr proc_stack = 0;
-
-  /* get running process */
-  /*
-  proc = get_current_process();
-  if (proc->id == PROC_INVALID_ID || !proc->page_directory)
-    return;
-
-  /* get esp and eip of main thread */
-  /*
-  entry_point = proc->threads[0].frame.eip;
-  proc_stack  = proc->threads[0].frame.esp;
-
-  /* switch to process address space */
-  /*
-  physical_addr p_dir = vmm_get_physical_address(proc->page_directory, false);
   
-  //vmm_switch_pdirectory(p_dir, proc->page_directory);
-  //pmm_load_PDBR(p_dir);
-  
-  uint8_t* addr = 0xffd00008;
-  uint32_t i = PAGE_TABLE_INDEX((uint32_t)addr);
-  pt_entry e = proc->page_directory->m_entries[i];
-  
-  int32_t esp;
-  __asm__ __volatile__("mov %%esp, %0" : "=r"(esp));
-
-  // setting up esp y ss, probably the only two fields we need to be bothered with
-  tss_set_stack(0x10, esp);
-  jump_to_process(entry_point, proc_stack);
-  */
-}
-
-/**
-* Return current process
-* \ret Process
-*/
-process* get_current_process() {
-	return &_proc;
 }
 
 extern void cmd_init();
 extern void restore_kernel();
-
-bool free_process(process* proc) {
-  kfree(proc);
-  list_del(&proc->proc_sibling);
-  return true;
-}
-
-// TODO: bug, when kill 2 times and then create
-bool free_thread(thread* th) {
-  kfree(th->kernel_esp - PMM_FRAME_SIZE);
-  //vmm_unmap_address(th->parent->page_directory, th->kernel_esp - PMM_FRAME_SIZE);
-  process* parent = th->parent;
-
-  parent->thread_count -= 1;
-  
-  list_del(&th->th_sibling);
-  
-  // if there are no threads, then there is no process
-  if (parent->thread_count == 0) {
-    free_process(parent);
-  }
-  return true;
-}
-
-void garbage_worker_task() {
-  while (1) {
-    thread* th = pop_next_thread_to_terminate();
-
-    if (th == NULL) {
-      thread_sleep(300);
-      continue;
-    }
-
-    free_thread(th);
-  }
-}
 
 void terminate_process() {
   lock_scheduler();
@@ -548,37 +270,42 @@ void terminate_process() {
   
 	
   /* unmap and release image memory */
-  
+  /*
 	for (uint32_t page = 0; page < div_ceil(cur->image_size, PAGE_SIZE); page++) {
 		
     physical_addr phys = 0;
 		virtual_addr virt = 0;
 
 		/* get virtual address of page */
-  
+    /*
 		virt = cur->image_base + (page * PAGE_SIZE);
 		vmm_unmap_address(cur->page_directory, virt);
 	}
 
   remove_process(*cur);
+  */
   unlock_scheduler();
 }
 
 process* create_system_process(virtual_addr entry) {
-  process* proc = kcalloc(1, sizeof(process));
-  INIT_LIST_HEAD(&proc->threads);
-  INIT_LIST_HEAD(&proc->proc_sibling);
-  list_add(&proc->proc_sibling, get_proc_list());
-
+  process* proc = _create_process("system", vmm_get_directory());
   thread* th = kernel_thread_create(proc, entry);
   
   if (!th) {
     return false;
   }
 
-  proc->id = ++next_pid;
-  proc->thread_count = 1;
-  proc->page_directory = vmm_get_directory();
+  sched_push_queue(th, THREAD_READY);
+  return proc;
+}
+
+process* create_elf_process(char* path) {
+  process* proc = _create_process(path, NULL);
+  thread* th = user_thread_create(proc);
+
+  if (!th) {
+    return false;
+  }
 
   sched_push_queue(th, THREAD_READY);
   return proc;
@@ -587,13 +314,7 @@ process* create_system_process(virtual_addr entry) {
 bool initialise_multitasking(virtual_addr entry) {
   sched_init();
 
-  process* parent = kmalloc(sizeof(process));
-  parent->id = ++next_pid;
-  parent->thread_count = 1;
-  parent->page_directory = vmm_get_directory();
-  INIT_LIST_HEAD(&parent->proc_sibling);
-  INIT_LIST_HEAD(&parent->threads);
-  list_add(&parent->proc_sibling, get_proc_list());
+  process* parent = _create_process("",  vmm_get_directory());
   _current_task = kernel_thread_create(parent, entry);
   sched_push_queue(_current_task, THREAD_READY);
   

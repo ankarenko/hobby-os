@@ -23,28 +23,10 @@
 
 /* be very careful with modifying this. Reference tss.cpp ISR. */
 typedef struct _trap_frame {
-	/* pushed by isr. */
-	uint32_t gs;
-	uint32_t fs;
-	uint32_t es;
-	uint32_t ds;
-	/* pushed by pushf. */
-	uint32_t eax;
-	uint32_t ebx;
-	uint32_t ecx;
-	uint32_t edx;
-	uint32_t esi;
-	uint32_t edi;
-	uint32_t esp;
-	uint32_t ebp;
-	/* pushed by cpu. */
-	uint32_t eip;
-	uint32_t cs;
-	uint32_t flags;
-	/* used only when coming from/to user mode. */
-  // also pushed by cpu
-  uint32_t user_stack;
-  uint32_t user_ss;
+	uint32_t epb, edi, esi, ebx;  // Pushed by pusha.
+	uint32_t eip;									  // eip is saved on stack by the caller's "CALL" instruction
+	uint32_t return_address;
+	uint32_t parameter1, parameter2, parameter3;
 } trap_frame;
 
 enum thread_state {
@@ -55,15 +37,18 @@ enum thread_state {
 	THREAD_TERMINATED,
 };
 
-typedef struct _trap_frame_mos {
-	uint32_t epb, edi, esi, ebx;  // Pushed by pusha.
-	uint32_t eip;									  // eip is saved on stack by the caller's "CALL" instruction
-	uint32_t return_address;
-	uint32_t parameter1, parameter2, parameter3;
-} trap_frame_mos;
-
 struct _process;
 typedef unsigned int ktime_t;
+
+
+typedef struct _thread_info {
+
+} thread_info;
+
+union thread_union {
+  thread_info info;
+  uint64_t stack[1024];
+};
 
 typedef struct _thread {
   uint32_t  kernel_esp;
@@ -91,6 +76,7 @@ typedef struct _process {
   uint32_t  image_base;
   uint32_t  image_size;
   int32_t thread_count;
+  char *path;
   //struct _thread  threads[MAX_THREAD];
   struct list_head threads;
   struct list_head proc_sibling;
@@ -99,23 +85,7 @@ typedef struct _process {
 //extern int create_thread(int (*entry)(void), uint32_t stackBase);
 //extern int terminate_thread(thread* handle);
 
-bool create_process(char* app_path, uint32_t* proc_id);
-void execute_process();
-void terminate_process();
 process* get_current_process();
-bool scheduler_initialize(void);
-bool create_kernel_stack(virtual_addr* kernel_stack);
-bool queue_insert(thread t);
-thread thread_create(
-  process *parent, 
-  virtual_addr eip, 
-  virtual_addr user_esp,
-  virtual_addr kernel_esp,
-  bool is_kernel
-);
-bool process_load(char* app_path);
-void thread_execute(thread t);
-void execute_idle();
 void thread_sleep(uint32_t ms);
 bool initialise_multitasking(virtual_addr entry);
 thread* kernel_thread_create(
@@ -124,6 +94,7 @@ thread* kernel_thread_create(
 );
 process* create_system_process(virtual_addr entry);
 struct list_head* get_proc_list();
+process* create_elf_process(char* path);
 // extern "C" void TerminateProcess ();
 
 // sched.c
@@ -135,5 +106,9 @@ struct list_head* get_ready_threads();
 void sched_push_queue(thread *th, enum thread_state state);
 thread *pop_next_thread_to_terminate();
 bool thread_kill(uint32_t id);
+
+
+// exit.c
+void garbage_worker_task();
 
 #endif

@@ -97,39 +97,6 @@ void get_cmd(char* buf, int n) {
 }
 
 
-void cmd_user() {
-  int32_t esp;
-  __asm__ __volatile__("mov %%esp, %0"
-                       : "=r"(esp));
-  tss_set_stack(0x10, esp);
-
-  uint8_t* phys = pmm_alloc_frame();
-  uint8_t* virt = 0x40002000;
-  
-
-  
-  vmm_map_address(vmm_get_directory(), 
-    virt, phys, 
-    I86_PDE_PRESENT | I86_PDE_PRESENT| I86_PDE_WRITABLE
-  );
-
-  
-
-
-  enter_usermode();
-  int32_t a = 1;
-  //asm_syscall_print();
-
-  __asm__ __volatile__(
-      "mov %0, %%eax;	      \n"
-      "int $0x80;           \n"
-      : "=a"(a)
-  );
-
-  //syscall_printf("\nIn user mode\n");
-  
-}
-
 void kthread () {
 	int col = 0;
 	bool dir = true;
@@ -178,8 +145,6 @@ bool run_cmd(char* cmd_buf) {
     }
     printf("]");
 
-  } else if (strcmp(cmd_buf, "user") == 0) {
-    cmd_user();
   } else if (strcmp(cmd_buf, "exit") == 0) {
     printf("Goodbuy!");
     return true;
@@ -202,9 +167,8 @@ bool run_cmd(char* cmd_buf) {
     cmd_read_file();
   } else if (strcmp(cmd_buf, "ls") == 0) {
     cmd_read_ls();
-  } else if (strcmp(cmd_buf, "process") == 0) {
-    // loads process in user space and puts it in a schedule que
-    process_load("a:/calc.exe");
+  } else if (strcmp(cmd_buf, "createuser") == 0) {
+    create_elf_process("a:/calc.exe");
   } else if (strcmp(cmd_buf, "thread") == 0) {
     
   }

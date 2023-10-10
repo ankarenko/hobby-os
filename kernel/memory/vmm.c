@@ -90,6 +90,10 @@ struct pdirectory* vmm_get_directory() {
   return _current_dir;
 }
 
+struct pdirectory* vmm_get_kernel_space() {
+  return _current_dir;
+}
+
 void vmm_flush_tlb_entry(virtual_addr addr) {
   __asm__ __volatile__(
       "cli        \n\t"

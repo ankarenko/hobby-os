@@ -81,7 +81,7 @@ void *kalign_heap(size_t size) {
 		if (padding_size > required_size)
 		{
 			struct block_meta *last = _kblocklist;
-			while (!last->next)
+			while (last->next)
 				last = last->next;
 			struct block_meta *block = request_space(last, padding_size - required_size);
 			return block + 1;
@@ -99,7 +99,7 @@ struct block_meta *get_block_ptr(void *ptr) {
 void kfree(void *ptr) {
   if (!ptr)
     return;
-
+  
   struct block_meta *block = get_block_ptr(ptr);
   assert_kblock_valid(block);
   block->free = true;
