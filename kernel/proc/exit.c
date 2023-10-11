@@ -16,6 +16,10 @@ bool exit_thread(thread* th) {
   process* parent = th->parent;
   parent->thread_count -= 1;
   list_del(&th->th_sibling);
+
+  if (th->user_esp) {
+    
+  }
   
   // if there are no threads, then exit process
   if (parent->thread_count == 0) {

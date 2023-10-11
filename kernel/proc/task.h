@@ -21,9 +21,9 @@
 #define PROCESS_STATE_ACTIVE 1
 #define PROC_INVALID_ID -1
 
-/* be very careful with modifying this. Reference tss.cpp ISR. */
+/* be very careful with modifying this as it's used by assembler code */
 typedef struct _trap_frame {
-	uint32_t epb, edi, esi, ebx;  // Pushed by pusha.
+	uint32_t epb, edi, esi, ebx;    // Pushed by pusha.
 	uint32_t eip;									  // eip is saved on stack by the caller's "CALL" instruction
 	uint32_t return_address;
 	uint32_t parameter1, parameter2, parameter3;
@@ -39,7 +39,6 @@ enum thread_state {
 
 struct _process;
 typedef unsigned int ktime_t;
-
 
 typedef struct _thread_info {
 
@@ -57,7 +56,7 @@ typedef struct _thread {
   uint32_t  user_ss; // user stack segment
   uint32_t  esp;
 
-  struct _process*  parent;
+  struct _process* parent;
   uint32_t tid;
 
   uint32_t  priority;
@@ -68,6 +67,7 @@ typedef struct _thread {
   struct list_head th_sibling;
 } thread;
 
+/* be very careful with modifying this as it's used by assembler code */
 typedef struct _process {
   int32_t id;
   int32_t priority;
@@ -83,16 +83,10 @@ typedef struct _process {
   struct list_head proc_sibling;
 } process;
 
-//extern int create_thread(int (*entry)(void), uint32_t stackBase);
-//extern int terminate_thread(thread* handle);
-
-process* get_current_process();
+thread* get_current_thread();
 void thread_sleep(uint32_t ms);
 bool initialise_multitasking(virtual_addr entry);
-thread* kernel_thread_create(
-  process* parent, 
-  virtual_addr eip
-);
+thread* kernel_thread_create(process* parent, virtual_addr eip);
 process* create_system_process(virtual_addr entry);
 struct list_head* get_proc_list();
 process* create_elf_process(char* path);

@@ -14,13 +14,16 @@
 #define ORPHAN_THREAD 0
 #define PROCESS_TRAPPED_PAGE_FAULT 0xFFFFFFFF
 #define KERNEL_STACK_SIZE 0x1000
+#define USER_STACK_SIZE 0x1000
+#define NO_USER_STACK NULL
+
 extern void enter_usermode(
   virtual_addr entry,
   virtual_addr user_esp, 
   virtual_addr return_addr
 );
 
-extern thread*  _current_task;
+extern thread*  _current_thread;
 
 LIST_HEAD(_proc_list);
 struct list_head* get_proc_list() {
@@ -53,7 +56,7 @@ struct pdirectory* create_address_space() {
   // recursive trick
   
   space->m_entries[TABLES_PER_DIR - 1] = 
-    vmm_get_physical_address(space, true) | 
+    vmm_get_physical_address(space, false) | 
     I86_PDE_PRESENT | 
     I86_PDE_WRITABLE;
 
@@ -92,16 +95,28 @@ bool create_user_stack(
 	/* this will call our address space allocator
 	to reserve area in user space. Until then,
 	return error. */
-  
-  physical_addr user_stack = pmm_alloc_frame();
-  
-  vmm_map_address(
-    addr, 
-    user_stack, 
-    I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PTE_USER
-  );
+  if (USER_STACK_SIZE % PMM_FRAME_SIZE != 0) {
+    printf("User stack size is not %d aligned", PMM_FRAME_SIZE);
+    return;
+  }
 
-  *user_esp = addr + PMM_FRAME_SIZE;
+  if (addr % PMM_FRAME_SIZE != 0) {
+    printf("User stack address is not %d aligned", PMM_FRAME_SIZE);
+    return;
+  }
+
+  uint32_t frames_count = USER_STACK_SIZE / PMM_FRAME_SIZE;
+
+  for (int i = 0; i < frames_count; ++i) {
+    physical_addr user_stack = pmm_alloc_frames(frames_count);
+    vmm_map_address(
+      addr + PMM_FRAME_SIZE * i, 
+      user_stack, 
+      I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PTE_USER
+    );
+  }
+  
+  *user_esp = addr + USER_STACK_SIZE;
 
   return true;
 }
@@ -118,7 +133,7 @@ void kernel_thread_entry(thread *th, void *flow()) {
 
 extern uint32_t DEBUG_LAST_TID;
 
-static thread* _thread_create(
+static thread* thread_create(
   process* parent, 
   virtual_addr eip,
   virtual_addr entry
@@ -138,9 +153,11 @@ static thread* _thread_create(
 	th->state = THREAD_READY;
 	th->sleep_time_delta = 0;
   th->kernel_esp = kernel_stack;
+  th->user_esp = NULL;
+  th->kernel_ss = KERNEL_DATA;
+  th->user_ss = USER_DATA;
   INIT_LIST_HEAD(&th->sched_sibling);
   INIT_LIST_HEAD(&th->th_sibling);
-  th->kernel_ss = KERNEL_DATA;
 
   /* adjust stack. We are about to push data on it. */
   th->esp = th->kernel_esp - sizeof(trap_frame); // ????ALIGN_UP(sizeof(trap_frame), 16);
@@ -198,16 +215,16 @@ static void user_thread_elf_entry(thread *th) {
 }
 
 thread* user_thread_create(process* parent) {
-  thread* th = _thread_create(parent, NULL, user_thread_elf_entry);
+  thread* th = thread_create(parent, NULL, user_thread_elf_entry);
   return th;
 }
 
 thread* kernel_thread_create(process* parent, virtual_addr eip) {
-  thread* th = _thread_create(parent, eip, kernel_thread_entry);
+  thread* th = thread_create(parent, eip, kernel_thread_entry);
   return th;
 }
 
-static process* _create_process(char* app_path, struct pdirectory* pdir) {
+static process* create_process(char* app_path, struct pdirectory* pdir) {
   lock_scheduler();
 
   process* proc = kcalloc(1, sizeof(process));
@@ -218,6 +235,7 @@ static process* _create_process(char* app_path, struct pdirectory* pdir) {
   proc->thread_count = 0;
   proc->path = app_path;
   proc->va_dir = pdir? pdir : create_address_space();
+  proc->pa_dir = vmm_get_physical_address(proc->va_dir, false);
 
   unlock_scheduler();
 
@@ -235,14 +253,8 @@ bool process_load(char* app_path) {
 }
 
 extern void cmd_init();
-extern void restore_kernel();
 
 void terminate_process() {
-  lock_scheduler();
-  process* cur = _current_task->parent;
-	if (cur->id == PROC_INVALID_ID)
-		return;
-
 	/* release threads */
   /*
   thread* th = NULL;
@@ -277,11 +289,10 @@ void terminate_process() {
 
   remove_process(*cur);
   */
-  unlock_scheduler();
 }
 
 process* create_system_process(virtual_addr entry) {
-  process* proc = _create_process("system", vmm_get_directory());
+  process* proc = create_process("system", vmm_get_directory());
   thread* th = kernel_thread_create(proc, entry);
   
   if (!th) {
@@ -293,7 +304,7 @@ process* create_system_process(virtual_addr entry) {
 }
 
 process* create_elf_process(char* path) {
-  process* proc = _create_process(path, NULL);
+  process* proc = create_process(path, NULL);
   thread* th = user_thread_create(proc);
 
   if (!th) {
@@ -304,12 +315,16 @@ process* create_elf_process(char* path) {
   return proc;
 }
 
+thread* get_current_thread() {
+  return _current_thread;
+}
+
 bool initialise_multitasking(virtual_addr entry) {
   sched_init();
 
-  process* parent = _create_process("",  vmm_get_directory());
-  _current_task = kernel_thread_create(parent, entry);
-  sched_push_queue(_current_task, THREAD_READY);
+  process* parent = create_process("",  vmm_get_directory());
+  _current_thread = kernel_thread_create(parent, entry);
+  sched_push_queue(_current_thread, THREAD_READY);
   
   thread* garbage_worker = kernel_thread_create(parent, garbage_worker_task);
   sched_push_queue(garbage_worker, THREAD_READY);
@@ -318,5 +333,5 @@ bool initialise_multitasking(virtual_addr entry) {
   old_pic_isr = getvect(IRQ0);
   setvect(IRQ0, scheduler_isr, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32);
 
-  start_kernel_task(_current_task);
+  start_kernel_task(_current_thread);
 }

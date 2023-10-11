@@ -13,7 +13,8 @@ static int32_t sys_debug_printf(/*enum debug_level level,*/ const char *out) {
 }
 
 static int32_t sys_debug_terminate() {
-  terminate_process();
+  thread* cur_thread = get_current_thread();
+  thread_kill(cur_thread->tid);
   return 1;
 }
  

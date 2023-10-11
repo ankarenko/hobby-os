@@ -12,9 +12,9 @@ struct list_head waiting_threads;
 struct list_head terminated_threads;
 
 // TODO: put it in th kernel stack, it's is more efficient
-thread* _current_task;
+thread* _current_thread;
 
-extern void switch_to_task(thread* next_task);
+extern void switch_to_thread(thread* next_task);
 extern void scheduler_tick();
 
 static volatile uint32_t scheduler_lock_counter = 0;
@@ -30,7 +30,7 @@ void unlock_scheduler() {
 		enable_interrupts();
 }
 
-static struct list_head* get_list_from_state(enum thread_state state) {
+static struct list_head* sched_get_list(enum thread_state state) {
   switch (state) {
     case THREAD_TERMINATED:
       return &terminated_threads;
@@ -44,7 +44,7 @@ static struct list_head* get_list_from_state(enum thread_state state) {
 }
 
 static struct thread* get_next_thread_from_list(enum thread_state state) {
-  struct list_head* list = get_list_from_state(state);
+  struct list_head* list = sched_get_list(state);
 
 	if (list_empty(list))
 		return NULL;
@@ -53,7 +53,7 @@ static struct thread* get_next_thread_from_list(enum thread_state state) {
 }
 
 void sched_push_queue(thread *th, enum thread_state state) {
-  struct list_head *h = get_list_from_state(state);
+  struct list_head *h = sched_get_list(state);
 
 	if (h)
 		list_add_tail(&th->sched_sibling, h);
@@ -71,7 +71,7 @@ static struct thread *get_next_thread_to_run() {
 }
 
 static struct thread *pop_next_thread_from_list(enum thread_state state) {
-  struct list_head* list = get_list_from_state(state);
+  struct list_head* list = sched_get_list(state);
 
 	if (list_empty(list))
 		return NULL;
@@ -111,21 +111,21 @@ void thread_set_state(thread* t, enum thread_state state) {
 }
 
 void thread_sleep(uint32_t ms) {
-	thread_set_state(_current_task, THREAD_WAITING);
-	_current_task->sleep_time_delta = ms;
+	thread_set_state(_current_thread, THREAD_WAITING);
+	_current_thread->sleep_time_delta = ms;
 	schedule();
 }
 
 void thread_wake() {
-  thread_set_state(_current_task, THREAD_READY);
-	//thread_remove_state(_current_task, THREAD_WAITING);
-	_current_task->sleep_time_delta = 0;
+  thread_set_state(_current_thread, THREAD_READY);
+	//thread_remove_state(_current_thread, THREAD_WAITING);
+	_current_thread->sleep_time_delta = 0;
 }
 
-bool thread_kill(uint32_t id) {
+bool thread_kill(uint32_t tid) {
   thread* th = NULL;
-  list_for_each_entry(th, get_list_from_state(THREAD_READY), sched_sibling) {
-    if (id == th->tid) {
+  list_for_each_entry(th, sched_get_list(THREAD_READY), sched_sibling) {
+    if (tid == th->tid) {
       thread_set_state(th, THREAD_TERMINATED);
       return true;
     }
@@ -162,7 +162,7 @@ do_switch:
   if (DEBUG_LAST_TID == 6) {
     uint32_t a = 1;
   } 
-  switch_to_task(th);
+  switch_to_thread(th);
 }
 
 void sched_init()

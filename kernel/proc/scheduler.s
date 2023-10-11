@@ -4,7 +4,7 @@ scheduler_isr:
   pusha         
 
   # we are accesing 0 byte at address of current task, which is esp
-  #mov [_current_task], %eax
+  #mov [_current_thread], %eax
   #mov (%eax), %eax 
   #cmp $0, %eax
   #jz  interrupt_return
@@ -48,12 +48,12 @@ chain_interrupt:
   ret
 
 # C declaration:
-#   void switch_to_task(thread_control_block *next_thread)#
+#   void switch_to_thread(thread_control_block *next_thread)#
 #
 # WARNING: Caller is expected to disable IRQs before calling, and enable IRQs again after function returns
-.global switch_to_task
-.type switch_to_task, @function
-switch_to_task:
+.global switch_to_thread
+.type switch_to_thread, @function
+switch_to_thread:
   #Save previous task's state
 
   #Notes:
@@ -67,7 +67,7 @@ switch_to_task:
   push %edi
   push %ebp
   
-  mov [_current_task], %edi        # edi = address of the previous task's "thread control block"
+  mov [_current_thread], %edi        # edi = address of the previous task's "thread control block"
   
   mov $4, %eax
   mov %esp, (%edi, %eax, 4)        # Save ESP for previous task's kernel stack in the thread's TCB
@@ -75,7 +75,7 @@ switch_to_task:
   #Load next task's state
   mov $(4 + 1), %eax
   mov (%esp, %eax, 4), %esi        # esi = address of the next task's "thread control block" (parameter passed on stack)
-  mov %esi, [_current_task]        # Current task's TCB is the next task TCB
+  mov %esi, [_current_thread]        # Current task's TCB is the next task TCB
 
   mov $4, %eax
   mov (%esi, %eax, 4), %esp        # Load ESP for next task's kernel stack from the thread's TCB
@@ -88,14 +88,14 @@ switch_to_task:
   mov %cr3, %ecx                   # ecx = previous task's virtual address space
   
   mov $4, %eax
-  mov 4(%esi, %eax, 4), %esi       # eax = address of page directory for next task
-  mov (%esi, %eax, 2), %eax  
+  mov 4(%esi, %eax, 4), %esi       
+  mov 4(%esi, %eax, 2), %eax        # eax = address of page directory (phys) for next task
 
-  push $0
-  push %eax
-  call vmm_get_physical_address
-  add $8, %esp                     # remove params from the stack
-  
+  #push $0
+  #push %eax
+  #call vmm_get_physical_address
+  #add $8, %esp                     # remove params from the stack
+
   cmp %eax, %ecx                   # Does the virtual address space need to being changed?
   je .doneVAS                      # no, virtual address space is the same, so don't reload it and cause TLB flushes
   mov %eax, %cr3                   # yes, load the next task's virtual address space

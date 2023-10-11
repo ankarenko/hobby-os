@@ -268,7 +268,7 @@ void cmd_read_sect() {
 
 GREATEST_MAIN_DEFS();
 
-extern void switch_to_task(thread* next_task);
+extern void switch_to_thread(thread* next_task);
 void kthread_4() {
   while (1) {
     printf("\n Thread: 4");
@@ -324,7 +324,7 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   
   initialise_multitasking(&main_thread);
   
-  //_current_task = get_next_thread_to_run(); //3355447388 3222337952
+  //_current_thread = get_next_thread_to_run(); //3355447388 3222337952
   
   
 
