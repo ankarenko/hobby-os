@@ -116,7 +116,6 @@ bool elf_load_image(
   
   for (int i = 0; i < frames; ++i) {
     vmm_map_address(
-      space, 
       *image_base + PMM_FRAME_SIZE * i, phys_image_base + PMM_FRAME_SIZE * i, 
       I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PTE_USER
     );

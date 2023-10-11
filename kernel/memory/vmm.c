@@ -58,7 +58,9 @@ void vmm_free_page(pt_entry* e) {
   pt_entry_del_attrib(e, I86_PTE_PRESENT);
 }
 
-void vmm_unmap_address(struct pdirectory *va_dir, virtual_addr virt) {
+void vmm_unmap_address(virtual_addr virt) {
+  struct pdirectory* va_dir = PAGE_DIRECTORY_BASE;
+
   if (virt != PAGE_ALIGN(virt)) {
     printf("0x%x is not page aligned", virt);
     return;
@@ -104,25 +106,6 @@ void vmm_flush_tlb_entry(virtual_addr addr) {
       :);
 }
 
-/*
-void vmm_map_page(struct pdirectory* page_dir, void* phys, void* virt, uint32_t flags) {
-
-  //! get page table
-  pd_entry* e = &page_dir->m_entries[PAGE_DIRECTORY_INDEX((uint32_t)virt)];
-  if (!pd_entry_is_present(e)) {
-    vmm_alloc_ptable(page_dir, PAGE_DIRECTORY_INDEX((uint32_t)virt), I86_PDE_PRESENT | flags);
-  }
-  //! get table
-  struct ptable* table = (struct ptable*)PAGE_PHYS_ADDR(e);
-
-  //! get page
-  pt_entry* page = &table->m_entries[PAGE_TABLE_INDEX((uint32_t)virt)];
-
-  pt_entry_set_frame(page, (physical_addr)phys);
-  pt_entry_add_attrib(page, I86_PTE_PRESENT | flags);
-}
-*/
-
 void vmm_init_and_map(struct pdirectory* va_dir, uint32_t vaddr, uint32_t paddr, uint32_t num_of_pages) {
   uint32_t pa_table = (uint32_t)pmm_alloc_frame();
   struct ptable* va_table = (struct ptable*)(pa_table + KERNEL_HIGHER_HALF);
@@ -166,27 +149,6 @@ void vmm_init() {
   vmm_paging(va_dir, pa_dir);
 }
 
-void vmm_invalidate_page_tables(void) {
-	asm volatile (
-			"movl %%cr3, %%eax\n"
-			"movl %%eax, %%cr3\n"
-			::: "%eax");
-}
-
-// useful when need to edit userspace table
-void vmm_set_rec_table(virtual_addr new_dir) {
-  pd_entry* entry = &vmm_get_directory()->m_entries[TABLES_PER_DIR - 1];
-  physical_addr addr = vmm_get_physical_address(new_dir, true);
-  pd_entry_set_frame(entry, addr);
-  pd_entry_add_attrib(entry, I86_PDE_PRESENT | I86_PDE_WRITABLE);
-
-  vmm_invalidate_page_tables();
-}
-
-void vmm_set_rec_table_to_kernel() {
-  vmm_set_rec_table_to_kernel(vmm_get_physical_address(vmm_get_directory(), false));
-}
-
 void vmm_alloc_ptable(struct pdirectory* va_dir, uint32_t index, uint32_t flags) {
   pd_entry* entry = &va_dir->m_entries[index];
 
@@ -225,7 +187,9 @@ physical_addr vmm_get_physical_address(virtual_addr vaddr, bool is_page) {
   return is_page ? paddr : (paddr & ~0xfff) | (vaddr & 0xfff);
 }
 
-void vmm_map_address(struct pdirectory* va_dir, uint32_t virt, uint32_t phys, uint32_t flags) {
+void vmm_map_address(uint32_t virt, uint32_t phys, uint32_t flags) {
+  struct pdirectory* va_dir = PAGE_DIRECTORY_BASE;
+
   if (virt != PAGE_ALIGN(virt)) {
     printf("0x%x is not page aligned", virt);
   }

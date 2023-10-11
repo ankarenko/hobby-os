@@ -85,15 +85,6 @@ struct pdirectory {
 
 void vmm_init();
 
-
-//! maps phys to virtual address
-/*
-void vmm_map_page(
-  struct pdirectory* page_directory, 
-  void* phys, void* virt, uint32_t flags
-);
-*/
-
 //! allocates a page in physical memory
 bool vmm_alloc_page(pt_entry*);
 
@@ -113,29 +104,23 @@ void vmm_flush_tlb_entry(virtual_addr addr);
 //! clears a page table
 void vmm_ptable_clear(struct ptable* p);
 
-//! convert virtual address to page table index
-uint32_t vmm_ptable_virt_to_index(virtual_addr addr);
-
 //! get page entry from page table
 pt_entry* vmm_ptable_lookup_entry(struct ptable* p, virtual_addr addr);
 
-//! convert virtual address to page directory index
-uint32_t vmm_pdirectory_virt_to_index(virtual_addr addr);
-
 //! clears a page directory table
 void vmm_pdirectory_clear(struct pdirectory* dir);
+
 void vmm_clone_kernel_space(struct pdirectory* dir);
 
 //! get directory entry from directory table
 pd_entry* vmm_pdirectory_lookup_entry(struct pdirectory* p, virtual_addr addr);
+
 physical_addr vmm_get_physical_address(virtual_addr vaddr, bool is_page);
-void vmm_map_address(struct pdirectory *va_dir, uint32_t virt, uint32_t phys, uint32_t flags);
+
+// maps address to a currently set page_directory
+void vmm_map_address(uint32_t virt, uint32_t phys, uint32_t flags);
+
 //virtual_addr vmm_alloc_size(virtual_addr from, uint32_t size, uint32_t flags);
-void vmm_unmap_address(struct pdirectory *va_dir, uint32_t virt);
-
-void vmm_set_rec_table(physical_addr new_dir);
-void vmm_set_rec_table_to_kernel();
-
-// map (page_directory, virt, phys, pages_amount, flags)
+void vmm_unmap_address(uint32_t virt);
 
 #endif

@@ -96,7 +96,6 @@ bool create_user_stack(
   physical_addr user_stack = pmm_alloc_frame();
   
   vmm_map_address(
-    space, 
     addr, 
     user_stack, 
     I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PTE_USER
