@@ -1,7 +1,6 @@
 .global scheduler_isr
 .type scheduler_isr, @function
 scheduler_isr:
-  cli
   pusha         
 
   # we are accesing 0 byte at address of current task, which is esp

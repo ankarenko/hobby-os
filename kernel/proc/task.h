@@ -71,7 +71,8 @@ typedef struct _thread {
 typedef struct _process {
   int32_t id;
   int32_t priority;
-  struct pdirectory* page_directory;
+  struct pdirectory* va_dir;
+  physical_addr pa_dir;
   int32_t state;
   uint32_t  image_base;
   uint32_t  image_size;

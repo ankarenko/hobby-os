@@ -73,7 +73,7 @@ bool elf_load_image(
     return false;
   }
 
-  const uint8_t* elf_file = kcalloc(1, file.file_length);
+  const uint8_t* elf_file = kcalloc(file.file_length, sizeof(char));
 
   // TODO: read the whole file, not the best approach, but simple
   uint32_t shift = 0;

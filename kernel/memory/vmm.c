@@ -134,13 +134,13 @@ void vmm_init_and_map(struct pdirectory* va_dir, uint32_t vaddr, uint32_t paddr,
   for (int i = 0; i < num_of_pages; ++i, ivirtual += PMM_FRAME_SIZE, iframe += PMM_FRAME_SIZE) {
     pt_entry* entry = &va_table->m_entries[PAGE_TABLE_INDEX(ivirtual)];
     pt_entry_set_frame(entry, iframe);
-    pt_entry_add_attrib(entry, I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PTE_USER);  // TODO: remove, very bad to mix user
+    pt_entry_add_attrib(entry, I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PTE_USER);
     pmm_mark_used_addr(iframe);
   }
 
   pd_entry* entry = &va_dir->m_entries[PAGE_DIRECTORY_INDEX((virtual_addr)vaddr)];
   pd_entry_set_frame(entry, pa_table);
-  pd_entry_add_attrib(entry, I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PDE_USER); // TODO: remove, very bad to mix user
+  pd_entry_add_attrib(entry, I86_PTE_PRESENT | I86_PTE_WRITABLE);
 }
 
 void vmm_init() {
@@ -153,15 +153,15 @@ void vmm_init() {
   vmm_init_and_map(va_dir, KERNEL_HIGHER_HALF, 0x00000000, PAGES_PER_TABLE); // 4mb
 
   // NOTE: MQ 2019-11-21 Preallocate ptable for higher halkernel
-  for (int i = PAGE_DIRECTORY_INDEX(KERNEL_HIGHER_HALF) + 1; i < PAGES_PER_DIR; ++i)
+  for (int i = PAGE_DIRECTORY_INDEX(KERNEL_HIGHER_HALF) + 1; i < TABLES_PER_DIR; ++i)
     vmm_alloc_ptable(va_dir, i, I86_PTE_WRITABLE);
   
   // NOTE: MQ 2019-05-08 Using the recursive page directory trick when paging (map last entry to directory)
-  pd_entry* entry = &va_dir->m_entries[PAGES_PER_DIR - 1];
+  pd_entry* entry = &va_dir->m_entries[TABLES_PER_DIR - 1];
   //va_dir->m_entries[1023] = (pa_dir & 0xFFFFF000) | I86_PTE_PRESENT | I86_PTE_WRITABLE;
 
   pd_entry_set_frame(entry, pa_dir);
-  pd_entry_add_attrib(entry, I86_PDE_PRESENT | I86_PDE_WRITABLE | I86_PDE_USER); // TODO: remove, very bad to mix user
+  pd_entry_add_attrib(entry, I86_PDE_PRESENT | I86_PDE_WRITABLE);
 
   vmm_paging(va_dir, pa_dir);
 }
@@ -175,7 +175,7 @@ void vmm_invalidate_page_tables(void) {
 
 // useful when need to edit userspace table
 void vmm_set_rec_table(virtual_addr new_dir) {
-  pd_entry* entry = &vmm_get_directory()->m_entries[PAGES_PER_DIR - 1];
+  pd_entry* entry = &vmm_get_directory()->m_entries[TABLES_PER_DIR - 1];
   physical_addr addr = vmm_get_physical_address(new_dir, true);
   pd_entry_set_frame(entry, addr);
   pd_entry_add_attrib(entry, I86_PDE_PRESENT | I86_PDE_WRITABLE);
@@ -302,7 +302,7 @@ void vmm_clone_kernel_space(struct pdirectory* dir) {
     memcpy(
       &dir->m_entries[kernel_dir_index], 
       kernel, 
-      (PAGES_PER_DIR - kernel_dir_index) * sizeof(pd_entry)
+      (TABLES_PER_DIR - kernel_dir_index) * sizeof(pd_entry)
     );
     
   }

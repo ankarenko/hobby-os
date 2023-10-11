@@ -41,8 +41,8 @@ struct pdirectory* create_address_space() {
 	struct pdirectory* space;
 
 	/* we need our page directory to be aligned, 0-11 bits should be zero */
-  virtual_addr aligned_object = kalign_heap(PMM_FRAME_SIZE);
-	space = kmalloc(PAGE_SIZE); // (struct pdirectory*)pmm_alloc_frame();
+  virtual_addr aligned_object = kalign_heap(PAGE_SIZE);
+	space = kcalloc(PAGE_SIZE, sizeof(char)); // (struct pdirectory*)pmm_alloc_frame();
   if (aligned_object)
 		kfree(aligned_object);
 
@@ -52,11 +52,10 @@ struct pdirectory* create_address_space() {
 
   // recursive trick
   
-  space->m_entries[PAGES_PER_DIR - 1] = 
+  space->m_entries[TABLES_PER_DIR - 1] = 
     vmm_get_physical_address(space, true) | 
     I86_PDE_PRESENT | 
-    I86_PDE_WRITABLE | 
-    I86_PDE_USER;
+    I86_PDE_WRITABLE;
 
 	return space;
 }
@@ -175,7 +174,7 @@ static void user_thread_elf_entry(thread *th) {
   // TODO: mos make it differently check it out
   if (!elf_load_image(
     path, 
-    parent->page_directory, 
+    parent->va_dir, 
     &parent->image_base, 
     &parent->image_size, 
     &entry)
@@ -191,7 +190,7 @@ static void user_thread_elf_entry(thread *th) {
   /* create stack space for main thread at the end of the program */
   // dont forget that the stack grows up from down
   th->user_ss = USER_DATA;
-  if (!create_user_stack(parent->page_directory, &th->user_esp, image_end)) {
+  if (!create_user_stack(parent->va_dir, &th->user_esp, image_end)) {
     return false;
   }
   //0x40000000 0x40003000
@@ -219,12 +218,7 @@ static process* _create_process(char* app_path, struct pdirectory* pdir) {
   proc->id = ++next_pid;
   proc->thread_count = 0;
   proc->path = app_path;
-  
-  if (pdir) {
-    proc->page_directory = pdir;
-  } else {
-    proc->page_directory = create_address_space();
-  }
+  proc->va_dir = pdir? pdir : create_address_space();
 
   unlock_scheduler();
 
@@ -254,15 +248,15 @@ void terminate_process() {
   /*
   thread* th = NULL;
   list_for_each_entry(th, &cur->threads, th_sibling) {
-    vmm_unmap_address(cur->page_directory, th->kernel_esp - PMM_FRAME_SIZE);
+    vmm_unmap_address(cur->va_dir, th->kernel_esp - PMM_FRAME_SIZE);
   }
   */
   
   /*
   for (uint32_t i = 0; i < cur->thread_count; ++i) {
     thread* pThread = &cur->threads[i];
-    vmm_unmap_address(cur->page_directory, pThread->kernel_esp);
-    vmm_unmap_address(cur->page_directory, pThread->user_esp);
+    vmm_unmap_address(cur->va_dir, pThread->kernel_esp);
+    vmm_unmap_address(cur->va_dir, pThread->user_esp);
     // make it orphan, so it will be deleetd from the queue
     pThread->parent = ORPHAN_THREAD;
   }
@@ -279,7 +273,7 @@ void terminate_process() {
 		/* get virtual address of page */
     /*
 		virt = cur->image_base + (page * PAGE_SIZE);
-		vmm_unmap_address(cur->page_directory, virt);
+		vmm_unmap_address(cur->va_dir, virt);
 	}
 
   remove_process(*cur);

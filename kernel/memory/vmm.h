@@ -58,7 +58,7 @@ typedef uint32_t virtual_addr;
 
 //! i86 architecture defines 1024 entries per table--do not change
 #define PAGES_PER_TABLE 1024
-#define PAGES_PER_DIR 1024
+#define TABLES_PER_DIR 1024
 
 #define PAGE_DIRECTORY_INDEX(x) (((x) >> 22) & 0x3ff)
 #define PAGE_TABLE_INDEX(x) (((x) >> 12) & 0x3ff)
@@ -80,7 +80,7 @@ struct ptable {
 
 //! page directory
 struct pdirectory {
-  pd_entry m_entries[PAGES_PER_DIR];
+  pd_entry m_entries[TABLES_PER_DIR];
 };
 
 void vmm_init();
