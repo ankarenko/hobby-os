@@ -12,6 +12,9 @@
 0xC0000000-0xffffffff � Kernel reserved
 */
 
+#define KERNEL_STACK_SIZE 0x1000
+#define USER_STACK_SIZE 0x1000
+
 #define KE_USER_START 0x00100000
 #define KE_KERNEL_START 0xC0000000
 
@@ -49,6 +52,11 @@ union thread_union {
   uint64_t stack[1024];
 };
 
+typedef struct _mm_struct {
+  struct list_head mmap;
+	uint32_t start_code, end_code, start_data, end_data;
+} mm_struct;
+
 typedef struct _thread {
   uint32_t  kernel_esp;
   uint32_t  kernel_ss;
@@ -73,6 +81,7 @@ typedef struct _process {
   int32_t priority;
   struct pdirectory* va_dir;
   physical_addr pa_dir;
+  mm_struct* mm;
   int32_t state;
   uint32_t  image_base;
   uint32_t  image_size;

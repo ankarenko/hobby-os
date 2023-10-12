@@ -1,13 +1,20 @@
-
+#include <stdlib.h>
 #include <math.h>
 #include <stdint.h>
-
-#include "malloc.h"
+#include <stdbool.h>
 
 #define BLOCK_MAGIC 0x464E
 #define BLOCK_ALIGNMENT 4
 
-extern uint32_t heap_current;
+struct block_meta
+{
+	size_t size;
+	struct block_meta *next;
+	bool free;
+	uint32_t magic;
+};
+
+uint32_t heap_current;
 static struct block_meta *_kblocklist = NULL;
 
 void assert_kblock_valid(struct block_meta *block) {
@@ -54,40 +61,6 @@ struct block_meta *request_space(struct block_meta *last, size_t size) {
   block->free = false;
   block->magic = BLOCK_MAGIC;
   return block;
-}
-
-// NOTE: MQ 2019-11-24
-// next object in heap space can be any number
-// align heap so the next object's addr will be started at size * n
-// ------------------- 0xE0000000
-// |                 |
-// |                 |
-// |                 | new object address m = (size * n)
-// ------------------- m - sizeof(struct block_meta)
-// |                 | empty object (>= 1)
-// ------------------- padding - sizeof(struct block_meta)
-void *kalign_heap(size_t size) {
-	uint32_t heap_addr = (uint32_t)sbrk(0, NULL, NULL);
-
-	if (heap_addr % size == 0)
-		return NULL;
-
-	uint32_t padding_size = div_ceil(heap_addr, size) * size - heap_addr;
-	uint32_t required_size = sizeof(struct block_meta) * 2;
-
-	while (padding_size <= KERNEL_HEAP_TOP)
-	{
-		if (padding_size > required_size)
-		{
-			struct block_meta *last = _kblocklist;
-			while (last->next)
-				last = last->next;
-			struct block_meta *block = request_space(last, padding_size - required_size);
-			return block + 1;
-		}
-		padding_size += size;
-	}
-	return NULL;
 }
 
 struct block_meta *get_block_ptr(void *ptr) {

@@ -232,6 +232,11 @@ void* pmm_alloc_frames(uint32_t size) {
 }
 
 void pmm_free_frame(void* p) {
+  if ((physical_addr)p % PMM_FRAME_SIZE != 0) {
+    printf("pmm_dealloc: addr is not %d aligned", PMM_FRAME_SIZE);
+    return; // todo: make crash
+  }
+
   physical_addr addr = (physical_addr)p;
   uint32_t frame = addr / PMM_FRAME_SIZE;
 

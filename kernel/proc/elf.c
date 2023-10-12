@@ -142,6 +142,8 @@ bool elf_load_image(
 
     virtual_addr vaddr = *image_base + ph->p_vaddr - base;
 
+    // the ELF specification states that you should zero the BSS area. In bochs, everything's zeroed by default, 
+    // but on real computers and virtual machines it isnt.
     memset(vaddr, 0, ph->p_memsz);
     memcpy(vaddr, elf_file + ph->p_offset, ph->p_filesz);
   }

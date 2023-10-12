@@ -8,8 +8,6 @@
 #include "../multiboot.h"
 
 #define PMM_DEBUG() printf("Available: \n Blocks: %d \n Bytes: %d \n Used: \n Blocks: %d \n Bytes: %d \n", pmm_get_free_frame_count(), pmm_get_free_frame_count() * pmm_get_frame_size(), pmm_get_use_frame_count(), pmm_get_use_frame_count() * pmm_get_frame_size());
-  
-  
 
 //! 8 blocks per byte
 #define PMM_FRAMES_PER_BYTE 8

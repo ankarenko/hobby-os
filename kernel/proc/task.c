@@ -9,13 +9,7 @@
 #include "elf.h"
 #include "../include/list.h"
 
-#define THREAD_MAX 10
-#define PROC_MAX 10
-#define ORPHAN_THREAD 0
 #define PROCESS_TRAPPED_PAGE_FAULT 0xFFFFFFFF
-#define KERNEL_STACK_SIZE 0x1000
-#define USER_STACK_SIZE 0x1000
-#define NO_USER_STACK NULL
 
 extern void enter_usermode(
   virtual_addr entry,
@@ -54,7 +48,6 @@ struct pdirectory* create_address_space() {
 	vmm_clone_kernel_space(space);
 
   // recursive trick
-  
   space->m_entries[TABLES_PER_DIR - 1] = 
     vmm_get_physical_address(space, false) | 
     I86_PDE_PRESENT | 
@@ -106,12 +99,12 @@ bool create_user_stack(
   }
 
   uint32_t frames_count = USER_STACK_SIZE / PMM_FRAME_SIZE;
-
+  physical_addr user_stack = pmm_alloc_frames(frames_count);
+    
   for (int i = 0; i < frames_count; ++i) {
-    physical_addr user_stack = pmm_alloc_frames(frames_count);
     vmm_map_address(
       addr + PMM_FRAME_SIZE * i, 
-      user_stack, 
+      user_stack + PMM_FRAME_SIZE * i, 
       I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PTE_USER
     );
   }
@@ -209,7 +202,7 @@ static void user_thread_elf_entry(thread *th) {
   if (!create_user_stack(parent->va_dir, &th->user_esp, image_end)) {
     return false;
   }
-  //0x40000000 0x40003000
+  
   tss_set_stack(KERNEL_DATA, th->kernel_esp);
   enter_usermode(entry, th->user_esp, PROCESS_TRAPPED_PAGE_FAULT);
 }
@@ -234,6 +227,9 @@ static process* create_process(char* app_path, struct pdirectory* pdir) {
   proc->id = ++next_pid;
   proc->thread_count = 0;
   proc->path = app_path;
+  proc->mm = kcalloc(1, sizeof(mm_struct));
+  proc->image_base = NULL;
+  proc->image_size = 0;
   proc->va_dir = pdir? pdir : create_address_space();
   proc->pa_dir = vmm_get_physical_address(proc->va_dir, false);
 

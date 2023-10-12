@@ -1,5 +1,6 @@
 // this does not work!
-// static char* str = "Priver!";
+
+//static char* str = "Privet! \n";
 /*
 void sleep(unsigned int a) {
   __asm__ __volatile__(
@@ -9,6 +10,7 @@ void sleep(unsigned int a) {
     : "=a"(a)
   );
 }
+*/
 
 void printf(char* str) {
   __asm__ __volatile__(
@@ -18,7 +20,7 @@ void printf(char* str) {
     : "=m"(str)
   );
 }
-
+/*
 void terminate() {
   __asm__ __volatile__(
       "mov $1, %%eax;			  \n"
@@ -26,41 +28,25 @@ void terminate() {
       :::
   );
 }
-*/
 
-int main()
-{
-  int a = 0;
-  char* str = "Hello from user process!\n";
+int _start() {
+  //char* str = "Hello from user process!\n";
 
   // print message
-  //while (1) {
-    // sleep
-    a = 200;
-    __asm__ __volatile__(
-      "mov $200, %%ebx;			  \n"
-      "mov $2, %%eax;			  \n"
-      "int $0x80;           \n"
-      :::
-    );
-
-    a = 512;
-    __asm__ __volatile__(
-        "mov %0, %%ebx;			  \n"
-        "mov %1, %%eax;	      \n"
-        "int $0x80;           \n"
-        : "=m"(str)
-        : "a"(a)
-    );
-  //}
+  while (1) {
+    sleep(200);
+    printf(str);
+  }
 
   //terminate
-  a = 1;
-  __asm__ __volatile__(
-      "mov %0, %%eax;			  \n"
-      "int $0x80;           \n"
-      : "=a"(a)
-  );
+  terminate();
 
   for (;;);
+}
+*/
+
+static char* str = "Privet! \n";
+
+int _start() {
+  printf(str);
 }

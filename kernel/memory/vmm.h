@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 
 #include "pmm.h"
 #include "vmm_pde.h"
@@ -122,5 +123,9 @@ void vmm_map_address(uint32_t virt, uint32_t phys, uint32_t flags);
 
 //virtual_addr vmm_alloc_size(virtual_addr from, uint32_t size, uint32_t flags);
 void vmm_unmap_address(uint32_t virt);
+
+
+/* sbrk.c */
+void* sbrk(size_t n, virtual_addr* brk, virtual_addr* remaning);
 
 #endif
