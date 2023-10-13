@@ -8,7 +8,7 @@
 static virtual_addr _kernel_heap_current = KERNEL_HEAP_BOTTOM;
 static uint32_t _kernel_remaining_from_last_used = 0;
 
-void* sbrk(size_t n, virtual_addr* brk, virtual_addr* remaning) {
+void* sbrk(size_t n, virtual_addr* brk, virtual_addr* remaning, uint32_t flags) {
   virtual_addr* kernel_heap_current = &_kernel_heap_current;
   uint32_t* kernel_remaining_from_last_used = &_kernel_remaining_from_last_used;
 
@@ -42,7 +42,7 @@ void* sbrk(size_t n, virtual_addr* brk, virtual_addr* remaning) {
       page_addr += PMM_FRAME_SIZE, phyiscal_addr += PMM_FRAME_SIZE
     ) {
       // todo: check if page already mapped?
-      vmm_map_address(page_addr, phyiscal_addr, I86_PTE_PRESENT | I86_PTE_WRITABLE);
+      vmm_map_address(page_addr, phyiscal_addr, I86_PTE_PRESENT | I86_PTE_WRITABLE | flags);
     }
     
     *kernel_remaining_from_last_used = page_addr - (*kernel_heap_current + n);

@@ -7,6 +7,7 @@
 #define __NR_print 512
 #define __NR_terminate 1
 #define __NR_sleep 2
+#define __NR_sbrk 10
 
 #define _syscall0(name)                       \
   static inline int32_t syscall_##name() {    \
@@ -63,9 +64,16 @@
 
 #define SYSCALL_RETURN(expr) ({ int ret = expr; if (ret < 0) { return errno = -ret, -1; } return 0; })
 #define SYSCALL_RETURN_ORIGINAL(expr) ({ int ret = expr; if (ret < 0) { return errno = -ret, -1; } return ret; })
+// NOTE: MQ 2020-12-02
+// if syscall is succeeded, returned address is always in userspace (0 <= addr < 0xc000000)
+// on failure, returned value is in [-1024, -1] which translates to (0xfffffc00 <= addr <= 0xffffffff) -> always in kernelspace
+#define HIGHER_HALF_ADDRESS 0xc000000
+#define NULL 0
+#define SYSCALL_RETURN_POINTER(expr) ({ int ret = expr; if ((int)HIGHER_HALF_ADDRESS < ret && ret < 0) { return errno = -ret, NULL; } return (void *)ret; })
 
 void sleep(unsigned int a);
 void print(char* str);
 void terminate();
+void* usbrk(unsigned int n);
 
 #endif

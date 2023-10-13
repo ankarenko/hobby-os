@@ -110,15 +110,17 @@ bool elf_load_image(
   // allocating segments and mapping to virtual addresses
   // *image_base = base; for absolute
   parent->image_base = USER_IMAGE_START; // for PIC (or malloc(image_size))
-  uint32_t frames = div_ceil(parent->image_base, PMM_FRAME_SIZE);
-  physical_addr phys_image_base = pmm_alloc_frames(frames);
+  parent->mm->heap_start = parent->image_base;
+  parent->mm->brk = parent->mm->heap_start;
+  parent->mm->heap_end = parent->mm->heap_start + USER_HEAP_SIZE;
+  parent->mm->remaning = 0;
   
-  for (int i = 0; i < frames; ++i) {
-    vmm_map_address(
-      parent->image_base + PMM_FRAME_SIZE * i, phys_image_base + PMM_FRAME_SIZE * i, 
-      I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PTE_USER
-    );
-  }
+  virtual_addr* image = sbrk(
+    parent->image_size, 
+    &parent->mm->brk, 
+    &parent->mm->remaning,
+    I86_PDE_USER
+  );
 
   // iterating trough segments and copying them to our address space
   for (int i = 0; i < elf_header->e_phnum; ++i) {
@@ -135,25 +137,16 @@ bool elf_load_image(
     memcpy(vaddr, elf_file + ph->p_offset, ph->p_filesz);
   }
 
-  virtual_addr image_end = ALIGN_UP(
-    parent->image_base + parent->image_size, 
-    PMM_FRAME_SIZE
-  );
-
-  parent->mm->heap_start = image_end;
-  parent->mm->brk = parent->mm->heap_start;
-  parent->mm->heap_end = parent->mm->heap_start + USER_HEAP_SIZE;
-
   /* create stack space for main thread at the end of the program */
   // dont forget that the stack grows up from down
   th->user_ss = USER_DATA;
-  th->user_stack_virt_end = parent->mm->heap_end;
+  th->virt_ustack_bottom = parent->mm->heap_end;
   
   if (!create_user_stack(
     parent->va_dir, 
     &th->user_esp, 
-    &th->user_stack_phys_end, 
-    th->user_stack_virt_end
+    &th->phys_ustack_bottom, 
+    th->virt_ustack_bottom
   )) {
     return false;
   }

@@ -44,7 +44,7 @@ void split_block(struct block_meta *block, size_t size) {
 }
 
 struct block_meta *request_space(struct block_meta *last, size_t size) {
-  struct block_meta *block = sbrk(size + sizeof(struct block_meta), NULL, NULL);
+  struct block_meta *block = sbrk(size + sizeof(struct block_meta), NULL, NULL, 0);
 
   if (last)
     last->next = block;
@@ -67,7 +67,7 @@ struct block_meta *request_space(struct block_meta *last, size_t size) {
 // |                 | empty object (>= 1)
 // ------------------- padding - sizeof(struct block_meta)
 void *kalign_heap(size_t size) {
-	uint32_t heap_addr = (uint32_t)sbrk(0, NULL, NULL);
+	uint32_t heap_addr = (uint32_t)sbrk(0, NULL, NULL, 0);
 
 	if (heap_addr % size == 0)
 		return NULL;

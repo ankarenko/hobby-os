@@ -9,6 +9,13 @@ static int32_t sys_debug_printf(/*enum debug_level level,*/ const char *out) {
   return 1;
 }
 
+static void* sys_sbrk(size_t n) {
+  thread* th = get_current_thread();
+  process* parent = th->parent;
+  virtual_addr* addr = sbrk(n, &parent->mm->brk, &parent->mm->remaning, I86_PDE_USER);
+  return addr;
+}
+
 static int32_t sys_debug_terminate() {
   thread* cur_thread = get_current_thread();
   thread_kill(cur_thread->tid);
@@ -24,6 +31,7 @@ static void *syscalls[] = {
   [__NR_print] = sys_debug_printf,
   [__NR_terminate] = sys_debug_terminate,
   [__NR_sleep] = sys_debug_sleep_thread,
+  [__NR_sbrk] = sys_sbrk,
   0
 };
 

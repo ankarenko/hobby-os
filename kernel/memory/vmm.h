@@ -134,6 +134,6 @@ void vmm_unmap_address(uint32_t virt);
 
 
 /* sbrk.c */
-void* sbrk(size_t n, virtual_addr* brk, virtual_addr* remaning);
+void* sbrk(size_t n, virtual_addr* brk, virtual_addr* remaning, uint32_t flags);
 
 #endif

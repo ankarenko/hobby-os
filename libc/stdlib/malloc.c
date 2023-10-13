@@ -2,6 +2,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "../include/unistd.h"
 
 #define BLOCK_MAGIC 0x464E
 #define BLOCK_ALIGNMENT 4
@@ -51,7 +52,7 @@ void split_block(struct block_meta *block, size_t size) {
 }
 
 struct block_meta *request_space(struct block_meta *last, size_t size) {
-  struct block_meta *block = sbrk(size + sizeof(struct block_meta), NULL, NULL);
+  struct block_meta *block = usbrk(size + sizeof(struct block_meta));
 
   if (last)
     last->next = block;
@@ -68,7 +69,7 @@ struct block_meta *get_block_ptr(void *ptr) {
 }
 
 // todo: probably not the best
-void kfree(void *ptr) {
+void free(void *ptr) {
   if (!ptr)
     return;
   
@@ -78,7 +79,7 @@ void kfree(void *ptr) {
 }
 
 // malloc for kernel
-void *kmalloc(size_t size) {
+void *malloc(size_t size) {
   if (size <= 0)
     return NULL;
 
@@ -104,24 +105,24 @@ void *kmalloc(size_t size) {
   return block ? block + 1 : NULL;
 }
 
-void *kcalloc(size_t n, size_t size) {
-  void *block = kmalloc(n * size);
+void *calloc(size_t n, size_t size) {
+  void *block = malloc(n * size);
   if (block)
     memset(block, 0, n * size);
   return block;
 }
 
-void *krealloc(void *ptr, size_t size)
+void *realloc(void *ptr, size_t size)
 {
 	if (!ptr && size == 0)
 	{
-		kfree(ptr);
+		free(ptr);
 		return NULL;
 	}
 	else if (!ptr)
-		return kcalloc(size, sizeof(char));
+		return calloc(size, sizeof(char));
 
-	void *newptr = kcalloc(size, sizeof(char));
+	void *newptr = calloc(size, sizeof(char));
 	memcpy(newptr, ptr, size);
 	return newptr;
 }

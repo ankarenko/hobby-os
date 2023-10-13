@@ -53,6 +53,7 @@ typedef struct _mm_struct {
   // struct list_head mmap;
   virtual_addr heap_start;
   virtual_addr brk;  // current pointer
+  uint32_t remaning;
   virtual_addr heap_end;
 } mm_struct;
 
@@ -66,8 +67,8 @@ typedef struct _thread {
   struct _process* parent;
   uint32_t tid;
 
-  physical_addr user_stack_phys_end;
-  virtual_addr user_stack_virt_end;
+  physical_addr phys_ustack_bottom;
+  virtual_addr virt_ustack_bottom;
   uint32_t priority;
   // uint32_t state;
   enum thread_state state;
