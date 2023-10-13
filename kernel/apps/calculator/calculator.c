@@ -2,19 +2,24 @@
 #include <string.h>
 #include "../../../libc/include/stdlib.h"
 
-static char* str = "Privet Br!! \n";
+static char* str = "Hello, world! \n";
 
 int _start() {
   //char a[20];
 
-  char* a = (char*)malloc(20);
+  
 
-  memcpy(a, str, 15);
-  a[5] = '\0';
+  
 
   while (1) {
-    sleep(50);
-    print(a);
+    char* s = (char*)malloc(20);
+    memcpy(s, str, 15);
+    s[16] = '\0';
+
+    sleep(100);
+    print(s);
+    
+    free(s);
   }
 
   //terminate
