@@ -6,7 +6,10 @@ ASM_SOURCES = $(wildcard *.s)
 OBJ = ${C_SOURCES:.c=.o} 
 ASM_OBJ = ${ASM_SOURCES:.s=.o}
 
-CFLAGS := $(CFLAGS) -nostdlib -lk -lgcc -fPIC -g0 -nostdinc -fno-builtin -nostartfiles
+# with static variables doesn't work -fPIC 
+# with -nostdinc doesnt work, I use stddef for example
+# -fno-builtin not sure
+CFLAGS := $(CFLAGS) -nostdlib -lk -lgcc -g0 -nostartfiles
 
 %.o: %.c
 	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS)
@@ -15,7 +18,7 @@ CFLAGS := $(CFLAGS) -nostdlib -lk -lgcc -fPIC -g0 -nostdinc -fno-builtin -nostar
 	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS)
 
 calc.exe: $(OBJ) linker.ld
-	$(CC) -T linker.ld -o $@ $(CFLAGS) $(OBJ)
+	$(CC) -T linker.ld -o  $@ $(CFLAGS) $(OBJ) -L ../../../libc -lk
 
 asm_calc.exe: $(ASM_OBJ) linker.ld
 	$(CC) -T linker.ld -o $@ $(CFLAGS) $(ASM_OBJ) 

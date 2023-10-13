@@ -117,7 +117,7 @@ void vmm_init_and_map(struct pdirectory* va_dir, uint32_t vaddr, uint32_t paddr,
   for (int i = 0; i < num_of_pages; ++i, ivirtual += PMM_FRAME_SIZE, iframe += PMM_FRAME_SIZE) {
     pt_entry* entry = &va_table->m_entries[PAGE_TABLE_INDEX(ivirtual)];
     pt_entry_set_frame(entry, iframe);
-    pt_entry_add_attrib(entry, I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PTE_USER);
+    pt_entry_add_attrib(entry, I86_PTE_PRESENT | I86_PTE_WRITABLE);
     pmm_mark_used_addr(iframe);
   }
 

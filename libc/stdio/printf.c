@@ -1,4 +1,6 @@
 // took from here https://wiki.osdev.org/User:A22347/Printf
+#if defined(__is_libk)
+
 #include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -475,3 +477,5 @@ int fprintf(struct FILE* stream, const char* format, ...) {
 int fflush(struct FILE* stream) {
   return 1;
 }
+
+#endif

@@ -2,7 +2,8 @@ ENTRY(_start)
 
 SECTIONS
 {
-	. = 0x00100000;
+	/*. = 0x00100000;*/
+  . = 0x40000000;
  
 	/* First put the multiboot header, as it is required to be put very early
 	   early in the image or the bootloader won't recognize the file format.
@@ -10,12 +11,7 @@ SECTIONS
 	.text ALIGN(4096) : AT(ADDR(.text))
 	{
 		*(.text .text.*)
-	}
- 
-	/* Read-only data. */
-	.rodata ALIGN(4096) : AT(ADDR(.rodata))
-	{
-		*(.rodata .rodata.*)
+    *(.rodata .rodata.*)
 	}
  
 	/* Read-write data (initialized) */

@@ -1,52 +1,20 @@
-// this does not work!
+#include <unistd.h>
+#include <string.h>
 
-//static char* str = "Privet! \n";
-/*
-void sleep(unsigned int a) {
-  __asm__ __volatile__(
-    "mov $200, %%ebx;			  \n"
-    "mov $2, %%eax;			  \n"
-    "int $0x80;           \n"
-    : "=a"(a)
-  );
-}
-*/
-
-void printf(char* str) {
-  __asm__ __volatile__(
-    "mov %0, %%ebx;			  \n"
-    "mov $512, %%eax;	      \n"
-    "int $0x80;           \n"
-    : "=m"(str)
-  );
-}
-/*
-void terminate() {
-  __asm__ __volatile__(
-      "mov $1, %%eax;			  \n"
-      "int $0x80;           \n"
-      :::
-  );
-}
+static char* str = "Privet Bro! \n";
 
 int _start() {
-  //char* str = "Hello from user process!\n";
+  char a[20];
 
-  // print message
+  memcpy(&a, str, 15);
+
   while (1) {
-    sleep(200);
-    printf(str);
+    sys_sleep(200);
+    sys_printf(a);
   }
 
   //terminate
-  terminate();
-
+  sys_terminate();
+  
   for (;;);
-}
-*/
-
-static char* str = "Privet! \n";
-
-int _start() {
-  printf(str);
 }
