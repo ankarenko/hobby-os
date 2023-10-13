@@ -45,12 +45,6 @@ void sleep(uint32_t ms) {
 
 static PFILE _cur_dir = NULL;
 
-void user_syscall() {
-  asm volatile("int $0x3");
-  int32_t a = 2;
-  syscall_printf("\nIn user mode");
-}
-
 //! wait for key stroke
 enum KEYCODE getch() {
   enum KEYCODE key = KEY_UNKNOWN;

@@ -82,7 +82,8 @@ bool create_kernel_stack(virtual_addr* kernel_stack) {
 /* creates user stack for main thread. */
 bool create_user_stack(
   struct pdirectory* space, 
-  virtual_addr* user_esp, 
+  virtual_addr* user_esp,
+  physical_addr* user_stack_end, 
   virtual_addr addr
 ) {
 	/* this will call our address space allocator
@@ -110,6 +111,7 @@ bool create_user_stack(
   }
   
   *user_esp = addr + USER_STACK_SIZE;
+  *user_stack_end = user_stack;
 
   return true;
 }
@@ -181,28 +183,10 @@ static void user_thread_elf_entry(thread *th) {
 
   // try to load image into our address space
   // TODO: mos make it differently check it out
-  if (!elf_load_image(
-    path, 
-    parent->va_dir, 
-    &parent->image_base, 
-    &parent->image_size, 
-    &entry)
-  ) {
+  if (!elf_load_image(path, th, &entry)) {
     return false;
   }
 
-  virtual_addr image_end = ALIGN_UP(
-    parent->image_base + parent->image_size, 
-    PMM_FRAME_SIZE
-  );  
-
-  /* create stack space for main thread at the end of the program */
-  // dont forget that the stack grows up from down
-  th->user_ss = USER_DATA;
-  if (!create_user_stack(parent->va_dir, &th->user_esp, image_end)) {
-    return false;
-  }
-  
   tss_set_stack(KERNEL_DATA, th->kernel_esp);
   enter_usermode(entry, th->user_esp, PROCESS_TRAPPED_PAGE_FAULT);
 }

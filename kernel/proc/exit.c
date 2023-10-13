@@ -4,7 +4,7 @@
 bool exit_process(process* proc) {
   // free image
   if (proc->image_base) {
-
+    
   }
 
   list_del(&proc->proc_sibling);
@@ -27,7 +27,13 @@ bool exit_thread(thread* th) {
 
   // clear userstack
   if (th->user_esp) {
-    //pmm_free_frames()
+    // parent->mm->heap_end - beggining of the stack
+    uint32_t frames = div_ceil(USER_STACK_SIZE, PMM_FRAME_SIZE);
+    pmm_free_frames(th->user_stack_phys_end, frames);
+    
+    for (int i = 0; i < frames;  ++i) {
+      vmm_unmap_address(th->user_stack_virt_end + i * PAGE_SIZE);
+    }
   }
   
   // if there are no threads, then exit process

@@ -1,20 +1,21 @@
 #include <unistd.h>
 #include <string.h>
 
-static char* str = "Privet Bro! \n";
+static char* str = "Privet Br!! \n";
 
 int _start() {
   char a[20];
 
   memcpy(&a, str, 15);
+  a[5] = '\0';
 
   while (1) {
-    sys_sleep(200);
-    sys_printf(a);
+    sleep(50);
+    print(a);
   }
 
   //terminate
-  sys_terminate();
+  terminate();
   
   for (;;);
 }

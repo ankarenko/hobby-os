@@ -1,11 +1,8 @@
 #include <stdio.h>
+#include <unistd.h>
 #include "../proc/task.h"
 #include "../cpu/idt.h"
 #include "sysapi.h"
-
-#define __NR_dprintf 512
-#define __NR_dterminate 1
-#define __NR_thread_sleep 2
 
 static int32_t sys_debug_printf(/*enum debug_level level,*/ const char *out) {
   printf(out);
@@ -23,32 +20,11 @@ static int32_t sys_debug_sleep_thread(uint32_t msec) {
   return 1;
 }
 
-// In x86-32 parameters for Linux system call are passed using 
-// registers. %eax for syscall_number. %ebx, %ecx, %edx, %esi, 
-// %edi, %ebp are used for passing 6 parameters to system calls.
-
-// The return value is in %eax. All other registers 
-// (including EFLAGS) are preserved across the int $0x80.
-int32_t syscall_printf(char *str) {
-  int32_t a = __NR_dprintf;
-
-  // TODO: not sure if it is a right way to provide params, but it works
-  __asm__ __volatile__(
-      "mov %0, %%ebx;			  \n"
-      "mov %1, %%eax;	      \n"
-      "int $0x80;           \n"
-      : "=m"(str)
-      : "a"(a)
-  );
-
-  return a;
-}
-
 static void *syscalls[] = {
-    [__NR_dprintf] = sys_debug_printf,
-    [__NR_dterminate] = sys_debug_terminate,
-    [__NR_thread_sleep] = sys_debug_sleep_thread,
-    0
+  [__NR_print] = sys_debug_printf,
+  [__NR_terminate] = sys_debug_terminate,
+  [__NR_sleep] = sys_debug_sleep_thread,
+  0
 };
 
 static int32_t syscall_dispatcher(interrupt_registers *regs) {

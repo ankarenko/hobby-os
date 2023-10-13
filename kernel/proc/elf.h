@@ -5,7 +5,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "../memory/vmm.h"
-
+#include "./task.h"
+#include "../cpu/gdt.h"
 
 typedef uint16_t Elf32_Half;  // Unsigned half int
 typedef uint32_t Elf32_Off;	  // Unsigned offset
@@ -174,9 +175,7 @@ struct Elf32_Layout
 
 bool elf_load_image(
   char* app_path, 
-  struct pdirectory* space, 
-  virtual_addr* image_base, 
-  uint32_t* image_size, 
+  thread* th,
   virtual_addr* entry
 );
 void elf_unload_image();

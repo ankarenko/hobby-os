@@ -2,8 +2,7 @@ ENTRY(_start)
 
 SECTIONS
 {
-	/*. = 0x00100000;*/
-  . = 0x40000000;
+	. = 0x00400000;
  
 	/* First put the multiboot header, as it is required to be put very early
 	   early in the image or the bootloader won't recognize the file format.

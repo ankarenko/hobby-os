@@ -25,6 +25,7 @@
 * 	+---------------+
 */
 
+#define USER_IMAGE_START 0x400000
 #define NO_ERROR 0
 #define ERR_NOT_ELF_FILE 1
 #define ERR_NOT_SUPPORTED_PLATFORM 2
@@ -61,12 +62,11 @@ static int elf_verify(struct Elf32_Ehdr *elf_header) {
 // which is provided in params
 bool elf_load_image(
   char* app_path, 
-  struct pdirectory* space, 
-  virtual_addr* image_base, 
-  uint32_t* image_size, 
+  thread* th, 
   virtual_addr* entry
 ) {
   FILE file = vol_open_file(app_path);
+  process* parent = th->parent;
 
   if (file.flags == FS_INVALID) {
     printf("\n*** File not found ***\n");
@@ -100,38 +100,25 @@ bool elf_load_image(
   }
 
   // figuting out, how much memory to allocate
-  *image_size = 0;
+  parent->image_size = 0;
   for (int i = 0; i < elf_header->e_phnum; ++i) {
     struct Elf32_Phdr *ph = elf_file + elf_header->e_phoff + elf_header->e_phentsize * i;
     uint32_t segment_end = ph->p_vaddr - (uint32_t)base + ph->p_memsz;
-    *image_size = max(*image_size, segment_end);
+    parent->image_size = max(parent->image_size, segment_end);
   }
 
   // allocating segments and mapping to virtual addresses
   // *image_base = base; for absolute
-  *image_base = 0x40000000; // for PIC (or malloc(image_size))
-
-  uint32_t frames = div_ceil(*image_size, PMM_FRAME_SIZE);
+  parent->image_base = USER_IMAGE_START; // for PIC (or malloc(image_size))
+  uint32_t frames = div_ceil(parent->image_base, PMM_FRAME_SIZE);
   physical_addr phys_image_base = pmm_alloc_frames(frames);
   
   for (int i = 0; i < frames; ++i) {
     vmm_map_address(
-      *image_base + PMM_FRAME_SIZE * i, phys_image_base + PMM_FRAME_SIZE * i, 
+      parent->image_base + PMM_FRAME_SIZE * i, phys_image_base + PMM_FRAME_SIZE * i, 
       I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PTE_USER
     );
   }
-
-  /*
-  // allocate stack
-  uint8_t* pstack = pmm_alloc_frame();
-  uint8_t* vstack = ALIGN_UP((uint32_t)vimage + image_size, PMM_FRAME_SIZE);
-  
-  vmm_map_address(
-    address_space, 
-    vstack, pstack, 
-    I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PTE_USER
-  );
-  */
 
   // iterating trough segments and copying them to our address space
   for (int i = 0; i < elf_header->e_phnum; ++i) {
@@ -140,15 +127,38 @@ bool elf_load_image(
     if (ph->p_type != PT_LOAD || ph->p_filesz == 0)
 			continue;
 
-    virtual_addr vaddr = *image_base + ph->p_vaddr - base;
+    virtual_addr vaddr = parent->image_base + ph->p_vaddr - base;
 
     // the ELF specification states that you should zero the BSS area. In bochs, everything's zeroed by default, 
     // but on real computers and virtual machines it isnt.
     memset(vaddr, 0, ph->p_memsz);
     memcpy(vaddr, elf_file + ph->p_offset, ph->p_filesz);
   }
+
+  virtual_addr image_end = ALIGN_UP(
+    parent->image_base + parent->image_size, 
+    PMM_FRAME_SIZE
+  );
+
+  parent->mm->heap_start = image_end;
+  parent->mm->brk = parent->mm->heap_start;
+  parent->mm->heap_end = parent->mm->heap_start + USER_HEAP_SIZE;
+
+  /* create stack space for main thread at the end of the program */
+  // dont forget that the stack grows up from down
+  th->user_ss = USER_DATA;
+  th->user_stack_virt_end = parent->mm->heap_end;
   
-  *entry = *image_base + elf_header->e_entry - base;
+  if (!create_user_stack(
+    parent->va_dir, 
+    &th->user_esp, 
+    &th->user_stack_phys_end, 
+    th->user_stack_virt_end
+  )) {
+    return false;
+  }
+
+  *entry = parent->image_base + elf_header->e_entry - base;
 
   kfree(elf_file);
   return true;

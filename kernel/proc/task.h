@@ -3,17 +3,15 @@
 #define _PROC_TASK_H
 
 #include <stdint.h>
-#include "../memory/vmm.h"
+
 #include "../include/list.h"
+#include "../memory/vmm.h"
 
 /*
 0x00000000-0x00100000 � Kernel reserved
-0x00100000-0xC0000000 � User land 
+0x00100000-0xC0000000 � User land
 0xC0000000-0xffffffff � Kernel reserved
 */
-
-#define KERNEL_STACK_SIZE 0x1000
-#define USER_STACK_SIZE 0x1000
 
 #define KE_USER_START 0x00100000
 #define KE_KERNEL_START 0xC0000000
@@ -26,25 +24,24 @@
 
 /* be very careful with modifying this as it's used by assembler code */
 typedef struct _trap_frame {
-	uint32_t epb, edi, esi, ebx;    // Pushed by pusha.
-	uint32_t eip;									  // eip is saved on stack by the caller's "CALL" instruction
-	uint32_t return_address;
-	uint32_t parameter1, parameter2, parameter3;
+  uint32_t epb, edi, esi, ebx;  // Pushed by pusha.
+  uint32_t eip;                 // eip is saved on stack by the caller's "CALL" instruction
+  uint32_t return_address;
+  uint32_t parameter1, parameter2, parameter3;
 } trap_frame;
 
 enum thread_state {
-	THREAD_NEW,
-	THREAD_READY,
-	THREAD_RUNNING,
-	THREAD_WAITING,
-	THREAD_TERMINATED,
+  THREAD_NEW,
+  THREAD_READY,
+  THREAD_RUNNING,
+  THREAD_WAITING,
+  THREAD_TERMINATED,
 };
 
 struct _process;
 typedef unsigned int ktime_t;
 
 typedef struct _thread_info {
-
 } thread_info;
 
 union thread_union {
@@ -53,24 +50,28 @@ union thread_union {
 };
 
 typedef struct _mm_struct {
-  struct list_head mmap;
-	uint32_t start_code, end_code, start_data, end_data;
+  // struct list_head mmap;
+  virtual_addr heap_start;
+  virtual_addr brk;  // current pointer
+  virtual_addr heap_end;
 } mm_struct;
 
 typedef struct _thread {
-  uint32_t  kernel_esp;
-  uint32_t  kernel_ss;
-  uint32_t  user_esp; // user stack
-  uint32_t  user_ss; // user stack segment
-  uint32_t  esp;
+  uint32_t kernel_esp;
+  uint32_t kernel_ss;
+  uint32_t user_esp;  // user stack
+  uint32_t user_ss;   // user stack segment
+  uint32_t esp;
 
   struct _process* parent;
   uint32_t tid;
 
-  uint32_t  priority;
-  //uint32_t state;
+  physical_addr user_stack_phys_end;
+  virtual_addr user_stack_virt_end;
+  uint32_t priority;
+  // uint32_t state;
   enum thread_state state;
-  ktime_t   sleep_time_delta;
+  ktime_t sleep_time_delta;
   struct list_head sched_sibling;
   struct list_head th_sibling;
 } thread;
@@ -83,11 +84,11 @@ typedef struct _process {
   physical_addr pa_dir;
   mm_struct* mm;
   int32_t state;
-  uint32_t  image_base;
-  uint32_t  image_size;
+  uint32_t image_base;
+  uint32_t image_size;
   int32_t thread_count;
-  char *path;
-  //struct _thread  threads[MAX_THREAD];
+  char* path;
+  // struct _thread  threads[MAX_THREAD];
   struct list_head threads;
   struct list_head proc_sibling;
 } process;
@@ -107,10 +108,9 @@ void unlock_scheduler();
 void make_schedule();
 void sched_init();
 struct list_head* get_ready_threads();
-void sched_push_queue(thread *th, enum thread_state state);
-thread *pop_next_thread_to_terminate();
+void sched_push_queue(thread* th, enum thread_state state);
+thread* pop_next_thread_to_terminate();
 bool thread_kill(uint32_t id);
-
 
 // exit.c
 void garbage_worker_task();
