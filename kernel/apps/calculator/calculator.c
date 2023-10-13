@@ -1,29 +1,20 @@
 #include <unistd.h>
 #include <string.h>
-#include "../../../libc/include/stdlib.h"
+#include <stdlib.h>
 
-static char* str = "Hello, world! \n";
+static char* str = "Hello, world! \n\0";
+static int len = 16;
 
-int _start() {
-  //char a[20];
-
-  
-
-  
-
+void _start() {
   while (1) {
-    char* s = (char*)malloc(20);
-    memcpy(s, str, 15);
-    s[16] = '\0';
-
+    char* s = (char*)malloc(len);
+    memcpy(s, str, len);
+    
     sleep(100);
     print(s);
-    
+  
     free(s);
   }
 
-  //terminate
   terminate();
-  
-  for (;;);
 }
