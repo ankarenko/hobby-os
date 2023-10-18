@@ -1,8 +1,8 @@
 #include <limits.h>
 #include <string.h>
 
-#include "../include/ctype.h"
-#include "../include/stdio.h"
+#include <ctype.h>
+#include <stdio.h>
 
 //! converts a string to a long
 long strtol(const char* nptr, char** endptr, int32_t base) {

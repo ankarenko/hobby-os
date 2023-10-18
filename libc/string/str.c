@@ -1,4 +1,4 @@
-#include "../include/string.h"
+#include <string.h>
 
 //! copies string s2 to s1
 char *strcpy(char *s1, const char *s2) {

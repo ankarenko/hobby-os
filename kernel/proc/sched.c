@@ -1,7 +1,7 @@
 #include <stdint.h>
-#include "../include/list.h"
-#include "../cpu/hal.h"
-#include "./task.h"
+#include "kernel/util/list.h"
+#include "kernel/cpu/hal.h"
+#include "kernel/proc/task.h"
 
 struct list_head process_list;
 

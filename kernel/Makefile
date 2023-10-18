@@ -10,14 +10,14 @@ PATHS= \
 	fs/*.c fs/*/**.c \
 	proc/*.c proc/*/**.c \
 	locking/*.c locking/*/**.c \
-	include/*.c
+	util/*.c
 
 C_ALL_SOURCES = $(wildcard ${PATHS})
 C_SOURCES = $(filter-out ${C_ALL_SOURCES:.c=.test.c}, ${C_ALL_SOURCES})
 C_SOURCES_TEST = $(filter-out main.c, $(wildcard main.test.c ${C_ALL_SOURCES}))
 
 A_SOURCES = $(wildcard ${PATHS:.c=.s})
-HEADERS = $(wildcard ../test/greatest.h *.h ${PATHS:.c=.h} include/*.h)
+HEADERS = $(wildcard ../test/greatest.h *.h ${PATHS:.c=.h} util/*.h)
 OBJ = \
 	crti.o \
 	crtbegin.o \

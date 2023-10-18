@@ -1,8 +1,8 @@
 #include <math.h>
-#include "../include/list.h"
-#include "../proc/task.h"
-#include "./vmm.h"
-#include "./pmm.h"
+#include "kernel/util/list.h"
+#include "kernel/proc/task.h"
+#include "kernel/memory/vmm.h"
+#include "kernel/memory/pmm.h"
 
 #if UNIT_TEST
 #define unit_static 
@@ -81,6 +81,7 @@ unit_static int expand_area(
     else {
       //assert(!fixed);
       list_del(&vma->vm_sibling);
+      // BAD CODE: first he adds element to the list and then deletes it 
       vm_area_struct *vma_expand = get_unmapped_area(
         mm, 0, address - vma->vm_start
       );

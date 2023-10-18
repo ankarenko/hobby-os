@@ -1,13 +1,14 @@
 #include <math.h>
-#include "task.h"
 #include <string.h>
-#include "../memory/vmm.h"
-#include "../cpu/hal.h"
-#include "../cpu/tss.h"
-#include "../memory/malloc.h"
-#include "../cpu/gdt.h"
+
+#include "task.h"
+#include "kernel/memory/vmm.h"
+#include "kernel/cpu/hal.h"
+#include "kernel/cpu/tss.h"
+#include "kernel/memory/malloc.h"
+#include "kernel/cpu/gdt.h"
 #include "elf.h"
-#include "../include/list.h"
+#include "kernel/util/list.h"
 
 #define PROCESS_TRAPPED_PAGE_FAULT 0xFFFFFFFF
 

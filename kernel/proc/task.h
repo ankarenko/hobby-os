@@ -4,8 +4,8 @@
 
 #include <stdint.h>
 
-#include "../include/list.h"
-#include "../memory/vmm.h"
+#include "kernel/util/list.h"
+#include "kernel/memory/vmm.h"
 
 /*
 0x00000000-0x00100000 � Kernel reserved
