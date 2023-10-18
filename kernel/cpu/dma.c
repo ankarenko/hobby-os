@@ -139,7 +139,10 @@ void dma_set_mode(uint8_t channel, uint8_t mode) {
 
 //! prepares channel for read
 void dma_set_read(uint8_t channel) {
-  dma_set_mode(channel, DMA_MODE_READ_TRANSFER | DMA_MODE_TRANSFER_SINGLE | DMA_MODE_MASK_AUTO);
+  dma_set_mode(
+    channel, 
+    DMA_MODE_READ_TRANSFER | DMA_MODE_TRANSFER_SINGLE | DMA_MODE_MASK_AUTO
+  );
 }
 
 //! prepares channel for write

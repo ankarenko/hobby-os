@@ -1,5 +1,5 @@
-#include "../memory/malloc.h"
-#include "./task.h"
+#include "kernel/memory/malloc.h"
+#include "kernel/proc/task.h"
 
 bool free_heap(mm_struct* mm) {
   uint32_t frames = div_ceil(mm->brk, PMM_FRAME_SIZE);

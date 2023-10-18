@@ -1,8 +1,9 @@
 #include <string.h>
 
-#include "../fs/fsys.h"
-#include "../memory/vmm.h"
-#include "../memory/malloc.h"
+#include "kernel/fs/fsys.h"
+#include "kernel/memory/vmm.h"
+#include "kernel/memory/malloc.h"
+#include "kernel/util/debug.h"
 
 #include "elf.h"
 
@@ -69,8 +70,7 @@ bool elf_load_image(
   process* parent = th->parent;
 
   if (file.flags == FS_INVALID) {
-    printf("\n*** File not found ***\n");
-    return false;
+    PANIC("\n*** File not found ***\n", NULL);
   }
 
   const uint8_t* elf_file = kcalloc(file.file_length, sizeof(char));
@@ -111,13 +111,8 @@ bool elf_load_image(
   // *image_base = base; for absolute
   parent->image_base = USER_IMAGE_START; // for PIC (or malloc(image_size))
   
-  if (parent->image_size % PMM_FRAME_SIZE != 0) {
-    printf("Start of the elf frogram needs to be %d aligned", PMM_FRAME_SIZE);
-  }
-
-  if (USER_HEAP_SIZE % PMM_FRAME_SIZE != 0) {
-    printf("Size of a heap needs to be %d aligned", PMM_FRAME_SIZE);
-  }
+  KASSERT(parent->image_size % PMM_FRAME_SIZE == 0);
+  KASSERT(USER_HEAP_SIZE % PMM_FRAME_SIZE == 0);
 
   parent->mm->heap_start = parent->image_base;
   parent->mm->brk = parent->mm->heap_start;

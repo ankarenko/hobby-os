@@ -300,7 +300,7 @@ void fat12_mount() {
   bootsector = (PBOOTSECTOR)flpydsk_read_sector(0);
 
   if (!check_fat12(bootsector->bpb.num_sectors)) {
-    // panic
+    // PANIC
   }
 
   // FAT12 STRUCTURE

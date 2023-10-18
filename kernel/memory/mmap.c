@@ -3,12 +3,7 @@
 #include "kernel/proc/task.h"
 #include "kernel/memory/vmm.h"
 #include "kernel/memory/pmm.h"
-
-#if UNIT_TEST
-#define unit_static 
-#else
-#define unit_static  // static
-#endif
+#include "kernel/util/debug.h"
 
 unit_static vm_area_struct* get_unmapped_area(
   mm_struct_mos *mm, uint32_t addr, uint32_t len
@@ -79,7 +74,7 @@ unit_static int expand_area(
     if (address <= next->vm_start)
       vma->vm_end = address;
     else {
-      //assert(!fixed);
+      KASSERT(!fixed);
       list_del(&vma->vm_sibling);
       // BAD CODE: first he adds element to the list and then deletes it 
       vm_area_struct *vma_expand = get_unmapped_area(
@@ -103,9 +98,20 @@ static struct vm_area_struct *find_vma(mm_struct_mos *mm, uint32_t addr) {
   return NULL;
 }
 
-int32_t do_mmap(uint32_t addr,
-                size_t len, uint32_t prot,
-                uint32_t flag, int32_t fd) {
+int32_t do_mmap(
+  uint32_t addr,
+  size_t len, 
+  uint32_t prot,
+  uint32_t flag, 
+  int32_t fd
+) {
+  
+  /*
+    for now it only supports ZERRO addresses, which means
+    kernel decides on his own where allocate address
+  */
+  KASSERT(addr == 0);
+  
   // struct vfs_file *file = fd >= 0 ? current_process->files->fd[fd] : NULL;
   process* current_process = get_current_thread()->parent;
   uint32_t aligned_addr =  ALIGN_DOWN(addr, PMM_FRAME_SIZE);

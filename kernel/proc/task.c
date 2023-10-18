@@ -9,6 +9,7 @@
 #include "kernel/cpu/gdt.h"
 #include "elf.h"
 #include "kernel/util/list.h"
+#include "kernel/util/debug.h"
 
 #define PROCESS_TRAPPED_PAGE_FAULT 0xFFFFFFFF
 
@@ -70,7 +71,7 @@ bool create_kernel_stack(virtual_addr* kernel_stack) {
     kfree(aligned);
   }
 
-  if (!*kernel_stack) {
+  if (!(*kernel_stack)) {
     return false;
   }
 
@@ -185,7 +186,7 @@ static void user_thread_elf_entry(thread *th) {
   // try to load image into our address space
   // TODO: mos make it differently check it out
   if (!elf_load_image(path, th, &entry)) {
-    return false;
+    PANIC("ELF is not loaded properly", NULL);
   }
 
   tss_set_stack(KERNEL_DATA, th->kernel_esp);
@@ -288,8 +289,8 @@ process* create_elf_process(char* path) {
   process* proc = create_process(path, NULL);
   thread* th = user_thread_create(proc);
 
-  if (!th) {
-    return false;
+  if (!th || !proc) {
+    PANIC("Thread or process were not created properly", NULL);
   }
 
   sched_push_queue(th, THREAD_READY);

@@ -1,9 +1,10 @@
-#include "exception.h"
-
+#include <stddef.h>
 #include <stdio.h>
 
-#include "idt.h"
-#include "panic.h"
+#include "kernel/cpu/exception.h"
+#include "kernel/cpu/hal.h"
+#include "kernel/cpu/idt.h"
+#include "kernel/util/debug.h"
 
 extern uint32_t DEBUG_LAST_TID = 0;
  
@@ -17,7 +18,7 @@ void divide_by_zero_fault(interrupt_registers *registers) {
   }
   */
 
-  kernel_panic(
+  PANIC(
       "Divide by 0 at physical address [0x%x:0x%x] EFLAGS [0x%x] other: 0x%x",
       registers->cs,
       registers->eip,
@@ -28,86 +29,62 @@ void divide_by_zero_fault(interrupt_registers *registers) {
 
 //! single step
 void single_step_trap(struct interrupt_registers *registers) {
-  kernel_panic("\nException!");
-  for (;;)
-    ;
+  PANIC("\nException!", NULL);
 }
 
 //! non maskable trap
 void nmi_trap(struct interrupt_registers *registers) {
-  kernel_panic("NMI trap");
-  for (;;)
-    ;
+  PANIC("NMI trap", NULL);
 }
 
 //! breakpoint hit
 void breakpoint_trap(struct interrupt_registers *registers) {
-  kernel_panic("Breakpoint trap");
-  for (;;)
-    ;
+  PANIC("Breakpoint trap", NULL);
 }
 
 //! overflow
 void overflow_trap(struct interrupt_registers *registers) {
-  kernel_panic("Overflow trap");
-  for (;;)
-    ;
+  PANIC("Overflow trap", NULL);
 }
 
 //! bounds check
 void bounds_check_fault(struct interrupt_registers *registers) {
-  kernel_panic("Bounds check fault");
-  for (;;)
-    ;
+  PANIC("Bounds check fault", NULL);
 }
 
 //! invalid opcode / instruction
 void invalid_opcode_fault(struct interrupt_registers *registers) {
-  kernel_panic("Invalid opcode");
-  for (;;)
-    ;
+  PANIC("Invalid opcode", NULL);
 }
 
 //! device not available
 void no_device_fault(struct interrupt_registers *registers) {
-  kernel_panic("Device not found");
-  for (;;)
-    ;
+  PANIC("Device not found", NULL);
 }
 
 //! double fault
 void double_fault_abort(struct interrupt_registers *registers) {
-  kernel_panic("Double fault");
-  for (;;)
-    ;
+  PANIC("Double fault", NULL);
 }
 
 //! invalid Task State Segment (TSS)
 void invalid_tss_fault(struct interrupt_registers *registers) {
-  kernel_panic("Invalid TSS");
-  for (;;)
-    ;
+  PANIC("Invalid TSS", NULL);
 }
 
 //! segment not present
 void no_segment_fault(struct interrupt_registers *registers) {
-  kernel_panic("Invalid segment");
-  for (;;)
-    ;
+  PANIC("Invalid segment", NULL);
 }
 
 //! stack fault
 void stack_fault(struct interrupt_registers *registers) {
-  kernel_panic("Stack fault");
-  for (;;)
-    ;
+  PANIC("Stack fault", NULL);
 }
 
 //! general protection fault
 void general_protection_fault(struct interrupt_registers *registers) {
-  kernel_panic("General Protection Fault");
-  for (;;)
-    ;
+  PANIC("General Protection Fault", NULL);
 }
 
 //! page fault
@@ -121,54 +98,39 @@ void page_fault(interrupt_registers *registers) {
 	 										 "mov %%eax, %0			\n"
 	 										 : "=r"(faultAddr));
 
-  printf("\nLast tid: %d", DEBUG_LAST_TID);
-  printf("\nPage Fault at 0x%x", faultAddr);
-	printf("\nReason: %s, %s, %s%s%s",
-	 						error_code & 0b1 ? "protection violation" : "non-present page",
-	 						error_code & 0b10 ? "write" : "read",
-	 						error_code & 0b100 ? "user mode" : "supervisor mode",
-	 						error_code & 0b1000 ? ", reserved" : "",
-	 						error_code & 0b10000 ? ", instruction fetch" : "");
-
-  kernel_panic ("");
-  for (;;)
-    ;
-  //_asm popad _asm sti _asm iretd
+  PANIC("\nLast tid: %d\nPage Fault at 0x%x\nReason: %s, %s, %s%s%s",
+    DEBUG_LAST_TID,
+    faultAddr,
+    error_code & 0b1 ? "protection violation" : "non-present page",
+    error_code & 0b10 ? "write" : "read",
+    error_code & 0b100 ? "user mode" : "supervisor mode",
+    error_code & 0b1000 ? ", reserved" : "",
+    error_code & 0b10000 ? ", instruction fetch" : ""
+  );
 }
 
 //! Floating Point Unit (FPU) error
 void fpu_fault(struct interrupt_registers *registers) {
-  kernel_panic("FPU Fault");
-  for (;;)
-    ;
+  PANIC("FPU Fault", NULL);
 }
 
 void i86_default_handler(interrupt_registers *registers) {
-  kernel_panic("*** [i86 Hal] i86_default_handler: Unhandled Exception");
-  
-  for (;;)
-    ;
+  PANIC("*** [i86 Hal] i86_default_handler: Unhandled Exception", NULL);
 }
 
 //! alignment check
 void alignment_check_fault(struct interrupt_registers *registers) {
-  kernel_panic("Alignment Check");
-  for (;;)
-    ;
+  PANIC("Alignment Check", NULL);
 }
 
 //! machine check
 void machine_check_abort(struct interrupt_registers *registers) {
-  kernel_panic("Machine Check");
-  for (;;)
-    ;
+  PANIC("Machine Check", NULL);
 }
 
 //! Floating Point Unit (FPU) Single Instruction Multiple Data (SIMD) error
 void simd_fpu_fault(struct interrupt_registers *registers) {
-  kernel_panic("FPU SIMD fault");
-  for (;;)
-    ;
+  PANIC("FPU SIMD fault", NULL);
 }
 
 void exception_init() {

@@ -2,13 +2,22 @@
 #define INCLUDE_DEBUG_H
 
 #include <stdio.h>
+#include "kernel/cpu/hal.h"
 
-#define panic(fmt, args...) { printf(fmt, args); while (true) {}; }
+#define PANIC(fmt, args...) { printf(fmt, args); disable_interrupts(); for (;;); }
+#define LOG(fmt, args...) printf(fmt, args);
 
 #ifndef NDEBUG
-#define KASSERT(x) { if (!(x)) panic("\nassertion failed: %s", #x); }
+#define KASSERT(x) { if (!(x)) PANIC("\nassertion failed: %s", #x); }
 #else
 #define KASSERT(x)
+#endif
+
+
+#if UNIT_TEST
+#define unit_static 
+#else
+#define unit_static
 #endif
 
 #endif

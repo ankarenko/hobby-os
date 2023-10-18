@@ -1,14 +1,13 @@
-#include "tty.h"
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <ctype.h>
 #include <stdint.h>
 #include <string.h>
 
-#include "../cpu/hal.h"
+#include "kernel/cpu/hal.h"
+#include "kernel/memory/kernel_info.h"
 #include "vga.h"
-#include "../memory/kernel_info.h"
+#include "tty.h"
 
 static const size_t VGA_WIDTH = 80;
 static const size_t VGA_HEIGHT = 25;

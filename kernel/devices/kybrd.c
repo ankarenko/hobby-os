@@ -1,15 +1,12 @@
 
 #include <ctype.h>
-#include "../cpu/hal.h"
-#include "../cpu/idt.h"
-// #include <hal.h>
-// #include <string.h>
 
+#include "kernel/cpu/hal.h"
+#include "kernel/cpu/idt.h"
 #include "kybrd.h"
 
 // keyboard encoder ------------------------------------------
 enum KYBRD_ENCODER_IO {
-
   KYBRD_ENC_INPUT_BUF = 0x60,
   KYBRD_ENC_CMD_REG = 0x60
 };
