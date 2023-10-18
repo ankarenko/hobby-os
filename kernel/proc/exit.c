@@ -1,9 +1,14 @@
 #include "../memory/malloc.h"
 #include "./task.h"
 
+bool free_heap(mm_struct* mm) {
+  uint32_t frames = div_ceil(mm->brk, PMM_FRAME_SIZE);
+  //pmm_free_frames();
+}
+
 bool exit_process(process* proc) {
   // free image
-  if (proc->image_base) {
+  if (proc->mm) {
     
   }
 

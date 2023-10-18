@@ -137,6 +137,26 @@ static inline void list_del(struct list_head *entry) {
 #define list_entry(ptr, type, member) \ 
   container_of(ptr, type, member)
 
+/**
+ * list_is_last - tests whether @list is the last entry in list @head
+ * @list: the entry to test
+ * @head: the head of the list
+ */
+static inline int list_is_last(const struct list_head *list,
+							   const struct list_head *head)
+{
+	return list->next == head;
+}
+
+/**
+ * list_next_entry - get the next element in list
+ * @pos:	the type * to cursor
+ * @member:	the name of the list_head within the struct.
+ */
+#define list_next_entry(pos, member) \
+	list_entry((pos)->member.next, typeof(*(pos)), member)
+
+
 /** 
   * container_of - cast a member of a structure out to the containing structure 
   * @ptr:        the pointer to the member. 

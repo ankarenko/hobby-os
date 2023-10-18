@@ -49,8 +49,31 @@ union thread_union {
   uint64_t stack[1024];
 };
 
+typedef struct _vm_area_struct
+{
+	struct mm_struct *vm_mm;
+	uint32_t vm_start;
+	uint32_t vm_end;
+	uint32_t vm_flags;
+
+	struct list_head vm_sibling;
+} vm_area_struct;
+
+typedef struct _mm_struct_mos {
+  struct list_head mmap;
+	uint32_t free_area_cache;
+	uint32_t start_code, end_code, start_data, end_data;
+	// NOTE: MQ 2020-01-30
+	// end_brk is marked as the end of heap section, brk is end but in range start_brk<->end_brk and expand later
+	// better way is only mapping start_brk->brk and handling page fault brk->end_brk
+	uint32_t start_brk, brk, end_brk, start_stack;
+} mm_struct_mos;
+
 typedef struct _mm_struct {
-  // struct list_head mmap;
+  //struct list_head mmap;
+  virtual_addr program_start;
+  virtual_addr program_end;
+  
   virtual_addr heap_start;
   virtual_addr brk;  // current pointer
   uint32_t remaning;

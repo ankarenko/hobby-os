@@ -110,10 +110,22 @@ bool elf_load_image(
   // allocating segments and mapping to virtual addresses
   // *image_base = base; for absolute
   parent->image_base = USER_IMAGE_START; // for PIC (or malloc(image_size))
+  
+  if (parent->image_size % PMM_FRAME_SIZE != 0) {
+    printf("Start of the elf frogram needs to be %d aligned", PMM_FRAME_SIZE);
+  }
+
+  if (USER_HEAP_SIZE % PMM_FRAME_SIZE != 0) {
+    printf("Size of a heap needs to be %d aligned", PMM_FRAME_SIZE);
+  }
+
   parent->mm->heap_start = parent->image_base;
   parent->mm->brk = parent->mm->heap_start;
   parent->mm->heap_end = parent->mm->heap_start + USER_HEAP_SIZE;
   parent->mm->remaning = 0;
+
+  parent->mm->program_start = parent->image_base;
+  parent->mm->program_end = parent->mm->program_start + parent->image_size;
   
   virtual_addr* image = sbrk(
     parent->image_size, 

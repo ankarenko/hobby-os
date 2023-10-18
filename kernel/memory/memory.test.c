@@ -2,6 +2,39 @@
 #include "./pmm.h"
 #include "./malloc.h"
 #include "./vmm.h"
+#include "../proc/task.h"
+
+TEST TEST_MMAP(void) {
+  mm_struct_mos* mm = kcalloc(1, sizeof(mm_struct_mos));
+  INIT_LIST_HEAD(&mm->mmap);
+  mm->start_brk = PMM_FRAME_SIZE;
+  mm->end_brk = mm->start_brk; // PMM_FRAME_SIZE * 10;
+  mm->brk = mm->start_brk;
+  
+  ASSERT_EQ(list_count(&mm->mmap), 0);
+
+  vm_area_struct* vmm1 = get_unmapped_area(
+    mm, PMM_FRAME_SIZE * 3, PMM_FRAME_SIZE
+  );
+
+  vm_area_struct* vmm2 = get_unmapped_area(
+    mm, PMM_FRAME_SIZE * 5, PMM_FRAME_SIZE
+  );
+
+  ASSERT_EQ(list_count(&mm->mmap), 2);
+
+  vm_area_struct* vmm3 = get_unmapped_area(
+    mm, PMM_FRAME_SIZE * 3, PMM_FRAME_SIZE
+  );
+
+  ASSERT_EQ(list_count(&mm->mmap), 3);
+
+  vm_area_struct* vmm0 = get_unmapped_area(
+    mm, PMM_FRAME_SIZE, PMM_FRAME_SIZE
+  );
+
+  PASS();
+}
 
 TEST TEST_PMM(void) {
   uint32_t frames_total = pmm_get_free_frame_count();
@@ -80,4 +113,5 @@ SUITE(SUITE_PMM) {
 // requires virtual memory enabled
 SUITE(SUITE_MALLOC) {
   RUN_TEST(TEST_KMALLOC);
+  RUN_TEST(TEST_MMAP);
 }
