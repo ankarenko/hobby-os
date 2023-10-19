@@ -82,6 +82,15 @@ typedef uint32_t virtual_addr;
 #define PAGE_SIZE 4096
 
 
+#define MMAP_PROT_READ	0x1		/* page can be read */
+#define MMAP_PROT_WRITE	0x2		/* page can be written */
+
+#define MMAP_FIXED	0x10		/* Interpret addr exactly */
+#define MMAP_ANONYMOUS	0x20		/* don't use a file */
+
+#define MMAP_DONT_ALLOCATE 0x30
+
+
 //! page table
 struct ptable {
   pt_entry m_entries[PAGES_PER_TABLE];
@@ -135,5 +144,16 @@ void vmm_unmap_address(uint32_t virt);
 
 /* sbrk.c */
 void* sbrk(size_t n, virtual_addr* brk, virtual_addr* remaning, uint32_t flags);
+
+
+/* mmap.c */
+virtual_addr do_mmap(
+  uint32_t addr,
+  size_t len, 
+  uint32_t prot,
+  uint32_t flag, 
+  int32_t fd
+);
+virtual_addr do_brk(virtual_addr addr, size_t len);
 
 #endif

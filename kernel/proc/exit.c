@@ -1,20 +1,20 @@
 #include "kernel/memory/malloc.h"
 #include "kernel/proc/task.h"
 
-bool free_heap(mm_struct* mm) {
+bool free_heap(mm_struct_mos* mm) {
   uint32_t frames = div_ceil(mm->brk, PMM_FRAME_SIZE);
   //pmm_free_frames();
 }
 
 bool exit_process(process* proc) {
   // free image
-  if (proc->mm) {
+  if (proc->mm_mos) {
     
   }
 
   list_del(&proc->proc_sibling);
   
-  kfree(proc->mm);
+  kfree(proc->mm_mos);
   kfree(proc);
 
   return true;

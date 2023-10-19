@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <stdarg.h>
 
 _syscall1(sbrk, unsigned int);
 void* usbrk(unsigned int n) {
@@ -10,9 +11,12 @@ void sleep(unsigned int a) {
   SYSCALL_RETURN(syscall_sleep(a));
 }
 
-_syscall1(print, char*);
-void print(char* str) {
-  SYSCALL_RETURN(syscall_print(str));
+_syscall2(print, char*, va_list);
+void print(char* format, ...) {
+  va_list list;
+  va_start(list, format);
+  SYSCALL_RETURN(syscall_print(format, list));
+  va_end(list);
 }
 
 _syscall0(terminate);

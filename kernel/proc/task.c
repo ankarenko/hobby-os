@@ -48,13 +48,18 @@ struct pdirectory* create_address_space() {
 	/* clear page directory and clone kernel space. */
 	vmm_pdirectory_clear(space);
 	vmm_clone_kernel_space(space);
+  physical_addr phys = vmm_get_physical_address(space, false);
+  
+  KASSERT(phys % PAGE_SIZE == 0); // check alignment 
 
   // recursive trick
   space->m_entries[TABLES_PER_DIR - 1] = 
-    vmm_get_physical_address(space, false) | 
+    phys | 
     I86_PDE_PRESENT | 
     I86_PDE_WRITABLE;
+  //5255168 //5263392
 
+  //vmm_switch_pdirectory(space);
 	return space;
 }
 
@@ -213,7 +218,9 @@ static process* create_process(char* app_path, struct pdirectory* pdir) {
   proc->id = ++next_pid;
   proc->thread_count = 0;
   proc->path = app_path;
-  proc->mm = kcalloc(1, sizeof(mm_struct));
+  proc->mm_mos = kcalloc(1, sizeof(mm_struct_mos));
+  INIT_LIST_HEAD(&proc->mm_mos->mmap);
+
   proc->image_base = NULL;
   proc->image_size = 0;
   proc->va_dir = pdir? pdir : create_address_space();
@@ -299,6 +306,10 @@ process* create_elf_process(char* path) {
 
 thread* get_current_thread() {
   return _current_thread;
+}
+
+process* get_current_process() {
+  return _current_thread->parent;
 }
 
 bool initialise_multitasking(virtual_addr entry) {

@@ -68,7 +68,7 @@ struct block_meta *request_space(struct block_meta *last, size_t size) {
 // ------------------- padding - sizeof(struct block_meta)
 void *kalign_heap(size_t size) {
 	uint32_t heap_addr = (uint32_t)sbrk(0, NULL, NULL, 0);
-
+  
 	if (heap_addr % size == 0)
 		return NULL;
 

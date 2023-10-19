@@ -159,7 +159,7 @@ next_thread:
 	}
 do_switch:
   DEBUG_LAST_TID = th->tid;
-  if (DEBUG_LAST_TID == 6) {
+  if (DEBUG_LAST_TID == 5) {
     uint32_t a = 1;
   } 
   switch_to_thread(th);

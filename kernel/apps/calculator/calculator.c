@@ -10,9 +10,10 @@ void _start() {
     char* s = (char*)malloc(len);
     memcpy(s, str, len);
     
-    sleep(100);
-    print(s);
-  
+    //print("\n0x%x", s);
+    sleep(200);
+    print("\n%s", s);
+    
     free(s);
   }
 

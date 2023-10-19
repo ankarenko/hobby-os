@@ -202,7 +202,6 @@ void vmm_map_address(uint32_t virt, uint32_t phys, uint32_t flags) {
 
   pt_entry* entry = &table->m_entries[tindex];
 
-
   pt_entry_add_attrib(entry, flags);
   pt_entry_set_frame(entry, phys);
   vmm_flush_tlb_entry(virt);
@@ -250,17 +249,21 @@ void vmm_pdirectory_clear(struct pdirectory* dir) {
   }
 }
 
+#include "kernel/util/list.h"
+#include "kernel/proc/task.h"
+
 void vmm_clone_kernel_space(struct pdirectory* dir) { 
   if (dir) {
     uint32_t kernel_dir_index = PAGE_DIRECTORY_INDEX(KERNEL_HIGHER_HALF);
-    pd_entry* kernel = &vmm_get_directory()->m_entries[kernel_dir_index];
-      
+    struct pdirectory* cur_dir = PAGE_DIRECTORY_BASE;
+    pd_entry* kernel = &cur_dir->m_entries[kernel_dir_index];
+    
     /* copy kernel page tables into this new page directory.
     Recall that KERNEL SPACE is 0xc0000000, which starts at
     entry 768. */
     memcpy(
       &dir->m_entries[0], 
-      &vmm_get_directory()->m_entries[0],
+      &cur_dir->m_entries[0],
       sizeof(pd_entry)
     );
     memcpy(

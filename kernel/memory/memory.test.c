@@ -7,6 +7,7 @@
 TEST TEST_MMAP(void) {
   mm_struct_mos* mm = kcalloc(1, sizeof(mm_struct_mos));
   INIT_LIST_HEAD(&mm->mmap);
+  
   mm->start_brk = PMM_FRAME_SIZE;
   mm->end_brk = mm->start_brk; // PMM_FRAME_SIZE * 10;
   mm->brk = mm->start_brk;

@@ -84,6 +84,8 @@ bool elf_load_image(
 
   vol_close_file(&file);
   
+  printf("File length: %d", file.file_length);
+
   struct Elf32_Ehdr *elf_header = (struct Elf32_Ehdr *)elf_file;
 
   if (elf_verify(elf_header) != NO_ERROR || elf_header->e_phoff == 0) {
@@ -111,24 +113,24 @@ bool elf_load_image(
   // *image_base = base; for absolute
   parent->image_base = USER_IMAGE_START; // for PIC (or malloc(image_size))
   
-  KASSERT(parent->image_size % PMM_FRAME_SIZE == 0);
+  //KASSERT(parent->image_size % PMM_FRAME_SIZE == 0);
   KASSERT(USER_HEAP_SIZE % PMM_FRAME_SIZE == 0);
-
-  parent->mm->heap_start = parent->image_base;
-  parent->mm->brk = parent->mm->heap_start;
-  parent->mm->heap_end = parent->mm->heap_start + USER_HEAP_SIZE;
-  parent->mm->remaning = 0;
-
-  parent->mm->program_start = parent->image_base;
-  parent->mm->program_end = parent->mm->program_start + parent->image_size;
   
+  
+  mm_struct_mos* mm = parent->mm_mos;
+  
+  mm->heap_start = parent->image_base;
+  mm->brk = mm->heap_start;
+  mm->heap_end = PAGE_ALIGN(mm->heap_start + USER_HEAP_SIZE);
+  mm->remaning = 0;
+
   virtual_addr* image = sbrk(
     parent->image_size, 
-    &parent->mm->brk, 
-    &parent->mm->remaning,
-    I86_PDE_USER
+    &mm->brk, 
+    &mm->remaning,
+    I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PDE_USER
   );
-
+  
   // iterating trough segments and copying them to our address space
   for (int i = 0; i < elf_header->e_phnum; ++i) {
     struct Elf32_Phdr *ph = elf_file + elf_header->e_phoff + elf_header->e_phentsize * i;
@@ -138,16 +140,44 @@ bool elf_load_image(
 
     virtual_addr vaddr = parent->image_base + ph->p_vaddr - base;
 
+    // text segment
+		if ((ph->p_flags & PF_X) != 0 && (ph->p_flags & PF_R) != 0) {
+			mm->start_code = vaddr;
+			mm->end_code = vaddr + ph->p_memsz;
+		}
+		// data segment
+		else if ((ph->p_flags & PF_W) != 0 && (ph->p_flags & PF_R) != 0) {
+			mm->start_data = vaddr;
+			mm->end_data = vaddr + ph->p_memsz;
+		}
+
+    //virtual_addr actual_addr = do_mmap(vaddr, ph->p_memsz, 0, 0, -1);
+    //KASSERT(actual_addr == vaddr);
+
     // the ELF specification states that you should zero the BSS area. In bochs, everything's zeroed by default, 
     // but on real computers and virtual machines it isnt.
     memset(vaddr, 0, ph->p_memsz);
     memcpy(vaddr, elf_file + ph->p_offset, ph->p_filesz);
   }
+  /*
+  virtual_addr heap_start = do_mmap(0, 0, 0, 0, -1);
+  KASSERT(heap_start != 0);
+	mm->start_brk = heap_start;
+	mm->brk = heap_start;
+	mm->end_brk = heap_start + USER_HEAP_SIZE;
 
+	virtual_addr stack_bottom = do_mmap(0, USER_STACK_SIZE, 0, 0, -1);
+  KASSERT(stack_bottom != 0);
+	th->user_ss = USER_DATA;
+  th->user_esp = stack_bottom + USER_STACK_SIZE;
+  th->virt_ustack_bottom = stack_bottom;
+  */
+  
   /* create stack space for main thread at the end of the program */
   // dont forget that the stack grows up from down
+  
   th->user_ss = USER_DATA;
-  th->virt_ustack_bottom = parent->mm->heap_end;
+  th->virt_ustack_bottom = mm->heap_end;
   
   if (!create_user_stack(
     parent->va_dir, 
@@ -157,9 +187,9 @@ bool elf_load_image(
   )) {
     return false;
   }
-
+  
   *entry = parent->image_base + elf_header->e_entry - base;
-
+  
   kfree(elf_file);
   return true;
 }

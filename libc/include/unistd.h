@@ -2,6 +2,7 @@
 #define _UNISTD_H 1
 
 #include <stdint.h>
+#include <stdarg.h>
 #include "./errno.h"
 
 #define __NR_print 512
@@ -72,7 +73,7 @@
 #define SYSCALL_RETURN_POINTER(expr) ({ int ret = expr; if ((int)HIGHER_HALF_ADDRESS < ret && ret < 0) { return errno = -ret, NULL; } return (void *)ret; })
 
 void sleep(unsigned int a);
-void print(char* str);
+void print(char* format, ...);
 void terminate();
 void* usbrk(unsigned int n);
 

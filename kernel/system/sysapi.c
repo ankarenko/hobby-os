@@ -4,15 +4,19 @@
 #include "../cpu/idt.h"
 #include "sysapi.h"
 
-static int32_t sys_debug_printf(/*enum debug_level level,*/ const char *out) {
-  printf(out);
-  return 1;
+static int32_t sys_debug_printf(const char *format, va_list args) {
+  int i = vprintf(format, args);
+  return i;
 }
 
 static void* sys_sbrk(size_t n) {
   thread* th = get_current_thread();
   process* parent = th->parent;
-  virtual_addr* addr = sbrk(n, &parent->mm->brk, &parent->mm->remaning, I86_PDE_USER);
+  virtual_addr addr = sbrk(
+    n, &parent->mm_mos->brk, 
+    &parent->mm_mos->remaning, 
+    I86_PTE_WRITABLE | I86_PTE_PRESENT | I86_PTE_USER
+  );
   return addr;
 }
 
