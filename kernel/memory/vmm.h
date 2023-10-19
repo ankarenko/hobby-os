@@ -9,6 +9,8 @@
 #include "vmm_pde.h"
 #include "vmm_pte.h"
 
+struct _mm_struct_mos;
+
 /*
   Memory layout of our address space
   +-------------------------+ 0xFFFFFFFF
@@ -143,7 +145,7 @@ void vmm_unmap_address(uint32_t virt);
 
 
 /* sbrk.c */
-void* sbrk(size_t n, virtual_addr* brk, virtual_addr* remaning, uint32_t flags);
+void* sbrk(size_t n, struct _mm_struct_mos* mm);
 
 
 /* mmap.c */

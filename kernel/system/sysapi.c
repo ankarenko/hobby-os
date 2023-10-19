@@ -13,9 +13,7 @@ static void* sys_sbrk(size_t n) {
   thread* th = get_current_thread();
   process* parent = th->parent;
   virtual_addr addr = sbrk(
-    n, &parent->mm_mos->brk, 
-    &parent->mm_mos->remaning, 
-    I86_PTE_WRITABLE | I86_PTE_PRESENT | I86_PTE_USER
+    n, parent->mm_mos
   );
   return addr;
 }

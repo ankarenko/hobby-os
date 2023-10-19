@@ -11,7 +11,6 @@
 #include "kernel/util/list.h"
 #include "kernel/util/debug.h"
 
-#define PROCESS_TRAPPED_PAGE_FAULT 0xFFFFFFFF
 
 extern void enter_usermode(
   virtual_addr entry,
@@ -40,10 +39,15 @@ struct pdirectory* create_address_space() {
 	struct pdirectory* space;
 
 	/* we need our page directory to be aligned, 0-11 bits should be zero */
+  /*
   virtual_addr aligned_object = kalign_heap(PAGE_SIZE);
 	space = kcalloc(PAGE_SIZE, sizeof(char)); // (struct pdirectory*)pmm_alloc_frame();
   if (aligned_object)
 		kfree(aligned_object);
+  */
+  space = kcalloc_aligned(PAGE_SIZE, sizeof(char), PAGE_SIZE);
+  
+
 
 	/* clear page directory and clone kernel space. */
 	vmm_pdirectory_clear(space);
@@ -70,11 +74,17 @@ bool create_kernel_stack(virtual_addr* kernel_stack) {
   /* allocate a 4k frame for the stack. */
   // https://forum.osdev.org/viewtopic.php?f=1&t=22014
   // stack is better to be aligned 16byte
+  *kernel_stack = kcalloc_aligned(KERNEL_STACK_SIZE, sizeof(char), 16);
+
+  /*
   virtual_addr aligned = kalign_heap(16); 
 	*kernel_stack = kcalloc(KERNEL_STACK_SIZE, sizeof(char));
+  
   if (aligned) {
     kfree(aligned);
   }
+  */
+
 
   if (!(*kernel_stack)) {
     return false;
@@ -180,6 +190,41 @@ static thread* thread_create(
   return th;
 }
 
+bool empack_params(thread* th) {
+  process* parent = th->parent;
+  char* path = parent->path;
+
+  uint32_t argc = 2;
+  int32_t id = parent->id; 
+  char** argv = (char**)sbrk(
+    sizeof(uint32_t) * argc, 
+    parent->mm_mos
+  );
+  uint32_t len = strlen(path);
+  char* arg_path = sbrk(
+    len, 
+    parent->mm_mos
+  );
+  memcpy(arg_path, path, len);
+
+  char* arg_id = sbrk(
+    sizeof(uint32_t), 
+    parent->mm_mos
+  );
+  memcpy(arg_id, &id, sizeof(uint32_t));
+  argv[0] = arg_path;
+  argv[1] = arg_id;
+
+  uint32_t params[3] = { 
+    PROCESS_TRAPPED_PAGE_FAULT, 
+    argc, 
+    argv
+  };
+  memcpy(th->user_esp - 12, params, 12);
+  th->user_esp -= 12;
+  return true;
+}
+
 static void user_thread_elf_entry(thread *th) {
   enable_interrupts();
   interruptdone(IRQ0);
@@ -192,6 +237,10 @@ static void user_thread_elf_entry(thread *th) {
   // TODO: mos make it differently check it out
   if (!elf_load_image(path, th, &entry)) {
     PANIC("ELF is not loaded properly", NULL);
+  }
+
+  if (!empack_params(th)) {
+    PANIC("Cannot empack params", NULL);
   }
 
   tss_set_stack(KERNEL_DATA, th->kernel_esp);

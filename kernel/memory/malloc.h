@@ -20,10 +20,11 @@ struct block_meta
 	uint32_t magic;
 };
 
-void *kmalloc(size_t size);
-void *kcalloc(size_t n, size_t size);
-void *kalign_heap(size_t size);
-void *krealloc(void *ptr, size_t size);
+void* kmalloc(size_t size);
+void* kcalloc(size_t n, size_t size);
+void* krealloc(void *ptr, size_t size);
 void kfree(void *ptr);
+void* kcalloc_aligned(size_t n, size_t size, uint32_t alignment);
+void* kmalloc_aligned(size_t size, uint32_t alignment);
 
 #endif

@@ -1,6 +1,7 @@
 #include <math.h>
 #include <string.h>
 
+#include "kernel/proc/task.h"
 #include "malloc.h"
 #include "pmm.h"
 #include "vmm.h"
@@ -8,14 +9,15 @@
 static virtual_addr _kernel_heap_current = KERNEL_HEAP_BOTTOM;
 static uint32_t _kernel_remaining_from_last_used = 0;
 
-void* sbrk(size_t n, virtual_addr* brk, virtual_addr* remaning, uint32_t flags) {
+void* sbrk(size_t n, mm_struct_mos* mm) {
   virtual_addr* kernel_heap_current = &_kernel_heap_current;
   uint32_t* kernel_remaining_from_last_used = &_kernel_remaining_from_last_used;
-
+  uint32_t flags = I86_PDE_PRESENT | I86_PDE_WRITABLE;
   // an adjustment for using sbrk with malloc in userspace
-  if (brk && remaning) {
-    kernel_heap_current = brk;
-    kernel_remaining_from_last_used = remaning;
+  if (mm) {
+    kernel_heap_current = &mm->brk;
+    kernel_remaining_from_last_used = &mm->remaning;
+    flags |= I86_PTE_USER;
   }
 
   if (n == 0)

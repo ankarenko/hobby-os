@@ -13,6 +13,8 @@
 0xC0000000-0xffffffff � Kernel reserved
 */
 
+#define PROCESS_TRAPPED_PAGE_FAULT 0xFFFFFFFF
+
 #define KE_USER_START 0x00100000
 #define KE_KERNEL_START 0xC0000000
 

@@ -2,6 +2,7 @@
 #include <math.h>
 #include <stdint.h>
 
+#include "kernel/util/debug.h"
 #include "malloc.h"
 
 #define BLOCK_MAGIC 0x464E
@@ -44,7 +45,7 @@ void split_block(struct block_meta *block, size_t size) {
 }
 
 struct block_meta *request_space(struct block_meta *last, size_t size) {
-  struct block_meta *block = sbrk(size + sizeof(struct block_meta), NULL, NULL, 0);
+  struct block_meta *block = sbrk(size + sizeof(struct block_meta), NULL);
 
   if (last)
     last->next = block;
@@ -67,7 +68,7 @@ struct block_meta *request_space(struct block_meta *last, size_t size) {
 // |                 | empty object (>= 1)
 // ------------------- padding - sizeof(struct block_meta)
 void *kalign_heap(size_t size) {
-	uint32_t heap_addr = (uint32_t)sbrk(0, NULL, NULL, 0);
+	uint32_t heap_addr = (uint32_t)sbrk(0, NULL);
   
 	if (heap_addr % size == 0)
 		return NULL;
@@ -102,6 +103,35 @@ void kfree(void *ptr) {
   struct block_meta *block = get_block_ptr(ptr);
   assert_kblock_valid(block);
   block->free = true;
+}
+
+void* kmalloc_aligned(size_t size, uint32_t alignment) {
+  void* aligned = kalign_heap(alignment);
+
+  size = ALIGN_UP(size, BLOCK_ALIGNMENT);
+  struct block_meta *last = _kblocklist;
+
+  while (last->next)
+    last = last->next;
+
+  struct block_meta* block = request_space(last, size);
+  
+  if (aligned) {
+    kfree(aligned);
+  }
+
+  assert_kblock_valid(block);
+
+  return block? block + 1 : NULL;
+}
+
+void* kcalloc_aligned(size_t n, size_t size, uint32_t alignment) {
+  void *block = kmalloc_aligned(n * size, alignment);
+  if (block)
+    memset(block, 0, n * size);
+
+  KASSERT((uint32_t)block % alignment == 0);
+  return block;
 }
 
 // malloc for kernel

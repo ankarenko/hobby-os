@@ -4,6 +4,7 @@
 #include "kernel/memory/vmm.h"
 #include "kernel/memory/malloc.h"
 #include "kernel/util/debug.h"
+#include "kernel/proc/task.h"
 
 #include "elf.h"
 
@@ -126,9 +127,7 @@ bool elf_load_image(
 
   virtual_addr* image = sbrk(
     parent->image_size, 
-    &mm->brk, 
-    &mm->remaning,
-    I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PDE_USER
+    mm
   );
   
   // iterating trough segments and copying them to our address space
@@ -187,7 +186,7 @@ bool elf_load_image(
   )) {
     return false;
   }
-  
+
   *entry = parent->image_base + elf_header->e_entry - base;
   
   kfree(elf_file);
