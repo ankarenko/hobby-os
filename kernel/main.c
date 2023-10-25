@@ -25,6 +25,7 @@
 #include "kernel/proc/elf.h"
 #include "kernel/proc/task.h"
 #include "kernel/system/sysapi.h"
+#include "kernel/fs/fat32/fat32.h"
 #include "multiboot.h"
 
 extern void enter_usermode();
@@ -310,6 +311,8 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
 
   flpydsk_set_working_drive(0);
   flpydsk_install(IRQ6);
+
+  fat32_init();
 
   fat12_initialize();
   syscall_init();

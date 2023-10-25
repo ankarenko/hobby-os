@@ -79,11 +79,11 @@ bool create_kernel_stack(virtual_addr* kernel_stack) {
   /*
   virtual_addr aligned = kalign_heap(16); 
 	*kernel_stack = kcalloc(KERNEL_STACK_SIZE, sizeof(char));
-  
   if (aligned) {
     kfree(aligned);
   }
   */
+  
 
 
   if (!(*kernel_stack)) {
@@ -107,13 +107,11 @@ bool create_user_stack(
 	to reserve area in user space. Until then,
 	return error. */
   if (USER_STACK_SIZE % PMM_FRAME_SIZE != 0) {
-    printf("User stack size is not %d aligned", PMM_FRAME_SIZE);
-    return;
+    PANIC("User stack size is not %d aligned", PMM_FRAME_SIZE);
   }
 
   if (addr % PMM_FRAME_SIZE != 0) {
-    printf("User stack address is not %d aligned", PMM_FRAME_SIZE);
-    return;
+    PANIC("User stack address is not %d aligned", PMM_FRAME_SIZE);
   }
 
   uint32_t frames_count = USER_STACK_SIZE / PMM_FRAME_SIZE;

@@ -17,3 +17,15 @@ char *strchr(char *str, int32_t character) {
 
   return 0;
 }
+
+//! locates last occurance of character in string
+char *last_strchr(char *str, int32_t character) {
+  uint32_t len = strlen(str);
+  char* cur = &str[len - 1];
+  do {
+    if (*cur == character)
+      return (char *)cur;
+  } while (*cur--);
+
+  return 0;
+}

@@ -3,6 +3,7 @@ isodir
 sysroot
 build
 *.bin
+fat32_floppy.img
 *.mem
 qemu-monitor-socket
 run_qemu.sh
@@ -11,5 +12,5 @@ asm.s
 asm.asm
 disk.img
 floppy.img
-floppy_fat12.img
+fat32_floppy.img
 *.exe

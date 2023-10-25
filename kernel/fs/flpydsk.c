@@ -1,9 +1,9 @@
-#include "flpydsk.h"
-
 #include <stdbool.h>
 
-#include "../cpu/hal.h"
-#include "../memory/kernel_info.h"
+#include "flpydsk.h"
+#include "kernel/cpu/hal.h"
+#include "kernel/memory/kernel_info.h"
+
 
 /*
 **	Controller I/O Ports. Please see chapter for additional ports
@@ -425,7 +425,7 @@ void flpydsk_install(uint32_t irq) {
   register_interrupt_handler(irq, i86_flpy_irq);
 
   //! initialize the DMA for FDC
-  dma_initialize_floppy((uint8_t*)DMA_BUFFER, 512);
+  dma_initialize_floppy((uint8_t*)DMA_BUFFER, SECTOR_SIZE);
 
   //! reset the fdc
   flpydsk_reset();

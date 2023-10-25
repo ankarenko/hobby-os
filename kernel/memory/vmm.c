@@ -4,7 +4,12 @@
 #include <string.h>
 #include <math.h>
 
-#include "./kernel_info.h"
+#include "kernel/memory/kernel_info.h"
+#include "kernel/util/debug.h"
+
+#define SEC_PAGE_DIRECTORY_BASE 0xFF800000
+#define SEC_PAGE_TABLE_BASE 0xFFBFF000
+#define SEC_PAGE_TABLE_VIRT_ADDRESS(virt) (SEC_PAGE_TABLE_BASE + (PAGE_DIRECTORY_INDEX(virt) * PMM_FRAME_SIZE))
 
 #define PAGE_DIRECTORY_BASE 0xFFFFF000
 #define PAGE_TABLE_BASE 0xFFC00000
@@ -146,7 +151,23 @@ void vmm_init() {
   pd_entry_set_frame(entry, pa_dir);
   pd_entry_add_attrib(entry, I86_PDE_PRESENT | I86_PDE_WRITABLE);
 
+  // for editing userspace tables
+  memcpy(
+    &va_dir->m_entries[TABLES_PER_DIR - 2], 
+    &va_dir->m_entries[TABLES_PER_DIR - 1], 
+    sizeof(pd_entry)
+  );
+  
   vmm_paging(va_dir, pa_dir);
+}
+
+
+void vmm_load_usertable(physical_addr p_dir) {
+  struct pdirectory* va_dir = PAGE_DIRECTORY_BASE;
+  pd_entry* entry = &va_dir->m_entries[TABLES_PER_DIR - 2];
+  KASSERT(p_dir % PAGE_SIZE == 0);
+  pd_entry_set_frame(entry, p_dir);
+  vmm_flush_tlb_entry(va_dir);
 }
 
 void vmm_alloc_ptable(struct pdirectory* va_dir, uint32_t index, uint32_t flags) {
@@ -180,7 +201,20 @@ void vmm_paging(struct pdirectory* va_dir, uint32_t pa_dir) {
       "mov %%ecx, %%cr0        \n" ::"r"(pa_dir));
 }
 
-physical_addr vmm_get_physical_address(virtual_addr vaddr, bool is_page) {
+physical_addr vmm_get_physical_address_userland(
+  virtual_addr vaddr, 
+  bool is_page
+) {
+  uint32_t* table = SEC_PAGE_TABLE_VIRT_ADDRESS(vaddr);
+  uint32_t tindex = PAGE_TABLE_INDEX(vaddr);
+  uint32_t paddr = table[tindex];
+  return is_page ? paddr : (paddr & ~0xfff) | (vaddr & 0xfff);
+}
+
+physical_addr vmm_get_physical_address(
+  virtual_addr vaddr, 
+  bool is_page
+) {
   uint32_t* table = PAGE_TABLE_VIRT_ADDRESS(vaddr);
   uint32_t tindex = PAGE_TABLE_INDEX(vaddr);
   uint32_t paddr = table[tindex];

@@ -7,6 +7,7 @@
 
 #define BLOCK_MAGIC 0x464E
 #define BLOCK_ALIGNMENT 4
+#define NO_ALIGNMENT -1
 
 extern uint32_t heap_current;
 static struct block_meta *_kblocklist = NULL;
@@ -19,7 +20,11 @@ void assert_kblock_valid(struct block_meta *block) {
   }
 }
 
-struct block_meta *find_free_block(struct block_meta **last, size_t size) {
+struct block_meta *find_free_block(
+  struct block_meta **last, 
+  size_t size, 
+  uint32_t alignment
+) {
   struct block_meta *current = (struct block_meta *)_kblocklist;
   while (current && !(current->free && current->size >= size)) {
     assert_kblock_valid(current);
@@ -105,6 +110,8 @@ void kfree(void *ptr) {
   block->free = true;
 }
 
+// TODO: make it more efficient, try to find an appropriate block among
+// kblocklist blocks first
 void* kmalloc_aligned(size_t size, uint32_t alignment) {
   void* aligned = kalign_heap(alignment);
 
@@ -145,7 +152,7 @@ void *kmalloc(size_t size) {
 
   if (_kblocklist) {
     struct block_meta *last = _kblocklist;
-    block = find_free_block(&last, size);
+    block = find_free_block(&last, size, NO_ALIGNMENT);
     if (block) {
       block->free = false;
       split_block(block, size);

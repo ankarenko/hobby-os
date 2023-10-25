@@ -294,10 +294,10 @@ bool check_fat12(uint16_t sectorsize) {
 
 void fat12_mount() {
   //! Boot sector info
-  PBOOTSECTOR bootsector;
+  p_bootsector bootsector;
 
   //! read boot sector
-  bootsector = (PBOOTSECTOR)flpydsk_read_sector(0);
+  bootsector = (p_bootsector)flpydsk_read_sector(0);
 
   if (!check_fat12(bootsector->bpb.num_sectors)) {
     // PANIC

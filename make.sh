@@ -1,6 +1,6 @@
 #!/bin/sh
 BOOT_DIR=isodir/boot
-DISK=./floppy_fat12.img
+DISK=./fat32_floppy.img
 
 if alias os-machine >/dev/null 2>&1; then 
   ENVIRONMENT="os-machine"
