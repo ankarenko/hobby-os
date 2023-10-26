@@ -1,14 +1,11 @@
-// #include <stdio.h>
-// #include <stdint.h>
-// #include <string.h>
-// #include <timer.h>
 #include <ctype.h>
 #include <math.h>
-#include "util/debug.h"
-#include "util/list.h"
 
 #include "test/greatest.h"
-#include "devices/tty.h"
+
+#include "kernel/util/debug.h"
+#include "kernel/util/list.h"
+#include "kernel/devices/tty.h"
 #include "kernel/cpu/exception.h"
 #include "kernel/cpu/gdt.h"
 #include "kernel/cpu/hal.h"
@@ -28,14 +25,7 @@
 #include "kernel/fs/fat32/fat32.h"
 #include "multiboot.h"
 
-extern void enter_usermode();
-extern void asm_syscall_print();
-
-void kthread_1();
-void kthread_2();
-void kthread_3();
 void cmd_init();
-
 
 //! sleeps a little bit. This uses the HALs get_tick_count() which in turn uses the PIT
 void sleep(uint32_t ms) {
@@ -43,7 +33,6 @@ void sleep(uint32_t ms) {
   while (ticks > get_tick_count())
     ;
 }
-
 
 static PFILE _cur_dir = NULL;
 
@@ -92,7 +81,6 @@ void get_cmd(char* buf, int n) {
   }
 }
 
-
 void kthread () {
 	int col = 0;
 	bool dir = true;
@@ -102,14 +90,12 @@ void kthread () {
 	}
 }
 
-
 //! our simple command parser
 bool run_cmd(char* cmd_buf) {
   if (strcmp(cmd_buf, "create") == 0) {
     printf("\nNew thread: \n");
     create_system_process(&kthread);
-  }
-  else if (strcmp(cmd_buf, "kill") == 0) {
+  } else if (strcmp(cmd_buf, "kill") == 0) {
     char id[10];
 
     printf("\nPlease id: \n");
@@ -163,30 +149,28 @@ bool run_cmd(char* cmd_buf) {
     printf("path: ");
     get_cmd(filepath, 100);
 
-    cd(filepath);
+    vol_cd(filepath);
   } else if (strcmp(cmd_buf, "read") == 0) {
     cmd_read_sect();
   } else if (strcmp(cmd_buf, "cat") == 0) {
-    char filepath[100];
-
-    printf("path: ");
-    get_cmd(filepath, 100);
-
-    cat(filepath);
+    cmd_read_file();
   } else if (strcmp(cmd_buf, "ls") == 0) {
     char filepath[100];
 
     printf("path: ");
     get_cmd(filepath, 100);
 
-    ls(filepath);
-  } else if (strcmp(cmd_buf, "createuser") == 0) {
-    create_elf_process("a:/calc.exe");
-  } else if (strcmp(cmd_buf, "thread") == 0) {
-  
+    vol_ls(filepath);
+    //ls(filepath);
+  } else if (strcmp(cmd_buf, "run") == 0) {
+    char filepath[100];
+    printf("path: ");
+    get_cmd(filepath, 100);
+
+    create_elf_process(filepath);
   } else if (strcmp(cmd_buf, "") == 0) {
     
-  }else {
+  } else {
     printf("Invalid command\n");
   }
 
@@ -196,12 +180,9 @@ bool run_cmd(char* cmd_buf) {
 void cmd_read_file() {
   char filepath[100];
 
-  printf("\nPlease enter file path \n");
+  printf("path: ");
   get_cmd(filepath, 100);
 
-  cat(filepath);
-
-  /*
   FILE file = vol_open_file(filepath);
 
   if (file.flags == FS_INVALID) {
@@ -210,13 +191,12 @@ void cmd_read_file() {
   }
 
   uint8_t buf[512];
-  printf("___________________%s_________________________\n", filepath);
+  printf("_____________________________________________\n");
   while (!file.eof) {
     vol_read_file(&file, buf, 512);
     printf(buf);
   }
-  printf("\n___________________EOF_________________________\n");
-  */
+  printf("____________________________________________\n");
 }
 
 extern void cmd_init() {
@@ -224,22 +204,11 @@ extern void cmd_init() {
 
   while (1) {
     printf("\nroot@%s: ", pwd());
-    //thread_sleep(300);
-    //printf("\n CMD");
     get_cmd(cmd_buf, 98);
 
     if (run_cmd(cmd_buf) == true)
       break;
   }
-}
-
-void cmd_read_ls() {
-  char filepath[100];
-
-  printf("\n path: ");
-  get_cmd(filepath, 100);
-
-  ls(filepath);
 }
 
 //! read sector command
@@ -276,26 +245,9 @@ void cmd_read_sect() {
 
 GREATEST_MAIN_DEFS();
 
-extern void switch_to_thread(thread* next_task);
-void kthread_4() {
-  while (1) {
-    printf("\n Thread: 4");
-    make_schedule();
-  }
-}
-
-void kthread_5() {
-  while (1) {
-    //printf("\n Thread: 5");
-    make_schedule();
-  }
-}
-
 void main_thread() {
   thread* th = NULL;
 
-  //create_system_process(&kthread_2);
-  //create_system_process(&kthread_1);
   create_system_process(&cmd_init);
 
   idle_task();
@@ -318,7 +270,6 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
 
   pmm_init(mbd);
 
-
   vmm_init();
 
   flpydsk_set_working_drive(0);
@@ -326,170 +277,11 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
 
   fat32_init();
 
-  fat12_initialize();
+  //fat12_initialize();
   syscall_init();
   install_tss(5, 0x10, 0);
 
-  
-  
   initialise_multitasking(&main_thread);
-  
-  //_current_thread = get_next_thread_to_run(); //3355447388 3222337952
-  
-  
-
-  //create_system_process(&kthread_5);
-  //0xc0101f05
-  /*
-  while (1) {
-    printf("\n Thread: main");
-    make_schedule();
-  }
-  */
-  /*
-  list_for_each_entry(th, get_thread_list(), sched_sibling) {
-    printf("\n t: %d, esp: %x", th->tid, th->esp);
-  }
-  */
-
- 
-  
-  
-  
-
-  /*
-  process* proc = NULL ; 
-  list_for_each_entry(proc, get_proc_list(), proc_siblings) { 
-    printf("\nProcess: %d\n" , proc->id); 
-    
-    list_for_each_entry(th, &proc->threads, th_sibling) {
-      printf("Thread: %d\n", th->tid);
-      printf("ESP: %x", th->esp);
-    }
-  }
-  */
-  
-  //scheduler_initialize();
-
-  // char* path = "/folder/content.txt";
-  // char* path2 = "names.txt";
-
-  // FILE file = vol_open_file("folder");
-  // vol_ls(&file);
-  /*
-  uint8_t buf[512];
-
-  while (!file.eof)
-  {
-    vol_read_file(&file, buf, 512);
-    printf(buf);
-  }
-  */
-
-
-  //cmd_init();
-
-  /*
-  initialise_paging();
-
-
-  uint32_t *ptr = (uint32_t*)0xA0000000;
-  uint32_t do_page_fault = *ptr;
-  */
-  // a(_A);
-
-  // printf("%d", as);
-  // asm volatile ("int $0x0");
-
-  // printf("%d", c);
-
-  // initialise_paging();
-
-  // terminal_writestring("Hello, paging world!\n");
-
-  // uint32_t *ptr = (uint32_t*)0xA0000000;
-  // uint32_t do_page_fault = *ptr;
-
-  // terminal_writestring("!!\n");
-
-  /* Make sure the magic number matches for memory mapping*/
-
-  // get_memory_info(mbd, magic);
-  /*
-  for (;;) {
-    printf("Thread main \n");
-    thread_sleep(300);
-  }
-  */
 
   return 0;
-
-  // terminal_putchar((int)'a');
-  // terminal_putchar((int)'b');
-  // init_keyboard();
-  // timer_create(1000);
-
-  // keyboard_init();
-  /*
-  for (size_t y = 0; y <= 24; ++y) {
-    size_t size = y == 0? 79 : 80;
-    unsigned char line[size];
-    for (int x = 0; x < size; ++x) {
-      line[x] = 65 + y;
-    }
-
-    terminal_writestring(line);
-  }
-  */
-  // printf("Hello World\n");
-  // terminal_writestring("Hello");
-
-  /*
-  DUMP TEST
-  char* START = (char*) 0xB8000;
-  char* word = "XUY";
-  memmove(START, word, 3);
-  */
-
-  // printf("Test: %d \n %d \n %d \n", 0, -123, 123);
-
-  // test interraptions
-
-  // asm volatile ("int $0x1F");
-  // asm volatile ("int $0x20");
-  // asm volatile ("int $0x21");
-  // asm volatile ("int $0x10");
-  // asm volatile ("int $0x3");
-  // asm volatile ("int $0x4");
-}
-
-
-/* thread cycles through colors of red. */
-void kthread_1 () {
-	int col = 0;
-	bool dir = true;
-	while(1) {
-    printf("Thread 1\n");
-    thread_sleep(300);
-	}
-}
-
-/* thread cycles through colors of green. */
-void kthread_2 () {
-	int col = 0;
-	bool dir = true;
-	while(1) {
-    printf("Thread 2\n");
-    thread_sleep(300);
-	}
-}
-
-/* thread cycles through colors of blue. */
-void kthread_3 () {
-	int col = 0;
-	bool dir = true;
-	while(1) {
-		printf("Thread 3\n");
-    thread_sleep(300);
-	}
 }

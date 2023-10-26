@@ -57,9 +57,18 @@ void vol_close_file(PFILE file) {
       _file_systems[file->device_id - 'a']->close(file);
 }
 
-void vol_ls(PFILE file) {
-  if (_file_systems[file->device_id - 'a'])
-    _file_systems[file->device_id - 'a']->ls(file);
+void vol_ls(const char* path) {
+  unsigned char device = 'a';
+
+  if (_file_systems[device - 'a'])
+    _file_systems[device - 'a']->ls(path);
+}
+
+void vol_cd(const char* path) {
+  unsigned char device = 'a';
+
+  if (_file_systems[device - 'a'])
+    _file_systems[device - 'a']->cd(path);
 }
 
 FILE vol_get_root(uint32_t device_id) {

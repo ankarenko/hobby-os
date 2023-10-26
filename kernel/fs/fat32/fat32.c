@@ -16,6 +16,9 @@
 #define MAX_FILE_PATH                 100
 typedef int32_t sect_t;
 
+//! FAT FileSystem
+static FILESYSTEM _fsys_fat;
+
 /*
   fat[0] // 0xfffffff8 hard, 0xfffffff0 floppy, 0xfffffffa ram
   fat[1] // must be 0xffffffff
@@ -96,7 +99,7 @@ static sect_t cluster_to_sector(uint32_t cluster_num) {
 }
 
 // in: dir sector, out: cluster
-static bool find_subdir(char* name, const sect_t dir_sector, uint32_t* cluster) {
+static bool find_subdir(char* name, const sect_t dir_sector, PFILE p_file) {
   char dos_name[FAT_LEGACY_FILENAME_SIZE + 1];
   to_dos_name(name, dos_name);
   p_directory p_dir = (p_directory)flpydsk_read_sector(dir_sector);
@@ -108,7 +111,13 @@ static bool find_subdir(char* name, const sect_t dir_sector, uint32_t* cluster) 
       entry_name[FAT_LEGACY_FILENAME_SIZE] = 0;
 
       if (strcmp(entry_name, dos_name) == 0) {
-        *cluster = p_dir->first_cluster | (p_dir->first_cluster_hi_bytes << 16);
+        strcpy(p_file->name, name);
+        p_file->id = 0;
+        p_file->current_cluster = p_dir->first_cluster | (p_dir->first_cluster_hi_bytes << 16);
+        p_file->file_length = p_dir->file_size;
+        p_file->eof = 0;
+        p_file->flags = p_dir->attrib == FAT_ENTRY_DIRECTORY ? FS_DIRECTORY : FS_FILE;
+
         return true;
       }
     }
@@ -117,25 +126,19 @@ static bool find_subdir(char* name, const sect_t dir_sector, uint32_t* cluster) 
   return false;
 }
 
-static void ls_file(const char* name, sect_t dir_sector) {
+static FILE _open_file(const char* name, sect_t dir_sector) {
+  FILE file;
   //! open subdirectory or file
   uint32_t cluster = 0;
-  if (!find_subdir(name, dir_sector, &cluster)) {
+  if (!find_subdir(name, dir_sector, &file)) {
     PANIC("Cannot find file: %s", name);
   }
 
   if (cluster > SECTOR_SIZE) {
     PANIC("Cluster number is too big: %d", cluster);
   }
-  
-  printf("___________________________________________________________\n\n");
-  do {
-    sect_t sect = cluster_to_sector(cluster);
-    uint8_t* ptr = flpydsk_read_sector(sect);
-    printf(ptr);
-    cluster = fat[cluster];
-  } while (cluster < FAT_MARK_EOF);
-  printf("___________________________________________________________\n");
+
+  return file;
 }
 
 static bool jmp_dir(const char* path, sect_t* dir_sector) {
@@ -162,8 +165,9 @@ static bool jmp_dir(const char* path, sect_t* dir_sector) {
       pathname[i] = '\0';  // null terminate
 
       //! open subdirectory or file
-      uint32_t cluster = 0;
-      if (!find_subdir(pathname, *dir_sector, &cluster)) {
+      FILE file;
+      file.current_cluster = 0;
+      if (!find_subdir(pathname, *dir_sector, &file)) {
         PANIC("Cannot find directory: %s", pathname);
       }
 
@@ -172,14 +176,14 @@ static bool jmp_dir(const char* path, sect_t* dir_sector) {
       }
 
       cur = &cur[i];
-      *dir_sector = cluster_to_sector(cluster);
+      *dir_sector = cluster_to_sector(file.current_cluster);
     }
   }
 
   return true;
 }
 
-bool cd(const char* path) {
+bool fat_cd(const char* path) {
   uint32_t len_path = strlen(path);
   unsigned char norm_path[MAX_FILE_PATH];
   memcpy(norm_path, path, len_path);
@@ -223,7 +227,7 @@ char* pwd() {
   return cur_path;
 }
 
-void ls(const char* path) {
+void fat_ls(const char* path) {
   if (path == NULL) {
     ls_dir(cur_dir);
   } else {
@@ -236,7 +240,33 @@ void ls(const char* path) {
   }
 }
 
-void cat(const char* path) {
+void fat_read_file(PFILE file, uint8_t* buffer, uint32_t length) {
+  if (file) {
+    sect_t sect_num = cluster_to_sector(file->current_cluster);
+    uint8_t* sector = flpydsk_read_sector(sect_num);
+    //! copy block of memory
+    memcpy(buffer, sector, SECTOR_SIZE);
+    file->current_cluster = fat[file->current_cluster];
+
+    if (file->current_cluster >= FAT_MARK_EOF) {
+      file->eof = 1;
+      return;
+    }
+
+    //! test for file corruption
+    if (file->current_cluster == 0) {
+      file->eof = 1;
+      return;
+    }
+  }
+}
+
+static void fat_close(PFILE file) {
+  if (file)
+    file->flags = FS_INVALID;
+}
+
+FILE fat_open_file(const char* path) {
   char* filename = last_strchr(path, '\/');
   bool no_dir_jmp = false;
   if (filename) {
@@ -252,10 +282,24 @@ void cat(const char* path) {
     PANIC("Not found directory %s", path);
   }
 
-  ls_file(filename, dir_sector);
+  FILE file = _open_file(filename, dir_sector);
+
+  /*
+  printf("___________________________________________________________\n\n");
+  uint32_t cluster = file.current_cluster;
+  do {
+    sect_t sect = cluster_to_sector(cluster);
+    uint8_t* ptr = flpydsk_read_sector(sect);
+    printf(ptr);
+    cluster = fat[cluster];
+  } while (cluster < FAT_MARK_EOF);
+  printf("___________________________________________________________\n");
+  */
+
+  return file;
 }
 
-void fat32_mount() {
+void fat_mount() {
   p_bootsector bootsector = (p_bootsector)flpydsk_read_sector(0);
   
   if (!is_fat32(bootsector)) {
@@ -289,7 +333,27 @@ void fat32_mount() {
   cur_dir = _minfo.root_offset;
 }
 
+FILE fat_get_rootdir() {  
+  FILE rootdir;
+  rootdir.eof = 0;
+  rootdir.device_id = 0;
+  rootdir.flags = FS_ROOT_DIRECTORY;
+  return rootdir;
+}
+
 void fat32_init() {
+    //! initialize filesystem struct
+  strcpy(_fsys_fat.name, "FAT32");
+  _fsys_fat.mount = fat_mount;
+  _fsys_fat.open = fat_open_file;
+  _fsys_fat.read = fat_read_file;
+  _fsys_fat.close = fat_close;
+  _fsys_fat.root = fat_get_rootdir;
+  _fsys_fat.ls = fat_ls;
+  _fsys_fat.cd = fat_cd;
   
-  fat32_mount();
+  //! register ourself to volume manager
+  vol_register_file_system(&_fsys_fat, 0);
+
+  fat_mount();
 }

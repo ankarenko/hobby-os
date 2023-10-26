@@ -14,7 +14,7 @@
 #define END_OF_FILE_MARK 0xff8
 #define NUM_DIRECTORY_ENTRIES (SECTOR_SIZE / DIRECTORY_ENTRY_SIZE)  // 16
 //! FAT FileSystem
-FILESYSTEM _fsys_fat;
+static FILESYSTEM _fsys_fat;
 
 //! Mount info
 MOUNT_INFO _mount_info;

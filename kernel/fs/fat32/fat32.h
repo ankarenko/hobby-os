@@ -55,9 +55,5 @@ typedef struct _mount_info {
 #pragma pack(0)
 
 void fat32_init();
-bool cd(const char* path);
-void ls(const char* path);
-void cat(const char* path);
-char* pwd();
 
 #endif

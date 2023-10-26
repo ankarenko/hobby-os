@@ -264,7 +264,11 @@ static process* create_process(char* app_path, struct pdirectory* pdir) {
   list_add(&proc->proc_sibling, get_proc_list());
   proc->id = ++next_pid;
   proc->thread_count = 0;
-  proc->path = app_path;
+  
+  uint32_t len = strlen(app_path);
+  proc->path = kcalloc(len, sizeof(char));
+  memcpy(proc->path, app_path, len);
+
   proc->mm_mos = kcalloc(1, sizeof(mm_struct_mos));
   INIT_LIST_HEAD(&proc->mm_mos->mmap);
 

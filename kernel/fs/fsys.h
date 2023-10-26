@@ -25,7 +25,8 @@ typedef struct _FILE_SYSTEM {
   void (*read)(PFILE file, uint8_t* buffer, uint32_t length);
   void (*close)(PFILE);
   FILE (*root)();
-  void (*ls)(PFILE file);
+  void (*ls)(const char* path);
+  void (*cd)(const char* path);
   FILE(*open)(const char* filename);
 } FILESYSTEM, *PFILESYSTEM;
 
@@ -40,7 +41,8 @@ typedef struct _FILE_SYSTEM {
 FILE vol_open_file(const char* fname);
 void vol_read_file(PFILE file, uint8_t* buffer, uint32_t length);
 void vol_close_file(PFILE file);
-void vol_ls(PFILE file);
+void vol_ls(const char* path);
+void vol_cd(const char* path);
 FILE vol_get_root(uint32_t device_id);
 void vol_register_file_system(PFILESYSTEM, uint32_t device_id);
 void vol_unregister_file_system(PFILESYSTEM);

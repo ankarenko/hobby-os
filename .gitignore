@@ -4,6 +4,7 @@ sysroot
 build
 *.bin
 fat32_floppy.img
+*.img
 *.mem
 qemu-monitor-socket
 run_qemu.sh

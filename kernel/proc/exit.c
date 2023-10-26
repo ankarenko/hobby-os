@@ -24,6 +24,7 @@ bool exit_process(process* proc) {
   list_del(&proc->proc_sibling);
   
   kfree(proc->mm_mos);
+  kfree(proc->path);
   kfree(proc);
 
   return true;
