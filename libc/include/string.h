@@ -17,5 +17,6 @@ char *strchr(char *str, int32_t character);
 char *last_strchr(char *str, int32_t character);
 char *strncat(char *s1, const char *s2, size_t n);
 size_t strnlen(const char *str, size_t maxlen);
+char* strstr(const char* haystack, const char* needle);
 
 #endif

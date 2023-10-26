@@ -73,8 +73,8 @@ void get_cmd(char* buf, int n) {
         break;
       case KEY_RETURN:
         buf[i] = '\0';
-        terminal_clrline();
-        // terminal_newline();
+        //terminal_clrline();
+        terminal_newline();
         return;
       case KEY_UNKNOWN:
         break;
@@ -122,7 +122,7 @@ bool run_cmd(char* cmd_buf) {
   }
   else if (strcmp(cmd_buf, "lst") == 0) {
     thread* th = NULL;
-    printf("\nThreads running: [ ");
+    printf("Threads running: [ ");
     list_for_each_entry(th, get_ready_threads(), sched_sibling) {
       printf("%d ", th->tid);
     }
@@ -157,19 +157,36 @@ bool run_cmd(char* cmd_buf) {
     PMM_DEBUG();
   } else if (strcmp(cmd_buf, "clear") == 0) {
     terminal_clrscr();
+  } else if (strcmp(cmd_buf, "cd") == 0) {
+    char filepath[100];
+
+    printf("path: ");
+    get_cmd(filepath, 100);
+
+    cd(filepath);
   } else if (strcmp(cmd_buf, "read") == 0) {
     cmd_read_sect();
   } else if (strcmp(cmd_buf, "cat") == 0) {
-    cmd_read_file();
+    char filepath[100];
+
+    printf("path: ");
+    get_cmd(filepath, 100);
+
+    cat(filepath);
   } else if (strcmp(cmd_buf, "ls") == 0) {
-    cmd_read_ls();
+    char filepath[100];
+
+    printf("path: ");
+    get_cmd(filepath, 100);
+
+    ls(filepath);
   } else if (strcmp(cmd_buf, "createuser") == 0) {
     create_elf_process("a:/calc.exe");
   } else if (strcmp(cmd_buf, "thread") == 0) {
+  
+  } else if (strcmp(cmd_buf, "") == 0) {
     
-  }
-
-  else {
+  }else {
     printf("Invalid command\n");
   }
 
@@ -182,6 +199,9 @@ void cmd_read_file() {
   printf("\nPlease enter file path \n");
   get_cmd(filepath, 100);
 
+  cat(filepath);
+
+  /*
   FILE file = vol_open_file(filepath);
 
   if (file.flags == FS_INVALID) {
@@ -196,12 +216,14 @@ void cmd_read_file() {
     printf(buf);
   }
   printf("\n___________________EOF_________________________\n");
+  */
 }
 
 extern void cmd_init() {
   char cmd_buf[100];
 
   while (1) {
+    printf("\nroot@%s: ", pwd());
     //thread_sleep(300);
     //printf("\n CMD");
     get_cmd(cmd_buf, 98);
@@ -214,20 +236,10 @@ extern void cmd_init() {
 void cmd_read_ls() {
   char filepath[100];
 
-  printf("\nPlease folder path \n");
+  printf("\n path: ");
   get_cmd(filepath, 100);
 
-  FILE folder;
-
-  if (strcmp(filepath, "") == 0) {
-    printf("a:\n");
-    folder = vol_get_root('a');
-  } else {
-    printf("a:/%s\n", filepath);
-    folder = vol_open_file(filepath);
-  }
-
-  vol_ls(&folder);
+  ls(filepath);
 }
 
 //! read sector command

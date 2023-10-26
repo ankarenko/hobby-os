@@ -7,12 +7,13 @@
 #include "kernel/fs/bpb.h"
 #include "kernel/fs/flpydsk.h"
 #include "kernel/util/debug.h"
+#include "kernel/util/path.h"
 
 #include "./fat32.h"
 
 #define FAT_LEGACY_FILENAME_SIZE      11  // 8.3
 #define FAT_ENTRIES_COUNT             (SECTOR_SIZE / sizeof(uint32_t))
-
+#define MAX_FILE_PATH                 100
 typedef int32_t sect_t;
 
 /*
@@ -25,6 +26,7 @@ uint32_t fat[FAT_ENTRIES_COUNT];
 static mount_info _minfo;
 static bool fat32 = true;
 static sect_t cur_dir = 0;
+static unsigned char cur_path[MAX_FILE_PATH];
 
 static void print_dir_record(p_directory pkDir) {
   uint8_t attr = pkDir->attrib;
@@ -126,14 +128,14 @@ static void ls_file(const char* name, sect_t dir_sector) {
     PANIC("Cluster number is too big: %d", cluster);
   }
   
-  printf("__________________%s____________________\n", name);
+  printf("___________________________________________________________\n\n");
   do {
     sect_t sect = cluster_to_sector(cluster);
     uint8_t* ptr = flpydsk_read_sector(sect);
     printf(ptr);
     cluster = fat[cluster];
   } while (cluster < FAT_MARK_EOF);
-  printf("__________________END____________________\n");
+  printf("___________________________________________________________\n");
 }
 
 static bool jmp_dir(const char* path, sect_t* dir_sector) {
@@ -177,17 +179,51 @@ static bool jmp_dir(const char* path, sect_t* dir_sector) {
   return true;
 }
 
-static bool cd(const char* path) {
+bool cd(const char* path) {
+  uint32_t len_path = strlen(path);
+  unsigned char norm_path[MAX_FILE_PATH];
+  memcpy(norm_path, path, len_path);
+  norm_path[len_path] = '\0';
+
+  if (len_path >= MAX_FILE_PATH) {
+    PANIC("Too big path: %d", len_path);
+  }
+
+  if (norm_path[len_path - 1] != '\/') {
+    norm_path[len_path] = '\/';  
+    len_path++;
+    norm_path[len_path] = '\0';  
+  }
+
   sect_t dir_sector = cur_dir;
-  if (!jmp_dir(path, &dir_sector)) {
+  if (!jmp_dir(norm_path, &dir_sector)) {
     PANIC("Not found directory %s", path);
+  }
+  
+  if (norm_path[0] == '\/') {
+    cur_path[0] = '\0';
   }
 
   cur_dir = dir_sector;
+  uint32_t len = strlen(cur_path);
+  memcpy(&cur_path[len], norm_path, len_path);
+  cur_path[len + len_path] = '\0';
+
+  unsigned char out[MAX_FILE_PATH];
+  out[0] = '\0';
+  simplify_path(cur_path, out);
+  len = strlen(out);
+  memcpy(cur_path, out, len);
+  cur_path[len] = '\0';
+  //memcpy(cur_path + strlen(cur_path), postfix, strlen(postfix));
   return true;
 }
 
-static void ls(const char* path) {
+char* pwd() {
+  return cur_path;
+}
+
+void ls(const char* path) {
   if (path == NULL) {
     ls_dir(cur_dir);
   } else {
@@ -200,7 +236,7 @@ static void ls(const char* path) {
   }
 }
 
-static void cat(const char* path) {
+void cat(const char* path) {
   char* filename = last_strchr(path, '\/');
   bool no_dir_jmp = false;
   if (filename) {
@@ -250,17 +286,7 @@ void fat32_mount() {
 
   memcpy(&fat, fat_ptr, FAT_ENTRIES_COUNT * sizeof(uint32_t));
 
-  int32_t dir_sector = 0;
-  /*
-  if (jmp_dir(".", &dir_sector, true)) {
-    ls_dir(dir_sector);
-    ls_file("grande.txt", dir_sector);
-  }
-  */
   cur_dir = _minfo.root_offset;
-  cd("/diary");
-  ls(NULL);
-  cat("/diary/exec/program.exe");
 }
 
 void fat32_init() {
