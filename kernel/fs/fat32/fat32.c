@@ -8,6 +8,7 @@
 #include "kernel/fs/flpydsk.h"
 #include "kernel/util/debug.h"
 #include "kernel/util/path.h"
+#include "kernel/system/time.h"
 
 #include "./fat32.h"
 
@@ -31,13 +32,46 @@ static bool fat32 = true;
 static sect_t cur_dir = 0;
 static unsigned char cur_path[MAX_FILE_PATH];
 
-static void print_dir_record(p_directory pkDir) {
-  uint8_t attr = pkDir->attrib;
+char* months[12] = {
+  "jan",
+  "feb",
+  "mar",
+  "apr",
+  "may",
+  "jun",
+  "jul",
+  "aug",
+  "sep",
+  "oct",
+  "nov",
+  "dec"
+};
+
+static void print_dir_record(p_directory p_dir) {
+  uint8_t attr = p_dir->attrib;
   
   // check file is not SWP 
-  if (attr && !(attr & (FAT_ENTRY_HIDDEN)) && strcmp(pkDir->ext, "SWP ") != 0) {
+  if (attr && !(attr & (FAT_ENTRY_HIDDEN)) && strcmp(p_dir->ext, "SWP ") != 0) {
     char* type = attr & FAT_ENTRY_DIRECTORY? "d" : "f";
-    printf("%s %s : %db\n", pkDir->filename, type, pkDir->file_size);
+    printf("%s %s", p_dir->filename, type);
+
+    if (p_dir->attrib != FAT_ENTRY_DIRECTORY) {
+      struct time created = fat_to_time(p_dir->date_created, p_dir->time_created);
+      struct time modified = fat_to_time(p_dir->last_mod_date, p_dir->last_mod_time);
+      printf(" %d %s %d%d:%d%d", 
+        created.day, 
+        months[created.month - 1], 
+        created.hour / 10, created.hour % 10,
+        created.minute / 10, created.minute % 10);
+    } else {
+      printf("         ");
+    }
+
+    if (p_dir->file_size) {
+      printf(" %d bytes", p_dir->file_size);
+    }
+
+    printf("\n");
   }
 }
 
@@ -118,6 +152,10 @@ static bool find_subdir(char* name, const sect_t dir_sector, PFILE p_file) {
         p_file->eof = 0;
         p_file->flags = p_dir->attrib == FAT_ENTRY_DIRECTORY ? FS_DIRECTORY : FS_FILE;
 
+        if (p_file->flags == FS_FILE) {
+          p_file->created = fat_to_time(p_dir->date_created, p_dir->time_created);
+          p_file->modified = fat_to_time(p_dir->last_mod_date, p_dir->last_mod_time);
+        }
         return true;
       }
     }
@@ -282,21 +320,7 @@ FILE fat_open_file(const char* path) {
     PANIC("Not found directory %s", path);
   }
 
-  FILE file = _open_file(filename, dir_sector);
-
-  /*
-  printf("___________________________________________________________\n\n");
-  uint32_t cluster = file.current_cluster;
-  do {
-    sect_t sect = cluster_to_sector(cluster);
-    uint8_t* ptr = flpydsk_read_sector(sect);
-    printf(ptr);
-    cluster = fat[cluster];
-  } while (cluster < FAT_MARK_EOF);
-  printf("___________________________________________________________\n");
-  */
-
-  return file;
+  return _open_file(filename, dir_sector);
 }
 
 void fat_mount() {

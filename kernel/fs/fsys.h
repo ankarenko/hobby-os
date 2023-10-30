@@ -3,6 +3,8 @@
 #define _FSYS_H
 
 #include <stdint.h>
+#include "kernel/include/types.h"
+#include "kernel/system/time.h"
 
 typedef struct _FILE {
   char name[32];
@@ -13,6 +15,8 @@ typedef struct _FILE {
   uint32_t position;
   uint32_t current_cluster;
   uint32_t device_id;
+  struct time created;
+  struct time modified;
 } FILE, *PFILE;
 
 /**

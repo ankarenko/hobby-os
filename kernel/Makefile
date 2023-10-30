@@ -10,6 +10,7 @@ PATHS= \
 	fs/*.c fs/*/**.c \
 	proc/*.c proc/*/**.c \
 	locking/*.c locking/*/**.c \
+	include/*.c \
 	util/*.c
 
 C_ALL_SOURCES = $(wildcard ${PATHS})
