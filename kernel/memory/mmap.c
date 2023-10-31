@@ -2,7 +2,8 @@
   TODO: very bad written code, needs to be rewritten
 */
 #include <math.h>
-#include "kernel/util/list.h"
+#include <list.h>
+
 #include "kernel/proc/task.h"
 #include "kernel/memory/vmm.h"
 #include "kernel/memory/pmm.h"

@@ -1,5 +1,5 @@
 #include <string.h>
-#include "../memcopy.h"
+#include <memcopy.h>
 
 void *memcpy(void *dstpp, const void *srcpp, size_t len)
 {

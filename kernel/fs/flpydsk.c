@@ -1,9 +1,10 @@
+#include "flpydsk.h"
+
 #include <stdbool.h>
 
-#include "flpydsk.h"
 #include "kernel/cpu/hal.h"
 #include "kernel/memory/kernel_info.h"
-
+#include "kernel/proc/task.h"
 
 /*
 **	Controller I/O Ports. Please see chapter for additional ports
@@ -226,8 +227,9 @@ void flpydsk_wait_irq();
 //! wait for irq to fire
 inline void flpydsk_wait_irq() {
   //! wait for irq to fire
-  while (_FloppyDiskIRQ == 0)
-    ;
+  while (_FloppyDiskIRQ == 0) {
+    thread_sleep(10);
+  };
   _FloppyDiskIRQ = 0;
 }
 
@@ -281,7 +283,7 @@ void flpydsk_control_motor(bool b) {
 
   //! in all cases; wait a little bit for the motor to spin up/turn off
   //sleep(20);
-  sleep(1);
+  thread_sleep(1);
 }
 
 //! configure drive

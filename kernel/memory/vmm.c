@@ -3,9 +3,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <list.h>
 
 #include "kernel/memory/kernel_info.h"
 #include "kernel/util/debug.h"
+#include "kernel/proc/task.h"
+
 
 #define SEC_PAGE_DIRECTORY_BASE 0xFF800000
 #define SEC_PAGE_TABLE_BASE 0xFFBFF000
@@ -282,9 +285,6 @@ void vmm_pdirectory_clear(struct pdirectory* dir) {
     memset(dir, sizeof(struct pdirectory), 0);
   }
 }
-
-#include "kernel/util/list.h"
-#include "kernel/proc/task.h"
 
 void vmm_clone_kernel_space(struct pdirectory* dir) { 
   if (dir) {

@@ -15,7 +15,7 @@
    License along with the GNU C Library; if not, see
    <http://www.gnu.org/licenses/>.  */
 
-#include "../memcopy.h"
+#include <memcopy.h>
 #include <string.h>
 
 /* All this is so that bcopy.c can #include

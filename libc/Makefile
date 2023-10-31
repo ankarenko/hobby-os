@@ -8,10 +8,17 @@ PATHS= *.c \
 C_ALL_SOURCES = $(wildcard ${PATHS})
 C_SOURCES = $(filter-out ${C_ALL_SOURCES:.c=.test.c}, ${C_ALL_SOURCES})
 C_SOURCES_TEST = $(filter-out main.c, $(wildcard main.test.c ${C_ALL_SOURCES}))
+HEADERS = $(wildcard *.h ${PATHS:.c=.h})
 
 OBJS=$(ARCH_FREEOBJS) $(C_SOURCES_TEST:.c=.o)
 LIBK_OBJS=$(OBJS:.o=.libk.o)
-OUTPUT=libk.a
+
+$(info $$var is [$(OUTPUT)])
+$(info $$var is [$(LIBC_FLAG)])
+
+LIBK_CFLAGS := $(LIBK_CFLAGS) $(LIBC_FLAG)
+
+#-D__is_libk
 
 all: ${OUTPUT}
  
@@ -44,7 +51,7 @@ test: install-headers install-libs
 
 install-headers:
 	mkdir -p $(SYSROOT)/usr/include
-	cp -R --preserve=timestamps include/. $(SYSROOT)/usr/include/
+	cp -R --preserve=timestamps include/. ${HEADERS} $(SYSROOT)/usr/include/
 
 install-libs: $(OUTPUT)
 	mkdir -p $(SYSROOT)/usr/lib

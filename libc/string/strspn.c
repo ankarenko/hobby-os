@@ -1,7 +1,7 @@
 #include <string.h>
 #include <sys/cdefs.h>
 
-#include "../libc-pointer-arith.h"
+#include <libc-pointer-arith.h>
 
 size_t strspn(const char *str, const char *accept)
 {

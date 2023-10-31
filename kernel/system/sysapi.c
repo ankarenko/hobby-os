@@ -1,12 +1,27 @@
 #include <stdio.h>
 #include <unistd.h>
-#include "../proc/task.h"
-#include "../cpu/idt.h"
-#include "sysapi.h"
+#include <sys/types.h>
+#include <errno.h>
+
+#include "kernel/proc/task.h"
+#include "kernel/cpu/idt.h"
+#include "kernel/system/sysapi.h"
 
 static int32_t sys_debug_printf(const char *format, va_list args) {
   int i = vprintf(format, args);
   return i;
+}
+
+static int32_t sys_read(uint32_t fd, char *buf, size_t count) {
+	return vfs_fread(fd, buf, count);
+}
+
+static int32_t sys_open(const char *path, int32_t flags, mode_t mode) {
+  return vfs_open(path, flags, mode);
+}
+
+static int32_t sys_fstat(int32_t fd, struct kstat *stat) {
+	return vfs_fstat(fd, stat);
 }
 
 static void* sys_sbrk(size_t n) {
@@ -34,6 +49,9 @@ static void *syscalls[] = {
   [__NR_terminate] = sys_debug_terminate,
   [__NR_sleep] = sys_debug_sleep_thread,
   [__NR_sbrk] = sys_sbrk,
+  [__NR_open] = sys_open,
+  [__NR_read] = sys_read,
+  [__NR_fstat] = sys_fstat,
   0
 };
 

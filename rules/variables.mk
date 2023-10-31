@@ -2,4 +2,4 @@
 # because it was configured with --without-headers rather than --with-sysroot.
 CFLAGS=-O0 -g --sysroot=${SYSROOT} -isystem=/usr/include -ffreestanding -Wall -Wextra 
 LIBK_CFLAGS:=$(CFLAGS)
-LIBK_CPPFLAGS:=$(CPPFLAGS) -D__is_libk
+LIBK_CPPFLAGS:=$(CPPFLAGS)

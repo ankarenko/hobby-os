@@ -1,9 +1,10 @@
 #include "vfs.h"
 
 #include <string.h>
+#include <errno.h>
+
 #include "kernel/proc/task.h"
 #include "kernel/memory/malloc.h"
-#include "kernel/include/errno.h"
 #include "kernel/util/debug.h"
 
 #define DEVICE_MAX 26
@@ -92,10 +93,17 @@ int32_t vfs_fread(int32_t fd, char *buf, int32_t count) {
 		return -EBADF;
 
 	if (file /*&& file->f_mode & FMODE_CAN_READ*/) {
-    vfs_read_file(file, buf, count);
+    return vfs_read_file(file, buf, count);
   }
 
 	return -EINVAL;
+}
+
+int vfs_fstat(int32_t fd, struct stat* stat) {
+  process* proc = get_current_process();
+  vfs_file* file = proc->files->fd[fd];
+  stat->st_size = file->file_length;
+  return 1;
 }
 
 char* vfs_read(const char *path) {

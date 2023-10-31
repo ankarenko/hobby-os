@@ -1,4 +1,4 @@
-#include "../strings.h"
+#include <strings.h>
 
 int ffs(int i)
 {

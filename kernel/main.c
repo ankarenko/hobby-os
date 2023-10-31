@@ -1,10 +1,10 @@
 #include <ctype.h>
 #include <math.h>
+#include <list.h>
 
 #include "test/greatest.h"
 
 #include "kernel/util/debug.h"
-#include "kernel/util/list.h"
 #include "kernel/devices/tty.h"
 #include "kernel/cpu/exception.h"
 #include "kernel/cpu/gdt.h"

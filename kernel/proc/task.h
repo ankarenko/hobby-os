@@ -3,8 +3,8 @@
 #define _PROC_TASK_H
 
 #include <stdint.h>
+#include <list.h>
 
-#include "kernel/util/list.h"
 #include "kernel/memory/vmm.h"
 #include "kernel/fs/vfs.h"
 

@@ -9,6 +9,7 @@
 #include "kernel/util/debug.h"
 #include "kernel/util/path.h"
 #include "kernel/system/time.h"
+#include "kernel/memory/malloc.h"
 
 #include "./fat32.h"
 
@@ -24,7 +25,7 @@ static vfs_filesystem _fsys_fat;
   fat[0] // 0xfffffff8 hard, 0xfffffff0 floppy, 0xfffffffa ram
   fat[1] // must be 0xffffffff
 */
-uint32_t fat[FAT_ENTRIES_COUNT]; 
+uint32_t* fat = NULL; 
 
 //! Mount info
 static mount_info _minfo;
@@ -137,7 +138,7 @@ static sect_t cluster_to_sector(uint32_t cluster_num) {
 static bool find_subdir(char* name, const sect_t dir_sector, vfs_file* p_file) {
   char dos_name[FAT_LEGACY_FILENAME_SIZE + 1];
   to_dos_name(name, dos_name);
-  p_directory p_dir = (p_directory)flpydsk_read_sector(dir_sector);
+  p_directory p_dir = (p_directory)flpydsk_read_sector(dir_sector); // TODO: need sleep
 
   for (int32_t i = 0; i < DIR_ENTRIES; i++, p_dir++) {
     if (p_dir->attrib && !(p_dir->attrib & FAT_ENTRY_HIDDEN)) {
@@ -294,19 +295,23 @@ int32_t fat_read_file(vfs_file* file, uint8_t* buffer, uint32_t length) {
     do {
       if (file->current_cluster >= FAT_MARK_EOF) {
         file->eof = true;
-        break;
+        return EOF;
       } 
 
       sect_t sect_num = cluster_to_sector(file->current_cluster);
       uint8_t* sector = flpydsk_read_sector(sect_num);
       //! copy block of memory
-      memcpy(cur, sector, SECTOR_SIZE);
-      cur += SECTOR_SIZE;
       --sectors;
-       file->current_cluster = fat[file->current_cluster];
-
+      memcpy(cur, sector, sectors == 0? length % SECTOR_SIZE : SECTOR_SIZE);
+      cur += SECTOR_SIZE;
+      file->current_cluster = fat[file->current_cluster];
+      
     } while (sectors > 0 && !file->eof);
+    
+    return length;
   }
+
+  return -1;
 }
 
 static void fat_close(vfs_file* file) {
@@ -361,15 +366,25 @@ void fat_mount() {
   uint32_t offset_in_data_cluster = (bootsector->bpb_ext.root_cluster - bootsector->bpb.number_of_fats) * bootsector->bpb.sectors_per_cluster;
   _minfo.root_offset = bootsector->bpb.reserved_sectors + _minfo.fat_size * bootsector->bpb.number_of_fats - offset_in_data_cluster;
   
+  uint32_t size_fat_entries = (SECTOR_SIZE / sizeof(uint32_t)) * _minfo.fat_offset;
+  fat = kcalloc(size_fat_entries, sizeof(uint32_t));
+
+  for (int i = 0; i < _minfo.fat_size; ++i) {
+    uint32_t* fat_ptr = (uint32_t*)flpydsk_read_sector(_minfo.fat_offset + i);
+    memcpy((uint8_t*)fat + i * SECTOR_SIZE, fat_ptr, SECTOR_SIZE);  
+  }
+
   // read fat table
   uint32_t* fat_ptr = (uint32_t*)flpydsk_read_sector(_minfo.fat_offset);
-  if (fat_ptr[1] != 0xfffffff) {
+  if (fat[1] != 0xfffffff) {
     PANIC("Invalid fat table at sector: %d", _minfo.fat_offset);
   }
 
-  memcpy(&fat, fat_ptr, FAT_ENTRIES_COUNT * sizeof(uint32_t));
-
   cur_dir = _minfo.root_offset;
+}
+
+void fat_unmount() {
+  kfree(fat);
 }
 
 vfs_file fat_get_rootdir() {  

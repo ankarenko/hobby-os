@@ -1,6 +1,11 @@
 #include <unistd.h>
 #include <stdarg.h>
 
+_syscall3(read, int, char *, size_t);
+int read(int fd, char *buf, size_t size) {
+	SYSCALL_RETURN_ORIGINAL(syscall_read(fd, buf, size));
+}
+
 _syscall1(sbrk, unsigned int);
 void* usbrk(unsigned int n) {
   SYSCALL_RETURN_POINTER(syscall_sbrk(n));

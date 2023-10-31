@@ -4,7 +4,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "kernel/include/types.h"
+#include <sys/stat.h>
+#include <sys/types.h>
+
 #include "kernel/system/time.h"
 
 typedef struct _vfs_file {
@@ -57,5 +59,6 @@ void vfs_unregister_file_system_by_id(uint32_t device_id);
 
 int32_t vfs_fread(int32_t fd, char *buf, int32_t count);
 char* vfs_read(const char *path);
+int vfs_fstat(int32_t fd, struct stat *stat);
 
 #endif

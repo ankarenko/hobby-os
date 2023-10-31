@@ -468,7 +468,7 @@ __attribute__((format(printf, 1, 2))) int printf(const char* format, ...) {
   return i;
 }
 
-int fprintf(struct FILE* stream, const char* format, ...) {
+int fprintf(FILE* stream, const char* format, ...) {
 	va_list parameters;
   va_start(parameters, format);
 	int result = vprintf(format, parameters);
@@ -476,7 +476,7 @@ int fprintf(struct FILE* stream, const char* format, ...) {
 	return result;
 }
 
-int fflush(struct FILE* stream) {
+int fflush(FILE* stream) {
   return 1;
 }
 

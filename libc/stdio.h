@@ -3,22 +3,24 @@
 
 #include <sys/cdefs.h>
 #include <stdint.h>
+#include <FILE.h>
 
 #define EOF (-1)
 
-struct FILE {
-
-};
+typedef struct __FILE FILE;
 
 #define stdin 0
 #define stdout 0
 #define stderr 0
 
 int printf(const char* __restrict, ...);
-int fprintf(struct FILE *stream, const char *format, ...);
+int fprintf(FILE *stream, const char *format, ...);
 int putchar(int);
-int fflush(struct FILE* stream);
+int fflush(FILE* stream);
 int puts(const char*);
 int32_t atoi(const char* str);
+
+FILE *fopen(const char *filename, const char *mode);
+char *gets(char *s, int n, FILE *stream);
 
 #endif

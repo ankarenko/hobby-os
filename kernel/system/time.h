@@ -2,8 +2,7 @@
 #define TIMER_H
 
 #include <stdint.h>
-
-#include "kernel/include/types.h"
+#include <sys/types.h>
 
 struct timespec {
   time_t tv_sec;

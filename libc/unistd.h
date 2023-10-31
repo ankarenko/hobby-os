@@ -3,12 +3,19 @@
 
 #include <stdint.h>
 #include <stdarg.h>
-#include "./errno.h"
+#include <errno.h>
+#include <stddef.h>
 
-#define __NR_print 512
 #define __NR_terminate 1
 #define __NR_sleep 2
+#define __NR_read 3
+#define __NR_write 4
+#define __NR_open 5
+#define __NR_close 6
 #define __NR_sbrk 10
+#define __NR_stat 106
+#define __NR_fstat 108
+#define __NR_print 512
 
 #define _syscall0(name)                       \
   static inline int32_t syscall_##name() {    \
@@ -76,5 +83,7 @@ void sleep(unsigned int a);
 void print(char* format, ...);
 void terminate();
 void* usbrk(unsigned int n);
+
+int read(int fd, char *buf, size_t size);
 
 #endif

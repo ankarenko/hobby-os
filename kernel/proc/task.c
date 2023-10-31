@@ -1,5 +1,6 @@
 #include <math.h>
 #include <string.h>
+#include <list.h>
 
 #include "task.h"
 #include "kernel/memory/vmm.h"
@@ -8,9 +9,7 @@
 #include "kernel/memory/malloc.h"
 #include "kernel/cpu/gdt.h"
 #include "elf.h"
-#include "kernel/util/list.h"
 #include "kernel/util/debug.h"
-
 
 extern void enter_usermode(
   virtual_addr entry,

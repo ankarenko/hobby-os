@@ -16,7 +16,25 @@ void _start(int argc, char** argv) {
     print("Process id: %d\n", id);
   }
   
+  print("!!!Opening file...\n");
+  FILE* stream = fopen("/readme.txt", "r");
+  print("Opened file");
+  int32_t size = 100;
+  
+  if (stream != NULL) {
+    print("Readme.txt size: %d", stream->size);
+    char* buf = calloc(size, sizeof(char));
 
+    // Read the content and print it
+    while(gets(buf, 100, stream)) {
+      print("%s", buf);
+    }
+
+    free(buf);
+  } else {
+    print("Not stream");
+  }
+  
   while (1) {
     //char* s = (char*)malloc(len);
     //memcpy(s, str, len);

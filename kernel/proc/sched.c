@@ -1,5 +1,6 @@
 #include <stdint.h>
-#include "kernel/util/list.h"
+#include <list.h>
+
 #include "kernel/cpu/hal.h"
 #include "kernel/proc/task.h"
 
