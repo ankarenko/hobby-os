@@ -8,11 +8,11 @@
 #include "kernel/system/time.h"
 
 typedef struct _vfs_file {
-  char name[32];
+  char name[100];
   uint32_t flags;
   uint32_t file_length;
   uint32_t id;
-  uint32_t eof;
+  bool eof;
   uint32_t position;
   uint32_t current_cluster;
   uint32_t device_id;

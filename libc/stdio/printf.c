@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <stddef.h>
+#include <sys/cdefs.h>
 
 #define isdigit(c) ((c) >= '0' && (c) <= '9')
 

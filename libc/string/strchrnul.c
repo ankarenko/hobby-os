@@ -1,28 +1,22 @@
 #include <stdlib.h>
 #include <string.h>
 
-size_t strnlen(const char *str, size_t maxlen)
+char *strchrnul(const char *s, int c_in)
 {
-	const char *char_ptr, *end_ptr = str + maxlen;
+	const unsigned char *char_ptr;
 	const unsigned long int *longword_ptr;
-	unsigned long int longword, himagic, lomagic;
+	unsigned long int longword, magic_bits, charmask;
+	unsigned char c;
 
-	if (maxlen == 0)
-		return 0;
-
-	if (end_ptr < str)
-		end_ptr = (const char *)~0UL;
+	c = (unsigned char)c_in;
 
 	/* Handle the first few characters by reading one character at a time.
      Do this until CHAR_PTR is aligned on a longword boundary.  */
-	for (char_ptr = str; ((unsigned long int)char_ptr & (sizeof(longword) - 1)) != 0;
+	for (char_ptr = (const unsigned char *)s;
+		 ((unsigned long int)char_ptr & (sizeof(longword) - 1)) != 0;
 		 ++char_ptr)
-		if (*char_ptr == '\0')
-		{
-			if (char_ptr > end_ptr)
-				char_ptr = end_ptr;
-			return char_ptr - str;
-		}
+		if (*char_ptr == c || *char_ptr == '\0')
+			return (void *)char_ptr;
 
 	/* All these elucidatory comments refer to 4-byte longwords,
      but the theory applies equally well to 8-byte longwords.  */
@@ -36,22 +30,22 @@ size_t strnlen(const char *str, size_t maxlen)
      bytes: AAAAAAAA BBBBBBBB CCCCCCCC DDDDDDDD
      The 1-bits make sure that carries propagate to the next 0-bit.
      The 0-bits provide holes for carries to fall into.  */
-	himagic = 0x80808080L;
-	lomagic = 0x01010101L;
+	magic_bits = -1;
+	magic_bits = magic_bits / 0xff * 0xfe << 1 >> 1 | 1;
+
+	/* Set up a longword, each of whose bytes is C.  */
+	charmask = c | (c << 8);
+	charmask |= charmask << 16;
 	if (sizeof(longword) > 4)
-	{
-		/* 64-bit version of the magic.  */
 		/* Do the shift in two steps to avoid a warning if long has 32 bits.  */
-		himagic = ((himagic << 16) << 16) | himagic;
-		lomagic = ((lomagic << 16) << 16) | lomagic;
-	}
+		charmask |= (charmask << 16) << 16;
 	if (sizeof(longword) > 8)
 		abort();
 
 	/* Instead of the traditional loop which tests each character,
      we will test a longword at a time.  The tricky part is testing
      if *any of the four* bytes in the longword in question are zero.  */
-	while (longword_ptr < (unsigned long int *)end_ptr)
+	for (;;)
 	{
 		/* We tentatively exit the loop if adding MAGIC_BITS to
 	 LONGWORD fails to change any of the hole bits of LONGWORD.
@@ -76,49 +70,55 @@ size_t strnlen(const char *str, size_t maxlen)
 	 we could close this loophole by putting the fourth hole
 	 at bit 32!
 	 So it ignores everything except 128's, when they're aligned
-	 properly.  */
+	 properly.
+	 3) But wait!  Aren't we looking for C as well as zero?
+	 Good point.  So what we do is XOR LONGWORD with a longword,
+	 each of whose bytes is C.  This turns each byte that is C
+	 into a zero.  */
 
 		longword = *longword_ptr++;
 
-		if ((longword - lomagic) & himagic)
+		/* Add MAGIC_BITS to LONGWORD.  */
+		if ((((longword + magic_bits)
+
+			  /* Set those bits that were unchanged by the addition.  */
+			  ^ ~longword)
+
+			 /* Look at only the hole bits.  If any of the hole bits
+	      are unchanged, most likely one of the bytes was a
+	      zero.  */
+			 & ~magic_bits) != 0 ||
+
+			/* That caught zeroes.  Now test for C.  */
+			((((longword ^ charmask) + magic_bits) ^ ~(longword ^ charmask)) & ~magic_bits) != 0)
 		{
-			/* Which of the bytes was the zero?  If none of them were, it was
-	     a misfire; continue the search.  */
+			/* Which of the bytes was C or zero?
+	     If none of them were, it was a misfire; continue the search.  */
 
-			const char *cp = (const char *)(longword_ptr - 1);
+			const unsigned char *cp = (const unsigned char *)(longword_ptr - 1);
 
-			char_ptr = cp;
-			if (cp[0] == 0)
-				break;
-			char_ptr = cp + 1;
-			if (cp[1] == 0)
-				break;
-			char_ptr = cp + 2;
-			if (cp[2] == 0)
-				break;
-			char_ptr = cp + 3;
-			if (cp[3] == 0)
-				break;
+			if (*cp == c || *cp == '\0')
+				return (char *)cp;
+			if (*++cp == c || *cp == '\0')
+				return (char *)cp;
+			if (*++cp == c || *cp == '\0')
+				return (char *)cp;
+			if (*++cp == c || *cp == '\0')
+				return (char *)cp;
 			if (sizeof(longword) > 4)
 			{
-				char_ptr = cp + 4;
-				if (cp[4] == 0)
-					break;
-				char_ptr = cp + 5;
-				if (cp[5] == 0)
-					break;
-				char_ptr = cp + 6;
-				if (cp[6] == 0)
-					break;
-				char_ptr = cp + 7;
-				if (cp[7] == 0)
-					break;
+				if (*++cp == c || *cp == '\0')
+					return (char *)cp;
+				if (*++cp == c || *cp == '\0')
+					return (char *)cp;
+				if (*++cp == c || *cp == '\0')
+					return (char *)cp;
+				if (*++cp == c || *cp == '\0')
+					return (char *)cp;
 			}
 		}
-		char_ptr = end_ptr;
 	}
 
-	if (char_ptr > end_ptr)
-		char_ptr = end_ptr;
-	return char_ptr - str;
+	/* This should never happen.  */
+	return NULL;
 }

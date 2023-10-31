@@ -150,7 +150,7 @@ static bool find_subdir(char* name, const sect_t dir_sector, vfs_file* p_file) {
         p_file->id = 0;
         p_file->current_cluster = p_dir->first_cluster | (p_dir->first_cluster_hi_bytes << 16);
         p_file->file_length = p_dir->file_size;
-        p_file->eof = 0;
+        p_file->eof = false;
         p_file->flags = p_dir->attrib == FAT_ENTRY_DIRECTORY ? FS_DIRECTORY : FS_FILE;
 
         if (p_file->flags == FS_FILE) {
@@ -290,10 +290,10 @@ int32_t fat_read_file(vfs_file* file, uint8_t* buffer, uint32_t length) {
   if (file) {
     int32_t sectors = div_ceil(length, SECTOR_SIZE);
     uint8_t* cur = buffer;
-    
+
     do {
       if (file->current_cluster >= FAT_MARK_EOF) {
-        file->eof = 1;
+        file->eof = true;
         break;
       } 
 
@@ -305,7 +305,7 @@ int32_t fat_read_file(vfs_file* file, uint8_t* buffer, uint32_t length) {
       --sectors;
        file->current_cluster = fat[file->current_cluster];
 
-    } while (sectors > 0 && file->eof != 1);
+    } while (sectors > 0 && !file->eof);
   }
 }
 
@@ -313,6 +313,8 @@ static void fat_close(vfs_file* file) {
   if (file)
     file->flags = FS_INVALID;
 }
+
+
 
 vfs_file fat_open_file(const char* path) {
   char* filename = last_strchr(path, '\/');
@@ -372,7 +374,7 @@ void fat_mount() {
 
 vfs_file fat_get_rootdir() {  
   vfs_file rootdir;
-  rootdir.eof = 0;
+  rootdir.eof = false;
   rootdir.device_id = 0;
   rootdir.flags = FS_ROOT_DIRECTORY;
   return rootdir;
