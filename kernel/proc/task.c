@@ -255,6 +255,14 @@ thread* kernel_thread_create(process* parent, virtual_addr eip) {
   return th;
 }
 
+static files_struct* create_files_descriptors() {
+  files_struct* files = kcalloc(1, sizeof(files_struct));
+  for (int i = 0; i < MAX_FD; ++i) {
+    files->fd[i] = NULL;
+  }
+  return files;
+}
+
 static process* create_process(char* app_path, struct pdirectory* pdir) {
   lock_scheduler();
 
@@ -264,7 +272,8 @@ static process* create_process(char* app_path, struct pdirectory* pdir) {
   list_add(&proc->proc_sibling, get_proc_list());
   proc->id = ++next_pid;
   proc->thread_count = 0;
-  
+  proc->files = create_files_descriptors();
+
   uint32_t len = strlen(app_path);
   proc->path = kcalloc(len, sizeof(char));
   memcpy(proc->path, app_path, len);

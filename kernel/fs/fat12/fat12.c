@@ -14,7 +14,7 @@
 #define END_OF_FILE_MARK 0xff8
 #define NUM_DIRECTORY_ENTRIES (SECTOR_SIZE / DIRECTORY_ENTRY_SIZE)  // 16
 //! FAT FileSystem
-static FILESYSTEM _fsys_fat;
+static vfs_filesystem _fsys_fat;
 
 //! Mount info
 MOUNT_INFO _mount_info;
@@ -32,7 +32,7 @@ void fat12_print_record(PDIRECTORY pkDir) {
   }
 }
 
-bool fat12_check(PDIRECTORY pkDir, const char* dos_filename, const char* filename, PFILE file) {
+bool fat12_check(PDIRECTORY pkDir, const char* dos_filename, const char* filename, vfs_file* file) {
   if (pkDir->attrib && !(pkDir->attrib & FAT12_HIDDEN)) {
     char name[FAT12_MAX_FILE_SIZE + 1];
     memcpy(name, pkDir->filename, FAT12_MAX_FILE_SIZE);
@@ -86,7 +86,7 @@ void to_dos_filename(const char* filename, char* fname, uint32_t fname_length) {
     fname[8 + i] = toupper(fname[8 + i]);
 }
 
-void fat12_read(PFILE file, uint8_t* buffer, uint32_t Length) {
+void fat12_read(vfs_file* file, uint8_t* buffer, uint32_t Length) {
   if (file) {
     // in fat12 two FAT tables + root directory table = 9*2 + (244 * 32 / 512) = 18 + 14 = 32
     uint32_t data_offset = _mount_info.fat_size + _mount_info.root_size;
@@ -145,7 +145,7 @@ void fat12_read(PFILE file, uint8_t* buffer, uint32_t Length) {
 /**
  *	Closes filestr
  */
-void fat12_close(PFILE file) {
+void fat12_close(vfs_file* file) {
   if (file)
     file->flags = FS_INVALID;
 }
@@ -153,8 +153,8 @@ void fat12_close(PFILE file) {
 /**
  *	Locates file or directory in root directory
  */
-FILE fat12_look_root_directory(const char* filename) {
-  FILE file;
+vfs_file fat12_look_root_directory(const char* filename) {
+  vfs_file file;
 
   char dos_filename[FAT12_MAX_FILE_SIZE + 1];
   to_dos_filename(filename, dos_filename, FAT12_MAX_FILE_SIZE);
@@ -174,7 +174,7 @@ FILE fat12_look_root_directory(const char* filename) {
   return file;
 }
 
-FILE fat12_look_subdir(FILE file, const char* filename) {
+vfs_file fat12_look_subdir(vfs_file file, const char* filename) {
   char dos_filename[FAT12_MAX_FILE_SIZE + 1];
   to_dos_filename(filename, dos_filename, FAT12_MAX_FILE_SIZE);
   dos_filename[FAT12_MAX_FILE_SIZE] = 0;
@@ -206,7 +206,7 @@ void fat12_ls_rootdir() {
   }
 }
 
-void fat12_ls_subdir(FILE file) {
+void fat12_ls_subdir(vfs_file file) {
   while (!file.eof) {
     uint8_t buf[SECTOR_SIZE];
     fat12_read(&file, buf, SECTOR_SIZE);
@@ -219,15 +219,15 @@ void fat12_ls_subdir(FILE file) {
 }
 
 
-FILE fat12_get_rootdir() {  
-  FILE rootdir;
+vfs_file fat12_get_rootdir() {  
+  vfs_file rootdir;
   rootdir.eof = 0;
   rootdir.device_id = 0;
   rootdir.flags = FS_ROOT_DIRECTORY;
   return rootdir;
 }
 
-bool fat12_ls(PFILE pfile) {
+bool fat12_ls(vfs_file* pfile) {
   if (pfile && !(pfile->flags & (FS_DIRECTORY | FS_ROOT_DIRECTORY))) {
     return false;
   }
@@ -236,8 +236,8 @@ bool fat12_ls(PFILE pfile) {
     fat12_ls_rootdir() : fat12_ls_subdir(*pfile);
 }
 
-FILE fat12_open(const char* filename) {
-  FILE file;
+vfs_file fat12_open(const char* filename) {
+  vfs_file file;
   const char* p = 0;
   bool rootDir = true;
   const char* path = (char*)filename;
@@ -283,7 +283,7 @@ FILE fat12_open(const char* filename) {
   }
 
   //! unable to find
-  FILE ret;
+  vfs_file ret;
   ret.flags = FS_INVALID;
   return ret;
 }
@@ -323,10 +323,10 @@ void fat12_mount() {
 }
 
 /**
- *	Initialize filesystem
+ *	Initialize vfs_filesystem
  */
 void fat12_initialize() {
-  //! initialize filesystem struct
+  //! initialize vfs_filesystem struct
   strcpy(_fsys_fat.name, "FAT12");
   _fsys_fat.mount = fat12_mount;
   _fsys_fat.open = fat12_open;
@@ -337,8 +337,8 @@ void fat12_initialize() {
   _fsys_fat.ls = fat12_ls;
 
   //! register ourself to volume manager
-  vol_register_file_system(&_fsys_fat, 0);
+  vfs_register_file_system(&_fsys_fat, 0);
 
-  //! mounr filesystem
+  //! mounr vfs_filesystem
   fat12_mount();
 }

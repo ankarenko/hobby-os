@@ -5,7 +5,7 @@
 #include <ctype.h>
 
 #include "kernel/fs/bpb.h"
-#include "kernel/fs/flpydsk.h"
+#include "kernel/fs/vfs.h"
 #include "kernel/util/debug.h"
 #include "kernel/util/path.h"
 #include "kernel/system/time.h"
@@ -18,7 +18,7 @@
 typedef int32_t sect_t;
 
 //! FAT FileSystem
-static FILESYSTEM _fsys_fat;
+static vfs_filesystem _fsys_fat;
 
 /*
   fat[0] // 0xfffffff8 hard, 0xfffffff0 floppy, 0xfffffffa ram
@@ -78,6 +78,7 @@ static void print_dir_record(p_directory p_dir) {
 static void ls_dir(uint32_t offset) {
   p_directory p_dir = (p_directory)flpydsk_read_sector(offset);
 
+  printf("\n");
   for (int32_t i = 0; i < DIR_ENTRIES; i++, p_dir++) {
     print_dir_record(p_dir);
   }
@@ -133,7 +134,7 @@ static sect_t cluster_to_sector(uint32_t cluster_num) {
 }
 
 // in: dir sector, out: cluster
-static bool find_subdir(char* name, const sect_t dir_sector, PFILE p_file) {
+static bool find_subdir(char* name, const sect_t dir_sector, vfs_file* p_file) {
   char dos_name[FAT_LEGACY_FILENAME_SIZE + 1];
   to_dos_name(name, dos_name);
   p_directory p_dir = (p_directory)flpydsk_read_sector(dir_sector);
@@ -164,12 +165,14 @@ static bool find_subdir(char* name, const sect_t dir_sector, PFILE p_file) {
   return false;
 }
 
-static FILE _open_file(const char* name, sect_t dir_sector) {
-  FILE file;
+static vfs_file _open_file(const char* name, sect_t dir_sector) {
+  vfs_file file;
   //! open subdirectory or file
   uint32_t cluster = 0;
   if (!find_subdir(name, dir_sector, &file)) {
-    PANIC("Cannot find file: %s", name);
+    file.flags = FS_NOT_FOUND;
+    return file;
+    //PANIC("Cannot find file: %s", name);
   }
 
   if (cluster > SECTOR_SIZE) {
@@ -180,7 +183,7 @@ static FILE _open_file(const char* name, sect_t dir_sector) {
 }
 
 static bool jmp_dir(const char* path, sect_t* dir_sector) {
-  FILE file;
+  vfs_file file;
   const char* cur = path;
   
   // check if root dir
@@ -203,10 +206,11 @@ static bool jmp_dir(const char* path, sect_t* dir_sector) {
       pathname[i] = '\0';  // null terminate
 
       //! open subdirectory or file
-      FILE file;
+      vfs_file file;
       file.current_cluster = 0;
       if (!find_subdir(pathname, *dir_sector, &file)) {
-        PANIC("Cannot find directory: %s", pathname);
+        //PANIC("Cannot find directory: %s", pathname);
+        return false;
       }
 
       if (cur[i] == '\/') {
@@ -239,7 +243,8 @@ bool fat_cd(const char* path) {
 
   sect_t dir_sector = cur_dir;
   if (!jmp_dir(norm_path, &dir_sector)) {
-    PANIC("Not found directory %s", path);
+    return false;
+    //PANIC("Not found directory %s", path);
   }
   
   if (norm_path[0] == '\/') {
@@ -265,46 +270,51 @@ char* pwd() {
   return cur_path;
 }
 
-void fat_ls(const char* path) {
+bool fat_ls(const char* path) {
   if (path == NULL) {
     ls_dir(cur_dir);
+
   } else {
     sect_t dir_sector = cur_dir;
     if (!jmp_dir(path, &dir_sector)) {
-      PANIC("Not found directory %s", path);
+      return false;
+      //PANIC("Not found directory %s", path);
     }
 
     ls_dir(dir_sector);
   }
+  return true;
 }
 
-void fat_read_file(PFILE file, uint8_t* buffer, uint32_t length) {
+int32_t fat_read_file(vfs_file* file, uint8_t* buffer, uint32_t length) {
   if (file) {
-    sect_t sect_num = cluster_to_sector(file->current_cluster);
-    uint8_t* sector = flpydsk_read_sector(sect_num);
-    //! copy block of memory
-    memcpy(buffer, sector, SECTOR_SIZE);
-    file->current_cluster = fat[file->current_cluster];
+    int32_t sectors = div_ceil(length, SECTOR_SIZE);
+    uint8_t* cur = buffer;
+    
+    do {
+      if (file->current_cluster >= FAT_MARK_EOF) {
+        file->eof = 1;
+        break;
+      } 
 
-    if (file->current_cluster >= FAT_MARK_EOF) {
-      file->eof = 1;
-      return;
-    }
+      sect_t sect_num = cluster_to_sector(file->current_cluster);
+      uint8_t* sector = flpydsk_read_sector(sect_num);
+      //! copy block of memory
+      memcpy(cur, sector, SECTOR_SIZE);
+      cur += SECTOR_SIZE;
+      --sectors;
+       file->current_cluster = fat[file->current_cluster];
 
-    //! test for file corruption
-    if (file->current_cluster == 0) {
-      file->eof = 1;
-      return;
-    }
+    } while (sectors > 0 && file->eof != 1);
   }
 }
 
-static void fat_close(PFILE file) {
+static void fat_close(vfs_file* file) {
   if (file)
     file->flags = FS_INVALID;
 }
 
-FILE fat_open_file(const char* path) {
+vfs_file fat_open_file(const char* path) {
   char* filename = last_strchr(path, '\/');
   bool no_dir_jmp = false;
   if (filename) {
@@ -317,7 +327,10 @@ FILE fat_open_file(const char* path) {
 
   sect_t dir_sector = cur_dir;
   if (!no_dir_jmp && !jmp_dir(path, &dir_sector)) {
-    PANIC("Not found directory %s", path);
+    vfs_file file;
+    file.flags = FS_NOT_FOUND;
+    return file;
+    //PANIC("Not found directory %s", path);
   }
 
   return _open_file(filename, dir_sector);
@@ -357,8 +370,8 @@ void fat_mount() {
   cur_dir = _minfo.root_offset;
 }
 
-FILE fat_get_rootdir() {  
-  FILE rootdir;
+vfs_file fat_get_rootdir() {  
+  vfs_file rootdir;
   rootdir.eof = 0;
   rootdir.device_id = 0;
   rootdir.flags = FS_ROOT_DIRECTORY;
@@ -366,7 +379,7 @@ FILE fat_get_rootdir() {
 }
 
 void fat32_init() {
-    //! initialize filesystem struct
+    //! initialize vfs_filesystem struct
   strcpy(_fsys_fat.name, "FAT32");
   _fsys_fat.mount = fat_mount;
   _fsys_fat.open = fat_open_file;
@@ -377,7 +390,7 @@ void fat32_init() {
   _fsys_fat.cd = fat_cd;
   
   //! register ourself to volume manager
-  vol_register_file_system(&_fsys_fat, 0);
+  vfs_register_file_system(&_fsys_fat, 0);
 
   fat_mount();
 }

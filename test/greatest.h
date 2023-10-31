@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
 #define GREATEST_DEFAULT_WIDTH 72
 #endif
 
-/* FILE *, for test logging. */
+/* vfs_file *, for test logging. */
 #ifndef GREATEST_STDOUT
 #define GREATEST_STDOUT stdout
 #endif
@@ -1102,7 +1102,7 @@ typedef enum greatest_test_res {
     greatest_memory_cmp_env *env = (greatest_memory_cmp_env *)udata;                                     \
     const unsigned char *buf = (const unsigned char *)t;                                                 \
     unsigned char diff_mark = ' ';                                                                       \
-    FILE *out = GREATEST_STDOUT;                                                                         \
+    vfs_file *out = GREATEST_STDOUT;                                                                         \
     size_t i, line_i, line_len = 0;                                                                      \
     int len = 0; /* format hexdump with differences highlighted */                                       \
     for (i = 0; i < env->size; i += line_len) {                                                          \

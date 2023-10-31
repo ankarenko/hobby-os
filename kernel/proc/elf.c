@@ -1,6 +1,6 @@
 #include <string.h>
 
-#include "kernel/fs/fsys.h"
+#include "kernel/fs/vfs.h"
 #include "kernel/memory/vmm.h"
 #include "kernel/memory/malloc.h"
 #include "kernel/util/debug.h"
@@ -67,25 +67,12 @@ bool elf_load_image(
   thread* th, 
   virtual_addr* entry
 ) {
-  FILE file = vol_open_file(app_path);
+  uint8_t* elf_file = vfs_read(app_path);
   process* parent = th->parent;
 
-  if (file.flags == FS_INVALID) {
-    PANIC("\n*** File not found ***\n", NULL);
+  if (!elf_file) {
+    PANIC("\nELF file not found", NULL);
   }
-
-  const uint8_t* elf_file = kcalloc(file.file_length, sizeof(char));
-
-  // TODO: read the whole file, not the best approach, but simple
-  uint32_t shift = 0;
-  while (!file.eof) {
-    vol_read_file(&file, elf_file + shift, 512);
-    shift += 512;
-  }
-
-  vol_close_file(&file);
-  
-  printf("File length: %d", file.file_length);
 
   struct Elf32_Ehdr *elf_header = (struct Elf32_Ehdr *)elf_file;
 

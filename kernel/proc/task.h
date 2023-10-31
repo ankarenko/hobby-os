@@ -6,6 +6,7 @@
 
 #include "kernel/util/list.h"
 #include "kernel/memory/vmm.h"
+#include "kernel/fs/vfs.h"
 
 /*
 0x00000000-0x00100000 � Kernel reserved
@@ -18,7 +19,7 @@
 #define KE_USER_START 0x00100000
 #define KE_KERNEL_START 0xC0000000
 
-#define MAX_THREAD 5
+#define MAX_FD 256
 
 #define PROCESS_STATE_SLEEP 0
 #define PROCESS_STATE_ACTIVE 1
@@ -96,7 +97,16 @@ typedef struct _thread {
   struct list_head th_sibling;
 } thread;
 
-/* be very careful with modifying this as it's used by assembler code */
+typedef struct _files_struct {
+	//struct semaphore lock;
+	vfs_file *fd[MAX_FD];
+} files_struct;
+
+/* 
+  be very careful with modifying this as it's used by assembler code 
+  if you happen to change that it is better to add new fields 
+  to the end of the structure
+*/
 typedef struct _process {
   int32_t id;
   int32_t priority;
@@ -108,9 +118,10 @@ typedef struct _process {
   uint32_t image_size;
   int32_t thread_count;
   char* path;
-  // struct _thread  threads[MAX_THREAD];
+
   struct list_head threads;
   struct list_head proc_sibling;
+  files_struct* files; 
 } process;
 
 thread* get_current_thread();
@@ -121,7 +132,6 @@ thread* kernel_thread_create(process* parent, virtual_addr eip);
 process* create_system_process(virtual_addr entry);
 struct list_head* get_proc_list();
 process* create_elf_process(char* path);
-// extern "C" void TerminateProcess ();
 
 // sched.c
 void lock_scheduler();

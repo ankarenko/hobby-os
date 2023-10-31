@@ -17,7 +17,7 @@ struct FILE {
 int printf(const char* __restrict, ...);
 int fprintf(struct FILE *stream, const char *format, ...);
 int putchar(int);
-int fflush(struct FILE *stream);
+int fflush(struct FILE* stream);
 int puts(const char*);
 int32_t atoi(const char* str);
 

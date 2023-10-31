@@ -12,9 +12,7 @@
 #include "kernel/cpu/idt.h"
 #include "kernel/cpu/tss.h"
 #include "kernel/devices/kybrd.h"
-#include "kernel/fs/fat12/fat12.h"
-#include "kernel/fs/flpydsk.h"
-#include "kernel/fs/fsys.h"
+#include "kernel/fs/vfs.h"
 #include "kernel/memory/kernel_info.h"
 #include "kernel/memory/malloc.h"
 #include "kernel/memory/pmm.h"
@@ -34,7 +32,7 @@ void sleep(uint32_t ms) {
     ;
 }
 
-static PFILE _cur_dir = NULL;
+static vfs_file* _cur_dir = NULL;
 
 //! wait for key stroke
 enum KEYCODE getch() {
@@ -63,7 +61,7 @@ void get_cmd(char* buf, int n) {
       case KEY_RETURN:
         buf[i] = '\0';
         //terminal_clrline();
-        terminal_newline();
+        //terminal_newline();
         return;
       case KEY_UNKNOWN:
         break;
@@ -93,12 +91,12 @@ void kthread () {
 //! our simple command parser
 bool run_cmd(char* cmd_buf) {
   if (strcmp(cmd_buf, "create") == 0) {
-    printf("\nNew thread: \n");
+    printf("\nnew thread: ");
     create_system_process(&kthread);
   } else if (strcmp(cmd_buf, "kill") == 0) {
     char id[10];
 
-    printf("\nPlease id: \n");
+    printf("\nid: ");
     get_cmd(id, 10);
 
     if (id) {
@@ -108,13 +106,13 @@ bool run_cmd(char* cmd_buf) {
   }
   else if (strcmp(cmd_buf, "lst") == 0) {
     thread* th = NULL;
-    printf("Threads running: [ ");
+    printf("\nthreads running: [ ");
     list_for_each_entry(th, get_ready_threads(), sched_sibling) {
       printf("%d ", th->tid);
     }
     printf("]");
 
-    printf("\nProcesses running: [ ");
+    printf("\nprocesses running: [ ");
     process* proc = NULL;
     list_for_each_entry(proc, get_proc_list(), proc_sibling) {
       printf("%d (", proc->id);
@@ -146,10 +144,12 @@ bool run_cmd(char* cmd_buf) {
   } else if (strcmp(cmd_buf, "cd") == 0) {
     char filepath[100];
 
-    printf("path: ");
+    printf("\npath: ");
     get_cmd(filepath, 100);
 
-    vol_cd(filepath);
+    if (!vfs_cd(filepath)) {
+      printf("\ndirectory not found");
+    }
   } else if (strcmp(cmd_buf, "read") == 0) {
     cmd_read_sect();
   } else if (strcmp(cmd_buf, "cat") == 0) {
@@ -157,21 +157,23 @@ bool run_cmd(char* cmd_buf) {
   } else if (strcmp(cmd_buf, "ls") == 0) {
     char filepath[100];
 
-    printf("path: ");
+    printf("\npath: ");
     get_cmd(filepath, 100);
 
-    vol_ls(filepath);
+    if (!vfs_ls(filepath)) {
+      printf("\ndirectory not found");
+    }
     //ls(filepath);
   } else if (strcmp(cmd_buf, "run") == 0) {
     char filepath[100];
-    printf("path: ");
+    printf("\npath: ");
     get_cmd(filepath, 100);
 
     create_elf_process(filepath);
   } else if (strcmp(cmd_buf, "") == 0) {
     
   } else {
-    printf("Invalid command\n");
+    printf("\ninvalid command");
   }
 
   return false;
@@ -180,23 +182,16 @@ bool run_cmd(char* cmd_buf) {
 void cmd_read_file() {
   char filepath[100];
 
-  printf("path: ");
+  printf("\npath: ");
   get_cmd(filepath, 100);
 
-  FILE file = vol_open_file(filepath);
-
-  if (file.flags == FS_INVALID) {
-    printf("\n*** File not found ***\n");
-    return;
-  }
-
-  uint8_t buf[512];
-  printf("_____________________________________________\n");
-  while (!file.eof) {
-    vol_read_file(&file, buf, 512);
-    printf(buf);
-  }
-  printf("____________________________________________\n");
+  int32_t fd = vfs_open(filepath, 0);
+  
+  uint8_t* buf = vfs_read(filepath);
+  printf("\n_____________________________________________\n");
+  printf(buf);
+  printf("____________________________________________");
+  kfree(buf);
 }
 
 extern void cmd_init() {

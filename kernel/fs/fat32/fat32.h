@@ -1,7 +1,7 @@
 #ifndef FAT32_H_INCLUDED
 #define FAT32_H_INCLUDED
 
-#include "kernel/fs/fsys.h"
+#include "kernel/fs/vfs.h"
 
 #define FAT_MARK_EOF        0x0ffffff8
 #define FAT_MARK_FREE       0x00000000

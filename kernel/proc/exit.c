@@ -1,10 +1,26 @@
 #include "kernel/memory/malloc.h"
 #include "kernel/proc/task.h"
 #include "kernel/memory/vmm.h"
+#include "kernel/fs/vfs.h"
 
 bool free_heap(mm_struct_mos* mm) {
   uint32_t frames = div_ceil(mm->brk, PMM_FRAME_SIZE);
   //pmm_free_frames();
+}
+
+bool exit_file(vfs_file* file) {
+  kfree(file);
+  return true;
+}
+
+bool exit_files(files_struct* files) {
+  for (int i = 0; i < MAX_FD; ++i) {
+    if (files->fd[i]) {
+      exit_file(files->fd[i]);
+    }
+  }
+  kfree(files);
+  return true;
 }
 
 bool exit_process(process* proc) {

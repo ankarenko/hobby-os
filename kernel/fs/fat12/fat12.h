@@ -2,7 +2,7 @@
 #define FAT12_H_INCLUDED
 
 #include <stdint.h>
-#include "../fsys.h"
+#include "kernel/fs/vfs.h"
 
 /**
  *	Directory entry
@@ -49,9 +49,9 @@ typedef struct _MOUNT_INFO {
 
 #pragma pack(0)
 
-//FILE fat12_directory(const char* directory_name);
-//void fat12_read(PFILE file, uint8_t* buffer, uint32_t length);
-//FILE fat12_open(const char* filename);
+//vfs_file fat12_directory(const char* directory_name);
+//void fat12_read(vfs_file* file, uint8_t* buffer, uint32_t length);
+//vfs_file fat12_open(const char* filename);
 //void fat12_mount();
 
 void fat12_initialize();
