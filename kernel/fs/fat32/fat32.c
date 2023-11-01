@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <errno.h>
 
 #include "kernel/fs/bpb.h"
 #include "kernel/fs/vfs.h"
@@ -287,7 +288,7 @@ bool fat_ls(const char* path) {
   return true;
 }
 
-int32_t fat_read_file(vfs_file* file, uint8_t* buffer, uint32_t length) {
+int32_t fat_read(vfs_file* file, uint8_t* buffer, uint32_t length, loff_t ppos) {
   if (file) {
     int32_t sectors = div_ceil(length, SECTOR_SIZE);
     uint8_t* cur = buffer;
@@ -299,19 +300,24 @@ int32_t fat_read_file(vfs_file* file, uint8_t* buffer, uint32_t length) {
       } 
 
       sect_t sect_num = cluster_to_sector(file->current_cluster);
-      uint8_t* sector = flpydsk_read_sector(sect_num);
-      //! copy block of memory
-      --sectors;
-      memcpy(cur, sector, sectors == 0? length % SECTOR_SIZE : SECTOR_SIZE);
-      cur += SECTOR_SIZE;
+      for (uint32_t i = 0; i < _minfo.sectors_per_cluster; ++i) {
+        if (sectors >= 0) {
+          uint8_t* sector = flpydsk_read_sector(sect_num + i);
+          --sectors;
+          uint32_t len = sectors == 0? length % SECTOR_SIZE : SECTOR_SIZE;
+          memcpy(cur, sector, len);
+          cur += len;
+          file->f_pos += len;
+        } 
+      }
+
       file->current_cluster = fat[file->current_cluster];
-      
     } while (sectors > 0 && !file->eof);
-    
+
     return length;
   }
 
-  return -1;
+  return -ENOENT;
 }
 
 static void fat_close(vfs_file* file) {
@@ -321,7 +327,7 @@ static void fat_close(vfs_file* file) {
 
 
 
-vfs_file fat_open_file(const char* path) {
+vfs_file fat_open(const char* path) {
   char* filename = last_strchr(path, '\/');
   bool no_dir_jmp = false;
   if (filename) {
@@ -399,10 +405,10 @@ void fat32_init() {
     //! initialize vfs_filesystem struct
   strcpy(_fsys_fat.name, "FAT32");
   _fsys_fat.mount = fat_mount;
-  _fsys_fat.open = fat_open_file;
-  _fsys_fat.read = fat_read_file;
+  _fsys_fat.open = fat_open;
+  _fsys_fat.read = fat_read;
   _fsys_fat.close = fat_close;
-  _fsys_fat.root = fat_get_rootdir;
+  _fsys_fat.root = fat_get_rootdir; // TODO: needs to be on the same level with VFS
   _fsys_fat.ls = fat_ls;
   _fsys_fat.cd = fat_cd;
   

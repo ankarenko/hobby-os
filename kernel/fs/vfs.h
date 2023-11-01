@@ -15,11 +15,11 @@ typedef struct _vfs_file {
   uint32_t file_length;
   uint32_t id;
   bool eof;
-  uint32_t position;
   uint32_t current_cluster;
   uint32_t device_id;
   struct time created;
   struct time modified;
+  loff_t f_pos;
 } vfs_file;
 
 /**
@@ -29,7 +29,7 @@ typedef struct _vfs_filesystem {
   char name[8];
   vfs_file(*directory)(const char* directory_name);
   void (*mount)();
-  int32_t (*read)(vfs_file* file, uint8_t* buffer, uint32_t length);
+  int32_t (*read)(vfs_file* file, uint8_t* buffer, uint32_t length, loff_t ppos);
   void (*close)(vfs_file*);
   vfs_file (*root)();
   bool (*ls)(const char* path);

@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #include "kernel/proc/task.h"
 #include "kernel/memory/malloc.h"
@@ -79,7 +80,7 @@ int32_t vfs_open(const char* fname, int32_t flags, ...) {
 int32_t vfs_read_file(vfs_file* file, uint8_t* buffer, uint32_t length) {
   if (file) {
     if (_file_systems[file->device_id - 'a']) {
-      return _file_systems[file->device_id - 'a']->read(file, buffer, length);
+      return _file_systems[file->device_id - 'a']->read(file, buffer, length, file->f_pos);
     }
   }
   return -1;
@@ -107,7 +108,6 @@ int vfs_fstat(int32_t fd, struct stat* stat) {
 }
 
 char* vfs_read(const char *path) {
-  #define O_RDWR 1
   int32_t fd = vfs_open(path, O_RDWR);
 
 	if (fd < 0)
@@ -117,8 +117,9 @@ char* vfs_read(const char *path) {
 	//vfs_fstat(fd, stat);
   process* proc = get_current_process();
   int32_t size = proc->files->fd[fd]->file_length;
-	char *buf = kcalloc(size, sizeof(char));
+	char *buf = kcalloc(size + 1, sizeof(char));
 	vfs_fread(fd, buf, size);
+  buf[size] = '\0';
 	return buf;
 }
 
