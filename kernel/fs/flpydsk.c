@@ -142,10 +142,12 @@ enum FLPYDSK_SECTOR_DTL {
 extern void sleep(int32_t);
 
 //! current working drive. Defaults to 0 which should be fine on most systems
-static uint8_t _CurrentDrive = 0;
+static uint8_t current_drive = 0;
 
 //! set when IRQ fires
-static volatile uint8_t _FloppyDiskIRQ = 0;
+static volatile uint8_t floppy_disk_irq = 0;
+static int32_t last_sector_loaded = -1;
+static int8_t dma_cache_buffer[SECTOR_SIZE];
 
 bool dma_initialize_floppy(uint8_t* buffer, unsigned length) {
   union {
@@ -227,16 +229,16 @@ void flpydsk_wait_irq();
 //! wait for irq to fire
 inline void flpydsk_wait_irq() {
   //! wait for irq to fire
-  while (_FloppyDiskIRQ == 0) {
-    thread_sleep(10);
+  while (floppy_disk_irq == 0) {
+    thread_sleep(1);
   };
-  _FloppyDiskIRQ = 0;
+  floppy_disk_irq = 0;
 }
 
 //!	floppy disk irq handler
 void i86_flpy_irq() {
   //! irq fired
-  _FloppyDiskIRQ = 1;
+  floppy_disk_irq = 1;
 }
 
 /**
@@ -254,13 +256,13 @@ void flpydsk_check_int(uint32_t* st0, uint32_t* cyl) {
 //! turns the current floppy drives motor on/off
 void flpydsk_control_motor(bool b) {
   //! sanity check: invalid drive
-  if (_CurrentDrive > 3)
+  if (current_drive > 3)
     return;
 
   uint32_t motor = 0;
 
   //! select the correct mask based on current drive
-  switch (_CurrentDrive) {
+  switch (current_drive) {
     case 0:
       motor = FLPYDSK_DOR_MASK_DRIVE0_MOTOR;
       break;
@@ -277,7 +279,7 @@ void flpydsk_control_motor(bool b) {
 
   //! turn on or off the motor of that drive
   if (b)
-    flpydsk_write_dor(_CurrentDrive | motor | FLPYDSK_DOR_MASK_RESET | FLPYDSK_DOR_MASK_DMA);
+    flpydsk_write_dor(current_drive | motor | FLPYDSK_DOR_MASK_RESET | FLPYDSK_DOR_MASK_DMA);
   else
     flpydsk_write_dor(FLPYDSK_DOR_MASK_RESET);
 
@@ -356,7 +358,7 @@ void flpydsk_reset() {
   flpydsk_drive_data(3, 16, 240, true);
 
   //! calibrate the disk
-  flpydsk_calibrate(_CurrentDrive);
+  flpydsk_calibrate(current_drive);
 }
 
 //! read a sector
@@ -369,7 +371,7 @@ void flpydsk_read_sector_imp(uint8_t head, uint8_t track, uint8_t sector) {
   //! read in a sector
   flpydsk_send_command(
       FDC_CMD_READ_SECT | FDC_CMD_EXT_MULTITRACK | FDC_CMD_EXT_SKIP | FDC_CMD_EXT_DENSITY);
-  flpydsk_send_command(head << 2 | _CurrentDrive);
+  flpydsk_send_command(head << 2 | current_drive);
   flpydsk_send_command(track);
   flpydsk_send_command(head);
   flpydsk_send_command(sector);
@@ -393,13 +395,13 @@ void flpydsk_read_sector_imp(uint8_t head, uint8_t track, uint8_t sector) {
 int32_t flpydsk_seek(uint32_t cyl, uint32_t head) {
   uint32_t st0, cyl0;
 
-  if (_CurrentDrive >= 4)
+  if (current_drive >= 4)
     return -1;
 
   for (int32_t i = 0; i < 10; i++) {
     //! send the command
     flpydsk_send_command(FDC_CMD_SEEK);
-    flpydsk_send_command((head) << 2 | _CurrentDrive);
+    flpydsk_send_command((head) << 2 | current_drive);
     flpydsk_send_command(cyl);
 
     //! wait for the results phase IRQ
@@ -439,17 +441,24 @@ void flpydsk_install(uint32_t irq) {
 //! set current working drive
 void flpydsk_set_working_drive(uint8_t drive) {
   if (drive < 4)
-    _CurrentDrive = drive;
+    current_drive = drive;
 }
 
 //! get current working drive
 uint8_t flpydsk_get_working_drive() {
-  return _CurrentDrive;
+  return current_drive;
 }
 
 //! read a sector
 uint8_t* flpydsk_read_sector(uint32_t sectorLBA) {
-  if (_CurrentDrive >= 4)
+  // TODO: be very careful with that, if you happen to have some 
+  // bugs with reading disk,
+  // this is the first place to look
+  if (last_sector_loaded == sectorLBA) {
+    return &dma_cache_buffer;
+  }
+
+  if (current_drive >= 4)
     return 0;
 
   //! convert LBA sector to CHS
@@ -466,5 +475,8 @@ uint8_t* flpydsk_read_sector(uint32_t sectorLBA) {
   flpydsk_control_motor(false);
 
   //! warning: this is a bit hackish
+  last_sector_loaded = sectorLBA;
+  memcpy(&dma_cache_buffer, DMA_BUFFER, SECTOR_SIZE);
+
   return (uint8_t*)DMA_BUFFER;
 }

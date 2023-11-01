@@ -16,17 +16,16 @@ void _start(int argc, char** argv) {
     print("Process id: %d\n", id);
   }
   
-  print("!!!Opening file...\n");
   FILE* stream = fopen("/readme.txt", "r");
-  print("Opened file");
   int32_t size = 100;
   
   if (stream != NULL) {
-    print("Readme.txt size: %d", stream->size);
-    char* buf = calloc(size, sizeof(char));
+    print("\n readme.txt size: %d", stream->size);
+    char* buf = calloc(size + 1, sizeof(char));
 
     // Read the content and print it
-    while(gets(buf, 100, stream)) {
+    while(fgets(buf, size, stream)) {
+      buf[size] = '\0';
       print("%s", buf);
     }
 

@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <stddef.h>
+#include <sys/types.h>
 
 #define __NR_terminate 1
 #define __NR_sleep 2
@@ -79,11 +80,11 @@
 #define NULL 0
 #define SYSCALL_RETURN_POINTER(expr) ({ int ret = expr; if ((int)HIGHER_HALF_ADDRESS < ret && ret < 0) { return errno = -ret, NULL; } return (void *)ret; })
 
-void sleep(unsigned int a);
+unsigned int sleep(unsigned int seconds);
+void* usbrk(intptr_t increment);
+ssize_t read(int fd, char *buf, size_t size);
+
 void print(char* format, ...);
 void terminate();
-void* usbrk(unsigned int n);
-
-int read(int fd, char *buf, size_t size);
 
 #endif

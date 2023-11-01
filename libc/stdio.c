@@ -1,9 +1,10 @@
 #include <fcntl.h>
+#include <list.h>
+#include <math.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <list.h>
-#include <unistd.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 LIST_HEAD(lstream);
 
@@ -32,6 +33,10 @@ static FILE *fdopen(int fd, const char *mode) {
   return stream;
 }
 
+static int32_t fnget(void *ptr, size_t size, FILE *stream) {
+  return read(stream->fd, ptr, 1);
+}
+
 FILE *fopen(const char *filename, const char *mode) {
   int flags = O_RDWR;
 
@@ -58,33 +63,39 @@ FILE *fopen(const char *filename, const char *mode) {
   return fdopen(fd, mode);
 }
 
-static size_t fnget(void *ptr, size_t size, FILE *stream) {
-	//assert_stream(stream);
-  print("---- %x ----", ptr);
-  int32_t count = read(stream->fd, ptr, 1);
-  return count;
-}
-
-
 int fgetc(FILE *stream) {
   char ch;
   int ret = fnget(&ch, 1, stream);
-  return ret == EOF ? ret : (unsigned char)ch;
+  return ret == 0 ? EOF : (unsigned char)ch;
 }
 
-char *gets(char *s, int n, FILE *stream) {
+char *fgets(char *s, int n, FILE *stream) {
   int i;
   for (i = 0; i < n; ++i) {
     int ch = fgetc(stream);
 
-    if (ch == '\n')
+    if (ch == '\n' || (ch == EOF && i != 0)) {
       break;
-    if (ch == EOF)
+    }
+
+    if (ch <= 0) {
       return NULL;
+    }
 
     s[i] = ch;
   }
 
-  s[i] = 0;
+  s[i] = '\0';
   return s;
+}
+
+/*
+Note: fread() function itself does not provide a way to
+distinguish between end-of-file and error, feof and ferror can
+be used to determine which occurred.
+*/
+size_t fread(void *buffer, size_t size, size_t count, FILE *stream) {
+  size_t final_size = count * size;
+  int32_t res = fnget(buffer, final_size, stream);
+  return max(res, 0);
 }

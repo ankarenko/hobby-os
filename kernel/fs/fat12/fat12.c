@@ -41,7 +41,7 @@ bool fat12_check(PDIRECTORY pkDir, const char* dos_filename, const char* filenam
     if (strcmp(name, dos_filename) == 0) {
       strcpy(file->name, filename);
       file->id = 0;
-      file->current_cluster = pkDir->first_cluster;
+      file->first_cluster = pkDir->first_cluster;
       file->file_length = pkDir->file_size;
       file->eof = 0;
       file->flags = pkDir->attrib == FAT12_DIRECTORY ? FS_DIRECTORY : FS_FILE;
@@ -92,7 +92,7 @@ void fat12_read(vfs_file* file, uint8_t* buffer, uint32_t Length) {
     uint32_t data_offset = _mount_info.fat_size + _mount_info.root_size;
 
     //! starting physical sector
-    uint32_t phys_sector = data_offset + (file->current_cluster - 1);
+    uint32_t phys_sector = data_offset + (file->first_cluster - 1);
 
     //! read in sector
     uint8_t* sector = (uint8_t*)flpydsk_read_sector(phys_sector);
@@ -102,7 +102,7 @@ void fat12_read(vfs_file* file, uint8_t* buffer, uint32_t Length) {
 
     //! locate FAT sector
     // multiply by 1.5, because each fat entry is 12bit, for FAT16 it would be 2, for FAT32 - 4
-    uint32_t FAT_Offset = file->current_cluster + file->current_cluster / 2;
+    uint32_t FAT_Offset = file->first_cluster + file->first_cluster / 2;
     uint32_t FAT_Sector = 1 + (FAT_Offset / SECTOR_SIZE);
     uint32_t entry_offset = FAT_Offset % SECTOR_SIZE;
 
@@ -121,7 +121,7 @@ void fat12_read(vfs_file* file, uint8_t* buffer, uint32_t Length) {
     // FAT12 record takes 12bit, but we can read only 16
     // so we need to filter out extra bits
     // there is a pattern
-    if (file->current_cluster & 0x0001)
+    if (file->first_cluster & 0x0001)
       next_cluster >>= 4;  // grab high 12 bits
     else
       next_cluster &= 0x0FFF;  // grab low 12 bits
@@ -138,7 +138,7 @@ void fat12_read(vfs_file* file, uint8_t* buffer, uint32_t Length) {
     }
 
     //! set next cluster
-    file->current_cluster = next_cluster;
+    file->first_cluster = next_cluster;
   }
 }
 
@@ -332,7 +332,6 @@ void fat12_initialize() {
   _fsys_fat.open = fat12_open;
   _fsys_fat.read = fat12_read;
   _fsys_fat.close = fat12_close;
-  _fsys_fat.directory = fat12_look_root_directory;
   _fsys_fat.root = fat12_get_rootdir;
   _fsys_fat.ls = fat12_ls;
 

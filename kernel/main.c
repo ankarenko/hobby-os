@@ -1,6 +1,7 @@
 #include <ctype.h>
 #include <math.h>
 #include <list.h>
+#include <errno.h>
 
 #include "test/greatest.h"
 
@@ -187,11 +188,27 @@ void cmd_read_file() {
 
   int32_t fd = vfs_open(filepath, 0);
   
+  if (fd == -ENOENT) {
+    printf("\nfile not found");
+    return;
+  }
+
+  uint32_t size = 1;
+  uint8_t* buf = kcalloc(size + 1, sizeof(uint8_t));
+  printf("\n_____________________________________________\n");
+  while (vfs_fread(fd, buf, size) == size) {
+    buf[size] = '\0';
+    printf(buf);
+  };
+  printf("____________________________________________");
+  
+  /*
   uint8_t* buf = vfs_read(filepath);
   printf("\n_____________________________________________\n");
   printf(buf);
   printf("____________________________________________");
   kfree(buf);
+  */
 }
 
 extern void cmd_init() {

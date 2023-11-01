@@ -2,18 +2,18 @@
 #include <stdarg.h>
 
 _syscall3(read, int, char *, size_t);
-int read(int fd, char *buf, size_t size) {
+ssize_t read(int fd, char *buf, size_t size) {
 	SYSCALL_RETURN_ORIGINAL(syscall_read(fd, buf, size));
 }
 
-_syscall1(sbrk, unsigned int);
-void* usbrk(unsigned int n) {
-  SYSCALL_RETURN_POINTER(syscall_sbrk(n));
+_syscall1(sleep, unsigned int);
+unsigned int sleep(unsigned int seconds) {
+  SYSCALL_RETURN(syscall_sleep(seconds));
 }
 
-_syscall1(sleep, int32_t);
-void sleep(unsigned int a) {
-  SYSCALL_RETURN(syscall_sleep(a));
+_syscall1(sbrk, intptr_t);
+void* usbrk(intptr_t increment) {
+  SYSCALL_RETURN_POINTER(syscall_sbrk(increment));
 }
 
 _syscall2(print, char*, va_list);

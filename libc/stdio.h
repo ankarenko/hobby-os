@@ -3,6 +3,7 @@
 
 #include <sys/cdefs.h>
 #include <stdint.h>
+#include <stddef.h>
 #include <FILE.h>
 
 #define EOF (-1)
@@ -21,6 +22,8 @@ int puts(const char*);
 int32_t atoi(const char* str);
 
 FILE *fopen(const char *filename, const char *mode);
-char *gets(char *s, int n, FILE *stream);
+char *fgets(char *s, int n, FILE *stream);
+int fgetc(FILE *stream);
+size_t fread(void * buffer, size_t size, size_t count, FILE * stream);
 
 #endif
