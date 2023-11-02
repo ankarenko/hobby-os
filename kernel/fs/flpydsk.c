@@ -1,6 +1,7 @@
 #include "flpydsk.h"
 
 #include <stdbool.h>
+#include <string.h>
 
 #include "kernel/cpu/hal.h"
 #include "kernel/memory/kernel_info.h"
@@ -137,6 +138,7 @@ enum FLPYDSK_SECTOR_DTL {
 #define FLPY_HEADS_PER_CYLINDER 2
 #define DMA_BUFFER 0x1000  // TODO: make it virtual address, adding KERNEL_HIGH_HALF doesnt work
 #define FDC_DMA_CHANNEL 2
+#define NO_CACHE -1
 
 //! used to wait in miliseconds
 extern void sleep(int32_t);
@@ -147,7 +149,16 @@ static uint8_t current_drive = 0;
 //! set when IRQ fires
 static volatile uint8_t floppy_disk_irq = 0;
 static int32_t last_sector_loaded = -1;
-static int8_t dma_cache_buffer[SECTOR_SIZE];
+static int8_t dma_cache_buffer[FLPYDSK_SECTOR_SIZE];
+
+static void flpydsk_flush_cache() {
+  last_sector_loaded = NO_CACHE;
+}
+
+static void flpydsk_save_cache(uint32_t sector_lba) {
+  last_sector_loaded = sector_lba;
+  memcpy(&dma_cache_buffer, DMA_BUFFER, FLPYDSK_SECTOR_SIZE);
+}
 
 bool dma_initialize_floppy(uint8_t* buffer, unsigned length) {
   union {
@@ -284,7 +295,7 @@ void flpydsk_control_motor(bool b) {
     flpydsk_write_dor(FLPYDSK_DOR_MASK_RESET);
 
   //! in all cases; wait a little bit for the motor to spin up/turn off
-  //sleep(20);
+  // sleep(20);
   thread_sleep(1);
 }
 
@@ -362,7 +373,7 @@ void flpydsk_reset() {
 }
 
 //! read a sector
-void flpydsk_read_sector_imp(uint8_t head, uint8_t track, uint8_t sector) {
+static void flpydsk_read_sector_imp(uint8_t head, uint8_t track, uint8_t sector) {
   uint32_t st0, cyl;
 
   //! set the DMA for read transfer
@@ -391,8 +402,33 @@ void flpydsk_read_sector_imp(uint8_t head, uint8_t track, uint8_t sector) {
   flpydsk_check_int(&st0, &cyl);
 }
 
+// write a sector
+static void flpydsk_write_sector_imp(unsigned char head, unsigned char track, unsigned char sector) {
+  uint32_t st0, cyl;
+  //! set the DMA for read transfer
+  dma_set_write(FDC_DMA_CHANNEL);
+
+  flpydsk_send_command(FDC_CMD_WRITE_SECT | FDC_CMD_EXT_MULTITRACK | FDC_CMD_EXT_DENSITY);  // write a sector
+  flpydsk_send_command(head << 2 | current_drive);
+  flpydsk_send_command(track);
+  flpydsk_send_command(head);
+  flpydsk_send_command(sector);
+  flpydsk_send_command(FLPYDSK_SECTOR_DTL_512);
+  flpydsk_send_command(((sector + 1) >= FLPY_SECTORS_PER_TRACK) ? FLPY_SECTORS_PER_TRACK : sector + 1);
+  flpydsk_send_command(FLPYDSK_GAP3_LENGTH_3_5);
+  flpydsk_send_command(0xFF);
+
+  flpydsk_wait_irq();
+
+  int j;
+  for (j = 0; j < 7; ++j)
+    flpydsk_read_data();          // read status info
+
+  flpydsk_check_int(&st0, &cyl);  // let FDC know we handled interrupt
+}
+
 //! seek to given track/cylinder
-int32_t flpydsk_seek(uint32_t cyl, uint32_t head) {
+static int32_t flpydsk_seek(uint32_t cyl, uint32_t head) {
   uint32_t st0, cyl0;
 
   if (current_drive >= 4)
@@ -429,7 +465,7 @@ void flpydsk_install(uint32_t irq) {
   register_interrupt_handler(irq, i86_flpy_irq);
 
   //! initialize the DMA for FDC
-  dma_initialize_floppy((uint8_t*)DMA_BUFFER, SECTOR_SIZE);
+  dma_initialize_floppy((uint8_t*)DMA_BUFFER, FLPYDSK_SECTOR_SIZE);
 
   //! reset the fdc
   flpydsk_reset();
@@ -450,20 +486,22 @@ uint8_t flpydsk_get_working_drive() {
 }
 
 //! read a sector
-uint8_t* flpydsk_read_sector(uint32_t sectorLBA) {
-  // TODO: be very careful with that, if you happen to have some 
+uint8_t* flpydsk_read_sector(uint32_t sector_lba) {
+  // TODO: be very careful with that, if you happen to have some
   // bugs with reading disk,
   // this is the first place to look
-  if (last_sector_loaded == sectorLBA) {
+  /*
+  if (last_sector_loaded == sector_lba) {
     return &dma_cache_buffer;
   }
+  */
 
   if (current_drive >= 4)
-    return 0;
+    return NULL;
 
   //! convert LBA sector to CHS
   int32_t head = 0, track = 0, sector = 1;
-  flpydsk_lba_to_chs(sectorLBA, &head, &track, &sector);
+  flpydsk_lba_to_chs(sector_lba, &head, &track, &sector);
 
   //! turn motor on and seek to track
   flpydsk_control_motor(true);
@@ -474,9 +512,30 @@ uint8_t* flpydsk_read_sector(uint32_t sectorLBA) {
   flpydsk_read_sector_imp(head, track, sector);
   flpydsk_control_motor(false);
 
-  //! warning: this is a bit hackish
-  last_sector_loaded = sectorLBA;
-  memcpy(&dma_cache_buffer, DMA_BUFFER, SECTOR_SIZE);
-
+  flpydsk_save_cache(sector_lba);
   return (uint8_t*)DMA_BUFFER;
+}
+
+void flpydsk_set_buffer(uint8_t* buf) {
+  flpydsk_flush_cache();
+  memcpy(DMA_BUFFER, buf, FLPYDSK_SECTOR_SIZE);
+}
+
+// write a sector
+int32_t flpydsk_write_sector(int32_t sector_lba) {
+  if (current_drive >= 4)
+    return -1;
+
+  flpydsk_save_cache(sector_lba);
+  int32_t head = 0, track = 0, sector = 1;
+  flpydsk_lba_to_chs(sector_lba, &head, &track, &sector);
+  
+  flpydsk_control_motor(true);
+  if (flpydsk_seek(track, head)) 
+    return -2;
+
+  flpydsk_write_sector_imp(head, track, sector);
+  flpydsk_control_motor(false);
+
+  return 0;
 }

@@ -2,6 +2,7 @@
 #include <math.h>
 #include <list.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #include "test/greatest.h"
 
@@ -150,6 +151,24 @@ bool run_cmd(char* cmd_buf) {
 
     if (!vfs_cd(filepath)) {
       printf("\ndirectory not found");
+    }
+  } else if (strcmp(cmd_buf, "mfile") == 0) {
+    char filepath[100];
+
+    printf("\npath: ");
+    get_cmd(filepath, 100);
+
+    if (vfs_open(filepath, O_CREAT) < 0) {
+      printf("\ndirectory not found");
+    }
+  } else if (strcmp(cmd_buf, "rm") == 0) {
+    char filepath[100];
+
+    printf("\npath: ");
+    get_cmd(filepath, 100);
+
+    if (vfs_delete(filepath) < 0) {
+      printf("\nfile not found");
     }
   } else if (strcmp(cmd_buf, "read") == 0) {
     cmd_read_sect();

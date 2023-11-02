@@ -43,7 +43,7 @@ typedef struct _MOUNT_INFO {
   uint32_t root_offset;
   uint32_t root_size;
   uint32_t fat_size;
-  //uint32_t sector_size;
+  //uint32_t bytes_per_sect;
   uint32_t fat_entry_size;
 } MOUNT_INFO, *PMOUNT_INFO;
 

@@ -36,6 +36,16 @@ int vfs_fstat(int32_t fd, struct stat* stat) {
   return 1;
 }
 
+int32_t vfs_delete(const char* fname) {
+  if (!fname)
+    return -ENOENT;
+
+  unsigned char device = 'a';
+  if (file_systems[device - 'a']) {
+    return file_systems[device - 'a']->delete(fname);
+  }
+}
+
 int32_t vfs_open(const char* fname, int32_t flags, ...) {
   if (fname) {
     //! default to device 'a'
@@ -58,7 +68,7 @@ int32_t vfs_open(const char* fname, int32_t flags, ...) {
 
     //! call vfs_filesystem
     if (file_systems[device - 'a']) {
-      vfs_file ret_file = file_systems[device - 'a']->open(filename);
+      vfs_file ret_file = file_systems[device - 'a']->open(filename, flags);
       
       if (ret_file.flags == FS_INVALID || ret_file.flags == FS_NOT_FOUND) {
         return -ENOENT;

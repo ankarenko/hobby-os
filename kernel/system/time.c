@@ -1,10 +1,12 @@
-#include "time.h"
-
 #include <stdio.h>
+#include <string.h>
 
 #include "kernel/cpu/hal.h"
 #include "kernel/cpu/idt.h"
 #include "kernel/memory/vmm.h"
+#include "kernel/util/debug.h"
+
+#include "time.h"
 
 #define PIT_TICKS_PER_SECOND 1000
 
@@ -21,40 +23,27 @@ struct time epoch_time = {
 };
 struct time current_time;
 
-void set_boot_seconds(uint64_t bs) {
-  boot_seconds = bs;
-}
+static uint32_t tick = 0;
 
-void set_current_time(uint16_t year, uint8_t month, uint8_t day,
-                      uint8_t hour, uint8_t minute, uint8_t second) {
-  current_time.year = year;
-  current_time.month = month;
-  current_time.day = day;
-  current_time.hour = hour;
-  current_time.minute = minute;
-  current_time.second = second;
-  current_seconds = get_seconds(NULL);
-}
+static void timer_create(uint32_t frequency) {
+  // Firstly, register our timer callback.
+  // register_interrupt_handler(IRQ0, &timer_callback);
 
-struct time fat_to_time(uint32_t fat_date, uint32_t fat_time) {
-  uint16_t y = (fat_date >> 9) + 1980;
-  uint8_t m = (fat_date >> 5) & 0b1111;
-  uint8_t d = fat_date & 0b11111;
+  // The value we send to the PIT is the value to divide it's input clock
+  // (1193180 Hz) by, to get our required frequency. Important to note is
+  // that the divisor must be small enough to fit into 16-bits.
+  uint16_t divisor = 1193180 / frequency;
 
-  uint8_t h = (fat_time >> 12) & 0b1111;
-  uint8_t min = (fat_time >> 5) & 0b111111; 
-  uint8_t s = (fat_time & 0b11111) << 1; 
-  
-  struct time t = {
-    .year = y,
-    .month = m,
-    .day = d,
-    .hour = h,
-    .minute = min,
-    .second = s
-  };
+  // Send the command byte.
+  outportb(0x43, 0x36);
 
-  return t;
+  // Divisor has to be sent byte-wise, so split here into upper/lower bytes.
+  uint8_t l = (uint8_t)(divisor & 0xFF);
+  uint8_t h = (uint8_t)((divisor >> 8) & 0xFF);
+
+  // Send the frequency divisor.
+  outportb(0x40, l);
+  outportb(0x40, h);
 }
 
 // NOTE: MQ 2019-07-25 According to this paper http://howardhinnant.github.io/date_algorithms.html#civil_from_days
@@ -97,11 +86,56 @@ static uint32_t get_days(struct time *t) {
   return era * 146097 + (doe)-719468;
 }
 
+void set_boot_seconds(uint64_t bs) {
+  boot_seconds = bs;
+}
+
+void set_current_time(uint16_t year, uint8_t month, uint8_t day,
+                      uint8_t hour, uint8_t minute, uint8_t second) {
+  current_time.year = year;
+  current_time.month = month;
+  current_time.day = day;
+  current_time.hour = hour;
+  current_time.minute = minute;
+  current_time.second = second;
+  current_seconds = get_seconds(NULL);
+}
+
+struct time fat_to_time(uint32_t fat_date, uint32_t fat_time) {
+  uint16_t y = (fat_date >> 9) + 1980;
+  uint8_t m = (fat_date >> 5) & 0b1111;
+  uint8_t d = fat_date & 0b11111;
+
+  uint8_t h = (fat_time >> 12) & 0b1111;
+  uint8_t min = (fat_time >> 5) & 0b111111; 
+  uint8_t s = (fat_time & 0b11111) << 1; 
+  
+  struct time t = {
+    .year = y,
+    .month = m,
+    .day = d,
+    .hour = h,
+    .minute = min,
+    .second = s
+  };
+
+  return t;
+}
+
 uint32_t get_seconds(struct time *t) {
   if (t == NULL)
     t = &current_time;
 
   return get_days(t) * 24 * 3600 + t->hour * 3600 + t->minute * 60 + t->second;
+}
+
+struct time *get_time(int32_t seconds) {
+  return seconds == 0 ? &current_time : get_time_from_seconds(seconds);
+}
+
+void time_to_fat(const struct time* t, uint16_t* date, uint16_t* time) {
+  *date = ((t->year - 1980) << 9) | (t->month << 5) | t->day;
+  *time = (t->hour << 12) | (t->minute << 5) | (t->second >> 1);
 }
 
 /*
@@ -113,35 +147,8 @@ uint64_t get_milliseconds(struct time *t) {
 }
 */
 
-struct time *get_time(int32_t seconds) {
-  return seconds == 0 ? &current_time : get_time_from_seconds(seconds);
-}
-
 /*
 uint64_t get_milliseconds_since_epoch() {
   return get_milliseconds(NULL) - get_milliseconds(&epoch_time);
 }
 */
-
-static uint32_t tick = 0;
-
-static void timer_create(uint32_t frequency) {
-  // Firstly, register our timer callback.
-  // register_interrupt_handler(IRQ0, &timer_callback);
-
-  // The value we send to the PIT is the value to divide it's input clock
-  // (1193180 Hz) by, to get our required frequency. Important to note is
-  // that the divisor must be small enough to fit into 16-bits.
-  uint16_t divisor = 1193180 / frequency;
-
-  // Send the command byte.
-  outportb(0x43, 0x36);
-
-  // Divisor has to be sent byte-wise, so split here into upper/lower bytes.
-  uint8_t l = (uint8_t)(divisor & 0xFF);
-  uint8_t h = (uint8_t)((divisor >> 8) & 0xFF);
-
-  // Send the frequency divisor.
-  outportb(0x40, l);
-  outportb(0x40, h);
-}

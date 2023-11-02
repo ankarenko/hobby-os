@@ -3,16 +3,16 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "kernel/fs/bpb.h"
+#include "kernel/fs/flpydsk.h"
+
 #include "./fat12.h"
-#include "../bpb.h"
-#include "../flpydsk.h"
 
 //! bytes per sector
-#define SECTOR_SIZE 512
 #define FAT12_MAX_FILE_SIZE 11  // 8.3
 #define DIRECTORY_ENTRY_SIZE 32
 #define END_OF_FILE_MARK 0xff8
-#define NUM_DIRECTORY_ENTRIES (SECTOR_SIZE / DIRECTORY_ENTRY_SIZE)  // 16
+#define NUM_DIRECTORY_ENTRIES (FLPYDSK_SECTOR_SIZE / DIRECTORY_ENTRY_SIZE)  // 16
 //! FAT FileSystem
 static vfs_filesystem _fsys_fat;
 
@@ -20,7 +20,7 @@ static vfs_filesystem _fsys_fat;
 MOUNT_INFO _mount_info;
 
 //! File Allocation Table (FAT)
-uint8_t FAT[SECTOR_SIZE * 2];
+uint8_t FAT[FLPYDSK_SECTOR_SIZE * 2];
 
 void fat12_print_record(PDIRECTORY pkDir) {
   uint8_t attr = pkDir->attrib;
@@ -98,21 +98,21 @@ void fat12_read(vfs_file* file, uint8_t* buffer, uint32_t Length) {
     uint8_t* sector = (uint8_t*)flpydsk_read_sector(phys_sector);
 
     //! copy block of memory
-    memcpy(buffer, sector, SECTOR_SIZE);
+    memcpy(buffer, sector, FLPYDSK_SECTOR_SIZE);
 
     //! locate FAT sector
     // multiply by 1.5, because each fat entry is 12bit, for FAT16 it would be 2, for FAT32 - 4
     uint32_t FAT_Offset = file->first_cluster + file->first_cluster / 2;
-    uint32_t FAT_Sector = 1 + (FAT_Offset / SECTOR_SIZE);
-    uint32_t entry_offset = FAT_Offset % SECTOR_SIZE;
+    uint32_t FAT_Sector = 1 + (FAT_Offset / FLPYDSK_SECTOR_SIZE);
+    uint32_t entry_offset = FAT_Offset % FLPYDSK_SECTOR_SIZE;
 
     //! read 1st FAT sector
     sector = (uint8_t*)flpydsk_read_sector(FAT_Sector);
-    memcpy(FAT, sector, SECTOR_SIZE);
+    memcpy(FAT, sector, FLPYDSK_SECTOR_SIZE);
 
     //! read 2nd FAT sector
     sector = (uint8_t*)flpydsk_read_sector(FAT_Sector + 1);
-    memcpy(FAT + SECTOR_SIZE, sector, SECTOR_SIZE);
+    memcpy(FAT + FLPYDSK_SECTOR_SIZE, sector, FLPYDSK_SECTOR_SIZE);
 
     //! read entry for next cluster
     uint16_t next_cluster = *(uint16_t*)&FAT[entry_offset];
@@ -180,8 +180,8 @@ vfs_file fat12_look_subdir(vfs_file file, const char* filename) {
   dos_filename[FAT12_MAX_FILE_SIZE] = 0;
 
   while (!file.eof) {
-    uint8_t buf[SECTOR_SIZE];
-    fat12_read(&file, buf, SECTOR_SIZE);
+    uint8_t buf[FLPYDSK_SECTOR_SIZE];
+    fat12_read(&file, buf, FLPYDSK_SECTOR_SIZE);
     PDIRECTORY pkDir = (PDIRECTORY)buf;
 
     for (uint32_t i = 0; i < NUM_DIRECTORY_ENTRIES; i++, pkDir++) {
@@ -208,8 +208,8 @@ void fat12_ls_rootdir() {
 
 void fat12_ls_subdir(vfs_file file) {
   while (!file.eof) {
-    uint8_t buf[SECTOR_SIZE];
-    fat12_read(&file, buf, SECTOR_SIZE);
+    uint8_t buf[FLPYDSK_SECTOR_SIZE];
+    fat12_read(&file, buf, FLPYDSK_SECTOR_SIZE);
     PDIRECTORY pkDir = (PDIRECTORY)buf;
 
     for (uint32_t i = 0; i < NUM_DIRECTORY_ENTRIES; i++, pkDir++) {

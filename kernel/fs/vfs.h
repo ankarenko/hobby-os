@@ -36,11 +36,12 @@ typedef struct _vfs_file {
 
 typedef struct _vfs_filesystem {
   char name[8];
-  vfs_file (*open)(const char* filename);
+  vfs_file (*open)(const char* filename, mode_t mode);
   int32_t (*read)(vfs_file* file, uint8_t* buffer, uint32_t length, loff_t ppos);
   void (*close)(vfs_file*);
   loff_t (*llseek)(vfs_file* file, loff_t ppos, int);
   vfs_file (*root)();
+  int32_t (*delete)(const char* path);
   void (*mount)();
   bool (*ls)(const char* path);
   bool (*cd)(const char* path);
@@ -58,6 +59,7 @@ void vfs_unregister_file_system_by_id(uint32_t device_id);
 void vfs_close_file(vfs_file* file);
 int32_t vfs_open(const char* fname, int32_t flags, ...);
 int vfs_fstat(int32_t fd, struct stat* stat);
+int32_t vfs_delete(const char* fname);
 
 // read_write.c
 int32_t vfs_fread(int32_t fd, char* buf, int32_t count);

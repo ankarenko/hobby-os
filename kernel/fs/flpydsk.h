@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 
-#define SECTOR_SIZE 512
+#define FLPYDSK_SECTOR_SIZE 512
 
 //! install floppy driver
 void flpydsk_install(uint32_t irq);
@@ -15,10 +15,8 @@ void flpydsk_set_working_drive(uint8_t drive);
 //! get current working drive
 uint8_t flpydsk_get_working_drive();
 
-//! read a sector
-uint8_t *flpydsk_read_sector(uint32_t sectorLBA);
-
-//! converts an LBA address to CHS
-void flpydsk_lba_to_chs(uint32_t lba, uint32_t *head, uint32_t *track, uint32_t *sector);
+uint8_t *flpydsk_read_sector(uint32_t sector_lba);
+int32_t flpydsk_write_sector(int32_t sector_lba);
+void flpydsk_set_buffer(uint8_t* buf);
 
 #endif

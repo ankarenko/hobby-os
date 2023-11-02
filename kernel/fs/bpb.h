@@ -14,7 +14,7 @@
 typedef struct _bios_parameter_block {
   uint8_t oem_name[8];
   uint16_t bytes_per_sector;
-  uint8_t sectors_per_cluster;
+  uint8_t sect_per_cluster;
   uint16_t reserved_sectors;
   uint8_t number_of_fats;
   uint16_t num_dir_entries;

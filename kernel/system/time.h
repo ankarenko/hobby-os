@@ -49,5 +49,6 @@ uint32_t get_seconds(struct time *);
 //uint64_t get_milliseconds_since_epoch();
 struct time* get_time(int32_t seconds);
 struct time fat_to_time(uint32_t fat_date, uint32_t fat_time);
+void time_to_fat(const struct time* t, uint16_t* date, uint16_t* time);
 
 #endif

@@ -3,26 +3,34 @@
 
 #include "kernel/fs/vfs.h"
 
-#define FAT_MARK_EOF        0x0ffffff8
-#define FAT_MARK_FREE       0x00000000
-#define FAT_MARK_ALLOCATED  0x00000002
-#define FAT_MARK_RESERVED   0xfffffff6
-#define FAT_MARK_DAMAGED    0xfffffff7
+#define FAT_ATTR_EOF        0x0ffffff8
+#define FAT_ATTR_FREE       0x00000000
+#define FAT_ATTR_ALLOCATED  0x00000002
+#define FAT_ATTR_RESERVED   0xfffffff6
+#define FAT_ATTR_DAMAGED    0xfffffff7
 
-#define FAT_ENTRY_READ_ONLY    0x01
-#define FAT_ENTRY_HIDDEN       0x02
-#define FAT_ENTRY_SYSTEM       0x04
-#define FAT_ENTRY_VOLUME_ID    0x08
-#define FAT_ENTRY_DIRECTORY    0x10
-#define FAT_ENTRY_ARCHIVE      0x20
+#define DIR_ATTR_READ_ONLY    0x01 // Indicates that writes to the file should fail.
+#define DIR_ATTR_HIDDEN       0x02 // Indicates that normal directory listings should not show this file
+#define DIR_ATTR_SYSTEM       0x04 // Indicates that this is an operating system file.
+#define DIR_ATTR_VOLUME_ID    0x08 
+#define DIR_ATTR_DIRECTORY    0x10 // Indicates that this file is actually a container for other files
+#define DIR_ATTR_ARCHIVE      0x20 // This attribute supports backup utilities
+#define DIR_ATTR_LONG_NAME    DIR_ATTR_READ_ONLY | DIR_ATTR_HIDDEN | DIR_ATTR_SYSTEM | DIR_ATTR_VOLUME_ID
 
-#define ENTRY_SIZE              32
-#define SECTOR_SIZE             512
-#define DIR_ENTRIES             (SECTOR_SIZE / ENTRY_SIZE) 
+#define FAT_ENTRY_SIZE       (sizeof(uint32_t))
+
+//
+//  The first byte of a dirent describes the dirent.  There is also a routine
+//  to help in deciding how to interpret the dirent.
+//
+#define FAT_DIRENT_NEVER_USED            0x00
+#define FAT_DIRENT_REALLY_0E5            0x05
+#define FAT_DIRENT_DIRECTORY_ALIAS       0x2e
+#define FAT_DIRENT_DELETED               0xe5
 
 #pragma pack(1)
 
-typedef struct _directory {
+typedef struct _dir_item {
   uint8_t filename[8];
   uint8_t ext[3];
   uint8_t attrib;
@@ -36,7 +44,7 @@ typedef struct _directory {
   uint16_t last_mod_date;
   uint16_t first_cluster;
   uint32_t file_size;
-} directory, *p_directory;
+} dir_item;
 
 /*
   Filesystem mount info
@@ -46,11 +54,14 @@ typedef struct _mount_info {
   uint32_t fat_copy_offset;
   uint32_t root_offset;
   uint32_t fat_entry_size;
-  uint32_t sectors_per_cluster;
-  uint32_t fat_size;
-  uint32_t fat_num_clusters;
+  uint32_t sect_per_cluster;
+  uint32_t fat_size_sect;
+  uint32_t fat_size_clusters;
   uint32_t data_offset;
-} mount_info, *p_mount_info;
+  uint32_t bytes_per_sect;
+  uint32_t sector_entries_count;
+  uint32_t fat_entries_count;
+} mount_info;
 
 #pragma pack(0)
 
