@@ -45,6 +45,7 @@ typedef struct _vfs_filesystem {
   void (*mount)();
   bool (*ls)(const char* path);
   bool (*cd)(const char* path);
+  int32_t (*mkdir)(const char* path);
 } vfs_filesystem;
 
 // vfs.c
@@ -60,6 +61,7 @@ void vfs_close_file(vfs_file* file);
 int32_t vfs_open(const char* fname, int32_t flags, ...);
 int vfs_fstat(int32_t fd, struct stat* stat);
 int32_t vfs_delete(const char* fname);
+int32_t vfs_mkdir(const char* dir_path);
 
 // read_write.c
 int32_t vfs_fread(int32_t fd, char* buf, int32_t count);

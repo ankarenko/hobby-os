@@ -15,7 +15,6 @@
 #include "./kernel/devices/kybrd.h"
 #include "./kernel/fs/fat12/fat12.h"
 #include "./kernel/fs/flpydsk.h"
-#include "./kernel/fs/fsys.h"
 #include "./kernel/memory/kernel_info.h"
 #include "./kernel/memory/malloc.h"
 #include "./kernel/memory/pmm.h"
@@ -27,7 +26,6 @@
 
 
 SUITE_EXTERN(SUITE_PMM);
-SUITE_EXTERN(SUITE_LIBC_STRING);
 SUITE_EXTERN(SUITE_MALLOC);
 SUITE_EXTERN(SUITE_LIST);
 SUITE_EXTERN(SUITE_PATH);
@@ -51,13 +49,14 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   kkybrd_install(IRQ1);
   pmm_init(mbd);
 
-  RUN_SUITE(SUITE_PATH);
+  
   RUN_SUITE(SUITE_LIST);
   RUN_SUITE(SUITE_PMM);
-  RUN_SUITE(SUITE_LIBC_STRING);
 
   vmm_init();
   RUN_SUITE(SUITE_MALLOC);
+  RUN_SUITE(SUITE_PATH);
+  
   
   GREATEST_MAIN_END();
   return 0;

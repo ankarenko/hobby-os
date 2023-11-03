@@ -1,5 +1,3 @@
-#include "./fat32.h"
-
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -15,6 +13,19 @@
 #include "kernel/system/time.h"
 #include "kernel/util/debug.h"
 #include "kernel/util/path.h"
+
+#include "./fat32.h"
+
+/*
+ALLOWED PATH
+
+/A/B/C.ext
+A/B/C.ext
+../A/C.txt
+./A/C.txt
+/A/../C.txt
+
+*/
 
 #define FAT_LEGACY_FILENAME_SIZE 11  // 8.3
 #define MAX_FILE_PATH 100
@@ -33,18 +44,19 @@ static unsigned char cur_path[MAX_FILE_PATH];
 static dir_item empty_dir_entry[sizeof(dir_item)];
 
 char* months[12] = {
-    "jan",
-    "feb",
-    "mar",
-    "apr",
-    "may",
-    "jun",
-    "jul",
-    "aug",
-    "sep",
-    "oct",
-    "nov",
-    "dec"};
+  "jan",
+  "feb",
+  "mar",
+  "apr",
+  "may",
+  "jun",
+  "jul",
+  "aug",
+  "sep",
+  "oct",
+  "nov",
+  "dec"
+};
 
 static void print_dir_record(dir_item* p_dir) {
   uint8_t attr = p_dir->attrib;
@@ -56,7 +68,7 @@ static void print_dir_record(dir_item* p_dir) {
     char* type = attr & DIR_ATTR_DIRECTORY ? "d" : "f";
     printf("%s %s", p_dir->filename, type);
 
-    if (p_dir->attrib != DIR_ATTR_DIRECTORY) {
+    if (!(p_dir->attrib & DIR_ATTR_DIRECTORY)) {
       struct time created = fat_to_time(p_dir->date_created, p_dir->time_created);
       struct time modified = fat_to_time(p_dir->last_mod_date, p_dir->last_mod_time);
       printf(" %d %s %d%d:%d%d",
@@ -83,7 +95,7 @@ static void update_fat_sect(uint32_t index) {
   flpydsk_write_sector(sector + minfo.fat_offset);
 }
 
-static void update_fat() {
+static void update_fat() { // TODO VERY SLOW
   for (int i = 0; i < minfo.fat_size_sect; ++i) {
     update_fat_sect(i * minfo.sector_entries_count);
   }
@@ -138,6 +150,12 @@ static bool is_bug_root_dir(sect_t* dir_sector) {
   return minfo.root_offset - minfo.fat_size_clusters * minfo.sect_per_cluster == *dir_sector;
 }
 
+static uint32_t sector_to_cluster(sect_t sector) {
+  uint32_t cluster_num = (sector - minfo.data_offset) / minfo.sect_per_cluster + minfo.fat_size_clusters;
+
+  return cluster_num;
+}
+
 static sect_t cluster_to_sector(uint32_t cluster_num) {
   sect_t sect = minfo.data_offset +
                 (cluster_num - minfo.fat_size_clusters) * minfo.sect_per_cluster;
@@ -149,7 +167,10 @@ static sect_t cluster_to_sector(uint32_t cluster_num) {
   return sect;
 }
 
-static dir_item* find_and_create_dir_entry(const char* filename, sect_t dir_sector, dir_item* item) {
+static dir_item* find_and_create_dir_entry(
+  sect_t dir_sector, 
+  dir_item* item
+) {
   for (int32_t i = 0; i < minfo.sect_per_cluster; ++i) {
     dir_item* p_dir = (dir_item*)flpydsk_read_sector(dir_sector + i);
     dir_item* iter = p_dir;
@@ -180,6 +201,11 @@ static uint32_t pack_cluster(dir_item* p_dir) {
   return cluster;
 }
 
+static void unpack_cluster(dir_item* p_dir, uint32_t cluster) {
+  p_dir->first_cluster_hi_bytes = cluster >> 16;
+  p_dir->first_cluster = (cluster << 16) >> 16;
+}
+
 static bool clear_dir_entry(char* name, const sect_t dir_sector) {
   char dos_name[FAT_LEGACY_FILENAME_SIZE + 1];
   to_dos_name(name, dos_name);
@@ -204,7 +230,7 @@ static bool clear_dir_entry(char* name, const sect_t dir_sector) {
         flpydsk_set_buffer(p_dir);
         flpydsk_write_sector(dir_sector + i);
 
-        uint32_t cluster = pack_cluster(p_dir);
+        uint32_t cluster = pack_cluster(iter);
 
         // clear fat table
         do {
@@ -305,21 +331,48 @@ static bool jmp_dir(const char* path, sect_t* dir_sector) {
   return true;
 }
 
-static bool path_deconstruct(const char* path, sect_t* dir_sector, char** filename) {
-  char* fname = last_strchr(path, '\/');
-  bool no_dir_jmp = false;
+static bool is_dirpath(const char* path) {
+  char* point = last_strchr(path, '.');
+
+  return point == NULL;
+}
+
+// /diary/hello.txt
+// 
+static bool path_deconstruct(
+  const char* path, 
+  sect_t* dir_sector, 
+  char** name, 
+  bool* is_dir
+) {
+  char* simplified = NULL;
+  
+  if (!simplify_path(path, &simplified)) {
+    PANIC("Cannot simplify path: %s", path);
+  }
+  uint32_t sim_len = strlen(simplified);
+
+  *is_dir = is_dirpath(simplified);
+  if (simplified[sim_len - 1] == '\/') {
+    simplified[sim_len - 1] = '\0';
+  }
+  
+  char* fname = last_strchr(simplified, '\/');
+  bool in_cur_dir = false;
+  
   if (fname) {
     *fname = '\0';
     ++fname;  // ignore '/'
   } else {
-    fname = path;
-    no_dir_jmp = true;
+    fname = simplified;
+    in_cur_dir = true;
   }
 
-  *filename = fname;
+  *name = fname;
   *dir_sector = cur_dir;
 
-  bool ret = !no_dir_jmp && !jmp_dir(path, dir_sector);
+  bool ret = !in_cur_dir && !jmp_dir(simplified, dir_sector);
+  kfree(simplified);
   return !ret;
 }
 
@@ -332,6 +385,26 @@ static int32_t find_free_cluster(int32_t* index) {
   }
 
   return -ENOMEM;
+}
+
+static bool init_dir(const char* dirname, dir_item* item, uint32_t cluster) {
+  memset(item, 0, sizeof(dir_item));
+  char dos_name[FAT_LEGACY_FILENAME_SIZE + 1];
+  to_dos_name(dirname, dos_name);
+  
+  item->attrib = DIR_ATTR_ARCHIVE | DIR_ATTR_DIRECTORY;
+
+  if (cluster == 0 && find_free_cluster(&cluster) < 0) {
+    PANIC("Unable to find free cluster in fat32, NO SPACE?", NULL);
+  }
+
+  memcpy(item->filename, &dos_name, FAT_LEGACY_FILENAME_SIZE - 3);
+  memcpy(item->ext, &dos_name[8], 3);
+
+  fat[cluster] = FAT_ATTR_EOF;
+  unpack_cluster(item, cluster);
+  update_fat_sect(cluster);
+  return true;
 }
 
 static bool init_new_file(const char* filename, dir_item* item) {
@@ -371,9 +444,7 @@ static bool init_new_file(const char* filename, dir_item* item) {
   }
 
   fat[cluster] = FAT_ATTR_EOF;
-  item->first_cluster_hi_bytes = cluster >> 16;
-  item->first_cluster = (cluster << 16) >> 16;
-
+  unpack_cluster(item, cluster);
   update_fat_sect(cluster);
   return true;
 }
@@ -389,7 +460,7 @@ static bool fat_create(
     PANIC("Unable to init file for dir item", NULL);
   }
 
-  if (find_and_create_dir_entry(filename, dir_sector, &item) == NULL) {
+  if (find_and_create_dir_entry(dir_sector, &item) == NULL) {
     PANIC("Directory entry creation failed", NULL)
   }
   return true;
@@ -451,45 +522,41 @@ static uint32_t get_start_cluster(vfs_file* file, loff_t ppos) {
   return cur_cluster;
 }
 
+static void fat_close(vfs_file* file) {
+  if (file)
+    file->flags = FS_INVALID;
+}
+
 // Public
 bool fat_cd(const char* path) {
-  uint32_t len_path = strlen(path);
-  unsigned char norm_path[MAX_FILE_PATH];
-  memcpy(norm_path, path, len_path);
-  norm_path[len_path] = '\0';
-
-  if (len_path >= MAX_FILE_PATH) {
-    PANIC("Too big path: %d", len_path);
-  }
-
-  if (norm_path[len_path - 1] != '\/') {
-    norm_path[len_path] = '\/';
-    len_path++;
-    norm_path[len_path] = '\0';
+  char* simplified = NULL;
+  if (!simplify_path(path, &simplified)) {
+    PANIC("Can't simplify path", NULL);
   }
 
   sect_t dir_sector = cur_dir;
-  if (!jmp_dir(norm_path, &dir_sector)) {
+  if (!jmp_dir(simplified, &dir_sector)) {
     return false;
-    // PANIC("Not found dir_item %s", path);
   }
 
-  if (norm_path[0] == '\/') {
-    cur_path[0] = '\0';
-  }
-
+  uint32_t cur_len = strlen(cur_path);
+  uint32_t sim_len = strlen(simplified);
+  KASSERT(cur_len + sim_len < MAX_FILE_PATH - 1);
+  memcpy(&cur_path[cur_len], simplified, sim_len);
+  cur_path[cur_len + sim_len] = '\0';
   cur_dir = dir_sector;
-  uint32_t len = strlen(cur_path);
-  memcpy(&cur_path[len], norm_path, len_path);
-  cur_path[len + len_path] = '\0';
 
-  unsigned char out[MAX_FILE_PATH];
-  out[0] = '\0';
-  simplify_path(cur_path, out);
-  len = strlen(out);
-  memcpy(cur_path, out, len);
-  cur_path[len] = '\0';
-  // memcpy(cur_path + strlen(cur_path), postfix, strlen(postfix));
+  char* tmp = NULL;
+  if (!simplify_path(cur_path, &tmp)) {
+    PANIC("cannot simplify path: %s", cur_path);
+  }
+  
+  memcpy(&cur_path, tmp, strlen(tmp));
+  cur_path[strlen(tmp)] = '\0';
+
+  kfree(tmp);
+  kfree(simplified);
+
   return true;
 }
 
@@ -497,7 +564,7 @@ int32_t fat_delete(const char* path) {
   char* filename = 0;
   sect_t dir_sector = 0;
 
-  if (!path_deconstruct(path, &dir_sector, &filename)) {
+  if (!path_deconstruct(path, &dir_sector, &filename, NULL)) {
     return -ENOENT;
   }
 
@@ -509,6 +576,9 @@ char* pwd() {
 }
 
 bool fat_ls(const char* path) {
+  sect_t sect_dir = 0;
+  char* filename = 0;
+
   if (path == NULL) {
     ls_dir(cur_dir);
 
@@ -570,20 +640,58 @@ int32_t fat_read(vfs_file* file, uint8_t* buffer, uint32_t length, loff_t ppos) 
   return length - left_len;
 }
 
-static void fat_close(vfs_file* file) {
-  if (file)
-    file->flags = FS_INVALID;
-}
-
 vfs_file fat_open(const char* path, int32_t flags) {
   char* filename = 0;
   sect_t dir_sector = 0;
-  if (!path_deconstruct(path, &dir_sector, &filename)) {
+  if (!path_deconstruct(path, &dir_sector, &filename, NULL)) {
     vfs_file file;
     file.flags = FS_NOT_FOUND;
     return file;
   }
   return open_file(filename, dir_sector, flags);
+}
+
+int32_t fat_mkdir(const char* dir_path) {
+  char* dirname = 0;
+  sect_t dir_sector = 0;
+  
+  if (!path_deconstruct(dir_path, &dir_sector, &dirname, NULL)) {
+    return -ENONET;
+  }
+
+  dir_item dir;
+  //init_dir();
+
+  if (!init_dir(dirname, &dir, 0)) {
+    PANIC("Unable to init dir", NULL);
+  }
+
+  if (!find_and_create_dir_entry(dir_sector, &dir)) {
+    PANIC("Unable to find a space for direntry", NULL);
+  }
+  dir_item dir_current;
+  dir_item dir_prev;
+  
+  uint32_t cluster = pack_cluster(&dir);
+  uint32_t next_dir_sector = cluster_to_sector(cluster);
+
+  uint32_t tes = sector_to_cluster(next_dir_sector);
+
+  if (
+    !init_dir(".", &dir_current, cluster) || 
+    !init_dir("..", &dir_prev, sector_to_cluster(dir_sector))
+  ) {
+    PANIC("Unable to init dir", NULL);
+  }
+
+  if (
+    !find_and_create_dir_entry(next_dir_sector, &dir_current) || 
+    !find_and_create_dir_entry(next_dir_sector, &dir_prev)
+  ) {
+    PANIC("Unable to create reference directories (. and ..)", NULL);
+  }
+  
+  return 1;
 }
 
 void fat_mount() {
@@ -650,6 +758,7 @@ void fat32_init() {
   fsys_fat.ls = fat_ls;
   fsys_fat.cd = fat_cd;
   fsys_fat.delete = fat_delete;
+  fsys_fat.mkdir = fat_mkdir;
 
   //! register ourself to volume manager
   vfs_register_file_system(&fsys_fat, 0);

@@ -170,6 +170,15 @@ bool run_cmd(char* cmd_buf) {
     if (vfs_delete(filepath) < 0) {
       printf("\nfile not found");
     }
+  } else if (strcmp(cmd_buf, "mkdir") == 0) {
+    char filepath[100];
+
+    printf("\npath: ");
+    get_cmd(filepath, 100);
+
+    if (vfs_mkdir(filepath) < 0) {
+      printf("\ndirectory not found");
+    }
   } else if (strcmp(cmd_buf, "read") == 0) {
     cmd_read_sect();
   } else if (strcmp(cmd_buf, "cat") == 0) {

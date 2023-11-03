@@ -490,11 +490,9 @@ uint8_t* flpydsk_read_sector(uint32_t sector_lba) {
   // TODO: be very careful with that, if you happen to have some
   // bugs with reading disk,
   // this is the first place to look
-  /*
   if (last_sector_loaded == sector_lba) {
     return &dma_cache_buffer;
   }
-  */
 
   if (current_drive >= 4)
     return NULL;

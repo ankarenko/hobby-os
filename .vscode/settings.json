@@ -10,6 +10,8 @@
     "idt.h": "c",
     "cstdlib": "c",
     "kernel_info.h": "c",
-    "list.h": "c"
+    "list.h": "c",
+    "malloc.h": "c",
+    "kybrd.h": "c"
   }
 }

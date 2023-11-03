@@ -46,6 +46,16 @@ int32_t vfs_delete(const char* fname) {
   }
 }
 
+int32_t vfs_mkdir(const char* dir_path) {
+  if (!dir_path)
+    return -ENOENT;
+
+  unsigned char device = 'a';
+  if (file_systems[device - 'a']) {
+    return file_systems[device - 'a']->mkdir(dir_path);
+  }
+}
+
 int32_t vfs_open(const char* fname, int32_t flags, ...) {
   if (fname) {
     //! default to device 'a'
