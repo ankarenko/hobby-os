@@ -823,7 +823,7 @@ ssize_t fat_write(vfs_file *file, const char *buf, size_t count, loff_t ppos) {
   uint32_t bytes_per_cluster = minfo.bytes_per_sect * minfo.sect_per_cluster;
   uint32_t file_sect_start = cluster_to_sector(file->first_cluster);
   uint32_t file_start = file_sect_start * minfo.bytes_per_sect; 
-  uint32_t file_end = file_start + ALIGN_UP(file->file_length, bytes_per_cluster) - 1;
+  uint32_t file_end = file_start + ALIGN_UP(file->file_length, bytes_per_cluster);
   uint32_t write_start = file_start + ppos;
   uint32_t write_end = write_start + count;
   
@@ -864,9 +864,9 @@ ssize_t fat_write(vfs_file *file, const char *buf, size_t count, loff_t ppos) {
     sect_t sect = cluster_to_sector(cur_cluster);
 
     for (int i = 0; i < minfo.sect_per_cluster; ++i) {
-      cursor += i * minfo.bytes_per_sect;
-      
-      if (ppos > cursor + minfo.bytes_per_sect - 1) {
+      cursor += minfo.bytes_per_sect;
+
+      if (ppos >= cursor) {
         continue;
       }
       uint8_t* data = flpydsk_read_sector(sect + i);

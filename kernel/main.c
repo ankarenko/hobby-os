@@ -174,11 +174,15 @@ bool run_cmd(char* cmd_buf) {
       printf("\nfile opened");
     }
 
-    printf("\ntext: ");
-    get_cmd(text, 100);
+    //printf("\ntext: ");
+    //get_cmd(text, 100);
 
-    
-    vfs_write(fd, text, strlen(text));
+    for (int i = 0; i < 16; ++i) {
+      if (i == 7 ) {
+        int16_t a = 1;
+      }
+      vfs_write(fd, "#helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-hellowor#", 80);
+    }
   } else if (strcmp(cmd_buf, "rm") == 0) {
     char filepath[100];
 
@@ -246,7 +250,7 @@ void cmd_read_file() {
     buf[size] = '\0';
     printf(buf);
   };
-  printf("____________________________________________");
+  printf("\n____________________________________________");
   
   /*
   uint8_t* buf = vfs_read(filepath);
