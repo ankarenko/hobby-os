@@ -161,6 +161,24 @@ bool run_cmd(char* cmd_buf) {
     if (vfs_open(filepath, O_CREAT) < 0) {
       printf("\ndirectory not found");
     }
+  } else if (strcmp(cmd_buf, "write") == 0) {
+    char text[100];
+
+    printf("\npath: ");
+    get_cmd(text, 100);
+
+    int32_t fd = vfs_open(text, O_CREAT);
+    if (fd < 0) {
+      printf("\nunable to open file");
+    } else {
+      printf("\nfile opened");
+    }
+
+    printf("\ntext: ");
+    get_cmd(text, 100);
+
+    
+    vfs_write(fd, text, strlen(text));
   } else if (strcmp(cmd_buf, "rm") == 0) {
     char filepath[100];
 
@@ -216,7 +234,7 @@ void cmd_read_file() {
 
   int32_t fd = vfs_open(filepath, 0);
   
-  if (fd == -ENOENT) {
+  if (fd == -ENOENT || fd < 0) {
     printf("\nfile not found");
     return;
   }

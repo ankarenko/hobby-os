@@ -2,6 +2,7 @@
 #include <fcntl.h>
 
 #include "kernel/proc/task.h"
+#include "kernel/util/debug.h"
 
 #include "./vfs.h"
 
@@ -57,6 +58,21 @@ loff_t vfs_flseek(int32_t fd, loff_t offset, int whence) {
   }
 
   return file->f_pos;
+}
+
+ssize_t vfs_write(int32_t fd, char* buf, int32_t count) {
+	if (fd < 0)
+		return NULL;
+
+  process* proc = get_current_process();
+  vfs_file* file = proc->files->fd[fd];
+  
+  if (file) {
+    if (file_systems[file->device_id - 'a']) {
+      return file_systems[file->device_id - 'a']->write(file, buf, count, file->f_pos);
+    }
+  }
+  return -1;
 }
 
 char* vfs_read(const char *path) {

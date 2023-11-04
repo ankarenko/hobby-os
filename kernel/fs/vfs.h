@@ -20,8 +20,15 @@
 #define FS_ROOT_DIRECTORY 3
 #define FS_NOT_FOUND 4
 
+typedef int32_t sect_t;
+
+typedef struct _table_entry {
+  size_t index;
+  sect_t dir_sector;
+} table_entry;
+
 typedef struct _vfs_file {
-  char name[100];
+  char name[12];
   uint32_t flags;
   uint32_t file_length;
   uint32_t id;
@@ -32,12 +39,14 @@ typedef struct _vfs_file {
   struct time modified;
   loff_t f_pos;
   mode_t f_mode;
+  table_entry p_table_entry;
 } vfs_file;
 
 typedef struct _vfs_filesystem {
   char name[8];
   vfs_file (*open)(const char* filename, mode_t mode);
   int32_t (*read)(vfs_file* file, uint8_t* buffer, uint32_t length, loff_t ppos);
+  ssize_t (*write)(vfs_file *file, const char *buf, size_t count, loff_t ppos);
   void (*close)(vfs_file*);
   loff_t (*llseek)(vfs_file* file, loff_t ppos, int);
   vfs_file (*root)();
@@ -65,6 +74,7 @@ int32_t vfs_mkdir(const char* dir_path);
 
 // read_write.c
 int32_t vfs_fread(int32_t fd, char* buf, int32_t count);
+ssize_t vfs_write(int32_t fd, char* buf, int32_t count);
 char* vfs_read(const char* path);
 loff_t vfs_flseek(int32_t fd, loff_t offset, int whence);
 

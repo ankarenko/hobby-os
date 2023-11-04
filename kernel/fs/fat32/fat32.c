@@ -35,7 +35,6 @@ A/B/C.ext
   fat[1] // must be 0xffffffff
 */
 uint32_t* fat = NULL;
-typedef int32_t sect_t;
 static vfs_filesystem fsys_fat;
 static mount_info minfo;
 static bool fat32 = true;
@@ -95,8 +94,8 @@ static void update_fat_sect(uint32_t index) {
   flpydsk_write_sector(sector + minfo.fat_offset);
 }
 
-static void update_fat() { // TODO VERY SLOW
-  for (int i = 0; i < minfo.fat_size_sect; ++i) {
+static void update_fat(uint32_t max_cluster) {
+  for (int i = 0; i < div_ceil(max_cluster, minfo.sector_entries_count); ++i) {
     update_fat_sect(i * minfo.sector_entries_count);
   }
 }
@@ -189,10 +188,7 @@ static dir_item* find_and_create_dir_entry(
 }
 
 static bool is_equal_name(const char* dos_name, const char* fname) {
-  char entry_name[FAT_LEGACY_FILENAME_SIZE + 1];
-  memcpy(entry_name, fname, FAT_LEGACY_FILENAME_SIZE);
-  entry_name[FAT_LEGACY_FILENAME_SIZE] = 0;
-  return strcmp(entry_name, dos_name) == 0;
+  return strncmp(fname, dos_name, FAT_LEGACY_FILENAME_SIZE) == 0;
 }
 
 static uint32_t pack_cluster(dir_item* p_dir) {
@@ -231,15 +227,17 @@ static bool clear_dir_entry(char* name, const sect_t dir_sector) {
         flpydsk_write_sector(dir_sector + i);
 
         uint32_t cluster = pack_cluster(iter);
+        uint32_t max_cluster = cluster;
 
-        // clear fat table
+        // clear fat table  
         do {
+          max_cluster = max(cluster, max_cluster);
           uint32_t tmp = cluster; 
           cluster = fat[cluster];
           fat[tmp] = 0;
         } while (cluster < FAT_ATTR_EOF);
 
-        update_fat();
+        update_fat(max_cluster);
         return true;
       }
     }
@@ -249,37 +247,45 @@ static bool clear_dir_entry(char* name, const sect_t dir_sector) {
 }
 
 // in: dir sector, out: cluster
-static bool find_subdir(char* name, const sect_t dir_sector, vfs_file* p_file) {
+static bool find_subdir(
+  char* name, const sect_t dir_sector, 
+  vfs_file* p_file
+) {
   char dos_name[FAT_LEGACY_FILENAME_SIZE + 1];
   to_dos_name(name, dos_name);
 
   for (int32_t i = 0; i < minfo.sect_per_cluster; ++i) {
     dir_item* p_dir = (dir_item*)flpydsk_read_sector(dir_sector + i);
+    dir_item* p_iter = p_dir;
 
-    for (int32_t j = 0; j < minfo.sector_entries_count; j++, p_dir++) {
-      uint8_t c = p_dir->filename[0];
+    for (int32_t j = 0; j < minfo.sector_entries_count; j++, p_iter++) {
+      uint8_t c = p_iter->filename[0];
 
       if (c == FAT_DIRENT_NEVER_USED) {
         break;
       }
 
-      if (p_dir->attrib & DIR_ATTR_HIDDEN || c == FAT_DIRENT_DELETED) {
+      if (p_iter->attrib & DIR_ATTR_HIDDEN || c == FAT_DIRENT_DELETED) {
         continue;
       }
 
-      if (is_equal_name(dos_name, p_dir->filename)) {
+      if (is_equal_name(dos_name, p_iter->filename)) {
         strcpy(p_file->name, name);
+        
         p_file->id = 0;
-        p_file->first_cluster = pack_cluster(p_dir);
-        p_file->file_length = p_dir->file_size;
+        p_file->first_cluster = pack_cluster(p_iter);
+        p_file->file_length = p_iter->file_size;
         p_file->eof = false;
         p_file->f_pos = 0;
-        p_file->flags = p_dir->attrib == DIR_ATTR_DIRECTORY ? FS_DIRECTORY : FS_FILE;
+        p_file->flags = p_iter->attrib == DIR_ATTR_DIRECTORY ? FS_DIRECTORY : FS_FILE;
 
         if (p_file->flags == FS_FILE) {
-          p_file->created = fat_to_time(p_dir->date_created, p_dir->time_created);
-          p_file->modified = fat_to_time(p_dir->last_mod_date, p_dir->last_mod_time);
+          p_file->created = fat_to_time(p_iter->date_created, p_iter->time_created);
+          p_file->modified = fat_to_time(p_iter->last_mod_date, p_iter->last_mod_time);
         }
+
+        p_file->p_table_entry.index = j;
+        p_file->p_table_entry.dir_sector = dir_sector + i;
         return true;
       }
     }
@@ -443,6 +449,15 @@ static bool init_new_file(const char* filename, dir_item* item) {
     PANIC("Unable to find free cluster in fat32, NO SPACE?", NULL);
   }
 
+  // set chunk to null
+  sect_t sector = cluster_to_sector(cluster);
+  for (int i = 0; i < minfo.sect_per_cluster; ++i) {
+    void* data = flpydsk_read_sector(sector + i);
+    memset(data, 0, minfo.bytes_per_sect);
+    flpydsk_set_buffer(data);
+    flpydsk_write_sector(sector + i);
+  }
+  
   fat[cluster] = FAT_ATTR_EOF;
   unpack_cluster(item, cluster);
   update_fat_sect(cluster);
@@ -483,16 +498,70 @@ static vfs_file open_file(const char* name, sect_t dir_sector, uint32_t flags) {
       file.flags = FS_NOT_FOUND;
       return file;
     }
-    // PANIC("Cannot find file: %s", name);
   }
   
   return file;
 }
 
+static int32_t delete_dir(const char* name, sect_t dir_sector) {
+  vfs_file file;
+  
+  if (!find_subdir(name, dir_sector, &file)) {
+    return -ENOENT;
+  }
+
+  table_entry entry = file.p_table_entry;
+  dir_item* p_dir = (dir_item*)flpydsk_read_sector(entry.dir_sector);
+  p_dir[entry.index].filename[0] = FAT_DIRENT_DELETED;
+  flpydsk_set_buffer(p_dir);
+  flpydsk_write_sector(entry.dir_sector);
+
+  uint32_t max_cluster = 0;
+
+  sect_t del_dir_sector = cluster_to_sector(file.first_cluster);
+  for (int32_t i = 0; i < minfo.sect_per_cluster; ++i) {
+    dir_item* p_dir = (dir_item*)flpydsk_read_sector(del_dir_sector + i);
+    dir_item* iter = p_dir;
+    bool changed = false;
+    for (int32_t j = 0; j < minfo.sector_entries_count; j++, iter++) {
+      uint8_t c = iter->filename[0];
+      if (c == FAT_DIRENT_NEVER_USED) {
+        break;
+      }
+      
+      if (c != FAT_DIRENT_DELETED) {
+        changed = true;
+        iter->filename[0] = FAT_DIRENT_DELETED;
+
+        if (!(p_dir->attrib & DIR_ATTR_DIRECTORY)) {
+          // clear fat table
+          uint32_t cluster = pack_cluster(iter);
+          do {
+            max_cluster = max(cluster, max_cluster);
+            uint32_t tmp = cluster; 
+            cluster = fat[cluster];
+            fat[tmp] = 0;
+          } while (cluster < FAT_ATTR_EOF);
+        }
+
+        
+      }
+    }
+
+    if (changed) {  // update
+      flpydsk_set_buffer(p_dir);
+      flpydsk_write_sector(del_dir_sector + i);
+    }
+  }
+
+  fat[file.first_cluster] = FAT_ATTR_FREE;
+  update_fat(max_cluster);
+  return 1;
+}
+
 static int32_t delete_file(const char* name, sect_t dir_sector) {
   vfs_file file;
   if (!find_subdir(name, dir_sector, &file)) {
-    file.flags = FS_NOT_FOUND;
     return -ENOENT;
   }
 
@@ -561,14 +630,15 @@ bool fat_cd(const char* path) {
 }
 
 int32_t fat_delete(const char* path) {
-  char* filename = 0;
+  char* name = 0;
   sect_t dir_sector = 0;
+  bool is_dir = false;
 
-  if (!path_deconstruct(path, &dir_sector, &filename, NULL)) {
+  if (!path_deconstruct(path, &dir_sector, &name, &is_dir)) {
     return -ENOENT;
   }
 
-  return delete_file(filename, dir_sector);
+  return is_dir? delete_dir(name, dir_sector) : delete_file(name, dir_sector);
 }
 
 char* pwd() {
@@ -592,10 +662,6 @@ bool fat_ls(const char* path) {
     ls_dir(dir_sector);
   }
   return true;
-}
-
-int32_t fat_write(vfs_file* file, uint8_t* buffer, size_t length, loff_t ppos) {
-  return 1;
 }
 
 int32_t fat_read(vfs_file* file, uint8_t* buffer, uint32_t length, loff_t ppos) {
@@ -747,6 +813,87 @@ vfs_file fat_get_rootdir() {
   return rootdir;
 }
 
+ssize_t fat_lseek() {
+  PANIC("Not implemented", NULL);
+}
+
+ssize_t fat_write(vfs_file *file, const char *buf, size_t count, loff_t ppos) {
+  KASSERT(ppos <= file->file_length);
+
+  uint32_t bytes_per_cluster = minfo.bytes_per_sect * minfo.sect_per_cluster;
+  uint32_t file_sect_start = cluster_to_sector(file->first_cluster);
+  uint32_t file_start = file_sect_start * minfo.bytes_per_sect; 
+  uint32_t file_end = file_start + ALIGN_UP(file->file_length, bytes_per_cluster) - 1;
+  uint32_t write_start = file_start + ppos;
+  uint32_t write_end = write_start + count;
+  
+  if (file_end < write_end) { // allocate required space
+    uint32_t extend_size = write_end - file_end;
+    uint32_t clusters_to_alloc = div_ceil(extend_size, bytes_per_cluster);
+    uint32_t start_cluster = file->first_cluster;
+    uint32_t next_cluster = start_cluster;
+    uint32_t current_cluster = start_cluster;
+    
+    // search end of file
+    while (fat[current_cluster] < FAT_ATTR_EOF) {
+      current_cluster = fat[current_cluster];
+    }
+
+    uint32_t max_cluster = current_cluster;
+
+    for (int i = 0; i < clusters_to_alloc; ++i) {
+      if (find_free_cluster(&next_cluster) < 0) {
+        PANIC("Cant' find free clusters", NULL);
+      }
+      fat[current_cluster] = next_cluster;
+      current_cluster = next_cluster;
+      max_cluster = max(max_cluster, next_cluster);
+    }
+
+    fat[current_cluster] = FAT_ATTR_EOF;
+    update_fat(max_cluster);
+    file_end += clusters_to_alloc * bytes_per_cluster;
+  }
+
+  size_t left = count;
+  size_t cur_pos = ppos;
+  uint32_t cur_cluster = file->first_cluster;
+  uint32_t cursor = 0;
+
+  do {
+    sect_t sect = cluster_to_sector(cur_cluster);
+
+    for (int i = 0; i < minfo.sect_per_cluster; ++i) {
+      cursor += i * minfo.bytes_per_sect;
+      
+      if (ppos > cursor + minfo.bytes_per_sect - 1) {
+        continue;
+      }
+      uint8_t* data = flpydsk_read_sector(sect + i);
+      size_t index = cur_pos % minfo.bytes_per_sect;
+      size_t to_write = min(minfo.bytes_per_sect - index, left); 
+      memcpy(&data[index], &buf[cur_pos - ppos], to_write);
+      flpydsk_set_buffer(data);
+      flpydsk_write_sector(sect + i);
+      cur_pos += to_write;
+      left -= to_write;
+      KASSERT(left >= 0);
+    }
+    cur_cluster = fat[cur_cluster];
+  } while (left != 0 || cur_cluster < FAT_ATTR_EOF);
+  
+  KASSERT(left == 0);
+  // update file stats
+  file->file_length += count;
+  file->f_pos = cur_pos;
+  dir_item* dir = flpydsk_read_sector(file->p_table_entry.dir_sector);
+  dir[file->p_table_entry.index].file_size = file->file_length;
+  flpydsk_set_buffer(dir);
+  flpydsk_write_sector(file->p_table_entry.dir_sector);
+
+  return count;
+}
+
 void fat32_init() {
   //! initialize vfs_filesystem struct
   strcpy(fsys_fat.name, "FAT32");
@@ -759,6 +906,7 @@ void fat32_init() {
   fsys_fat.cd = fat_cd;
   fsys_fat.delete = fat_delete;
   fsys_fat.mkdir = fat_mkdir;
+  fsys_fat.write = fat_write;
 
   //! register ourself to volume manager
   vfs_register_file_system(&fsys_fat, 0);
