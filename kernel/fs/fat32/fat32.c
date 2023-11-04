@@ -559,6 +559,34 @@ static int32_t delete_dir(const char* name, sect_t dir_sector) {
   return 1;
 }
 
+static bool extend_file(vfs_file* file, size_t inc) {
+  uint32_t bytes_per_cluster = minfo.bytes_per_sect * minfo.sect_per_cluster;
+  uint32_t clusters_to_alloc = div_ceil(inc, bytes_per_cluster);
+  uint32_t start_cluster = file->first_cluster;
+  uint32_t next_cluster = start_cluster;
+  uint32_t current_cluster = start_cluster;
+  
+  // search end of file
+  while (fat[current_cluster] < FAT_ATTR_EOF) {
+    current_cluster = fat[current_cluster];
+  }
+
+  uint32_t max_cluster = current_cluster;
+  // TODO: set clusters to zero!
+  for (int i = 0; i < clusters_to_alloc; ++i) {
+    if (find_free_cluster(&next_cluster) < 0) {
+      return false;
+    }
+    fat[current_cluster] = next_cluster;
+    current_cluster = next_cluster;
+    max_cluster = max(max_cluster, next_cluster);
+  }
+
+  fat[current_cluster] = FAT_ATTR_EOF;
+  update_fat(max_cluster);
+  return true;
+}
+
 static int32_t delete_file(const char* name, sect_t dir_sector) {
   vfs_file file;
   if (!find_subdir(name, dir_sector, &file)) {
@@ -818,8 +846,6 @@ ssize_t fat_lseek() {
 }
 
 ssize_t fat_write(vfs_file *file, const char *buf, size_t count, loff_t ppos) {
-  KASSERT(ppos <= file->file_length);
-
   uint32_t bytes_per_cluster = minfo.bytes_per_sect * minfo.sect_per_cluster;
   uint32_t file_sect_start = cluster_to_sector(file->first_cluster);
   uint32_t file_start = file_sect_start * minfo.bytes_per_sect; 
@@ -827,32 +853,17 @@ ssize_t fat_write(vfs_file *file, const char *buf, size_t count, loff_t ppos) {
   uint32_t write_start = file_start + ppos;
   uint32_t write_end = write_start + count;
   
-  if (file_end < write_end) { // allocate required space
-    uint32_t extend_size = write_end - file_end;
-    uint32_t clusters_to_alloc = div_ceil(extend_size, bytes_per_cluster);
-    uint32_t start_cluster = file->first_cluster;
-    uint32_t next_cluster = start_cluster;
-    uint32_t current_cluster = start_cluster;
-    
-    // search end of file
-    while (fat[current_cluster] < FAT_ATTR_EOF) {
-      current_cluster = fat[current_cluster];
+  uint32_t file_border = ALIGN_UP(file->file_length, bytes_per_cluster);
+  if (ppos > file_border) { // allocate more
+    if (!extend_file(file, ppos - file_border)) {
+      PANIC("Unable to extend file: %s", file->name);
     }
+    file_end = ALIGN_UP(ppos, bytes_per_cluster);
+  }
 
-    uint32_t max_cluster = current_cluster;
-
-    for (int i = 0; i < clusters_to_alloc; ++i) {
-      if (find_free_cluster(&next_cluster) < 0) {
-        PANIC("Cant' find free clusters", NULL);
-      }
-      fat[current_cluster] = next_cluster;
-      current_cluster = next_cluster;
-      max_cluster = max(max_cluster, next_cluster);
-    }
-
-    fat[current_cluster] = FAT_ATTR_EOF;
-    update_fat(max_cluster);
-    file_end += clusters_to_alloc * bytes_per_cluster;
+  // allocate required space
+  if (file_end < write_end && !extend_file(file, write_end - file_end)) { 
+    PANIC("Unable to extend file: %s", file->name);
   }
 
   size_t left = count;
@@ -872,7 +883,7 @@ ssize_t fat_write(vfs_file *file, const char *buf, size_t count, loff_t ppos) {
       uint8_t* data = flpydsk_read_sector(sect + i);
       size_t index = cur_pos % minfo.bytes_per_sect;
       size_t to_write = min(minfo.bytes_per_sect - index, left); 
-      memcpy(&data[index], &buf[cur_pos - ppos], to_write);
+      memcpy(&data[index], &buf[0], to_write);
       flpydsk_set_buffer(data);
       flpydsk_write_sector(sect + i);
       cur_pos += to_write;
@@ -884,8 +895,8 @@ ssize_t fat_write(vfs_file *file, const char *buf, size_t count, loff_t ppos) {
   
   KASSERT(left == 0);
   // update file stats
-  file->file_length += count;
   file->f_pos = cur_pos;
+  file->file_length = max(file->f_pos, file->file_length);
   dir_item* dir = flpydsk_read_sector(file->p_table_entry.dir_sector);
   dir[file->p_table_entry.index].file_size = file->file_length;
   flpydsk_set_buffer(dir);

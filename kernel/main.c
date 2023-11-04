@@ -177,12 +177,15 @@ bool run_cmd(char* cmd_buf) {
     //printf("\ntext: ");
     //get_cmd(text, 100);
 
-    for (int i = 0; i < 16; ++i) {
-      if (i == 7 ) {
-        int16_t a = 1;
-      }
-      vfs_write(fd, "#helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-hellowor#", 80);
-    }
+    char* line = "#helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-hellowor#";
+
+    vfs_flseek(fd, 1024, SEEK_SET);
+    vfs_write(fd, "!", 1);
+
+    //vfs_flseek(fd, 80, SEEK_SET);
+    //vfs_write(fd, line, 100);
+    //vfs_write(fd, "!", 1);
+    
   } else if (strcmp(cmd_buf, "rm") == 0) {
     char filepath[100];
 
