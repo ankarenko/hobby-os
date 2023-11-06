@@ -14,15 +14,13 @@ typedef struct __FILE FILE;
 #define stdout 0
 #define stderr 0
 
-int fprintf(FILE *stream, const char *format, ...);
-int putchar(int);
 int fflush(FILE* stream);
-int puts(const char*);
-int32_t atoi(const char* str);
-
 FILE *fopen(const char *filename, const char *mode);
 char *fgets(char *s, int n, FILE *stream);
 int fgetc(FILE *stream);
 size_t fread(void * buffer, size_t size, size_t count, FILE * stream);
+int fputc(int c, FILE *stream);
+int fclose(FILE *stream);
+int fputs(const char *s, FILE *stream);
 
 #endif

@@ -13,10 +13,11 @@
 #define __NR_write 4
 #define __NR_open 5
 #define __NR_close 6
+#define __NR_lseek 19
 #define __NR_sbrk 10
 #define __NR_stat 106
 #define __NR_fstat 108
-#define __NR_print 512
+#define __NR_print 0
 
 #define _syscall0(name)                       \
   static inline int32_t syscall_##name() {    \
@@ -84,7 +85,8 @@ unsigned int sleep(unsigned int seconds);
 void* usbrk(intptr_t increment);
 ssize_t read(int fd, char *buf, size_t size);
 int write(int fd, const char *buf, size_t size);
-
+int lseek(int fd, off_t offset, int whence);
+int close(int fd);
 void print(char* format, ...);
 void terminate();
 

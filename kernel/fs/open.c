@@ -20,13 +20,17 @@ static int32_t find_unused_fd_slot() {
 
 static vfs_file *get_empty_file() {
 	vfs_file *file = kcalloc(1, sizeof(vfs_file));
+  
 	return file;
 }
 
-void vfs_close_file(vfs_file* file) {
+int32_t vfs_close(int32_t fd) {
+  process* proc = get_current_process();
+  vfs_file* file = proc->files->fd[fd];
+
   if (file)
     if (file_systems[file->device_id - 'a'])
-      file_systems[file->device_id - 'a']->close(file);
+      return file_systems[file->device_id - 'a']->close(file);
 }
 
 int vfs_fstat(int32_t fd, struct stat* stat) {

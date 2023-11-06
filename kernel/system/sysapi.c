@@ -48,15 +48,26 @@ static int32_t sys_debug_sleep_thread(uint32_t msec) {
   return 1;
 }
 
+static int32_t sys_lseek(int fd, off_t offset, int whence) {
+	return vfs_flseek(fd, offset, whence);
+}
+
+static int32_t sys_close(uint32_t fd) {
+	return vfs_close(fd);
+}
+
 static void *syscalls[] = {
-  [__NR_print] = sys_debug_printf,
+  
   [__NR_terminate] = sys_debug_terminate,
   [__NR_sleep] = sys_debug_sleep_thread,
-  [__NR_sbrk] = sys_sbrk,
-  [__NR_open] = sys_open,
   [__NR_read] = sys_read,
-  [__NR_fstat] = sys_fstat,
   [__NR_write] = sys_write,
+  [__NR_open] = sys_open,
+  [__NR_sbrk] = sys_sbrk,
+  [__NR_fstat] = sys_fstat,
+  [__NR_print] = sys_debug_printf,
+  [__NR_lseek] = sys_lseek,
+  [__NR_close] = sys_close,
   0
 };
 

@@ -21,6 +21,11 @@ int write(int fd, const char *buf, size_t size) {
 	SYSCALL_RETURN_ORIGINAL(syscall_write(fd, buf, size));
 }
 
+_syscall1(close, int);
+int close(int fd) {
+	SYSCALL_RETURN(syscall_close(fd));
+}
+
 _syscall2(print, char*, va_list);
 void print(char* format, ...) {
   va_list list;
@@ -32,4 +37,9 @@ void print(char* format, ...) {
 _syscall0(terminate);
 void terminate() {
   SYSCALL_RETURN(syscall_terminate());
+}
+
+_syscall3(lseek, int, off_t, int);
+int lseek(int fd, off_t offset, int whence) {
+	SYSCALL_RETURN_ORIGINAL(syscall_lseek(fd, offset, whence));
 }

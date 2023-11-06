@@ -17,20 +17,20 @@ static bool valid_stream(FILE *stream) {
 
 static void assert_stream(FILE *stream) {
 	if (stream->_IO_write_base <= stream->_IO_write_ptr && stream->_IO_write_ptr <= stream->_IO_write_end + 1) {
-    //print("Invalid stream\n");F
+    
+  } else {
     __asm__ __volatile("int $0x01");
-
   }
 }
 
 static int fnput(const char *s, size_t size, FILE *stream) {
-	assert_stream(stream);
+  assert_stream(stream);
 
 	size_t remaining_len = stream->_IO_write_end - stream->_IO_write_ptr;
 	size_t current_len = stream->_IO_write_end - stream->_IO_write_base;
-
-	if (remaining_len < size) {
-		size_t new_len = max(max(size, current_len << 1), MIN_WRITE_BUF_LEN);
+  
+  if (remaining_len < size) {
+    size_t new_len = max(max(size, current_len << 1), MIN_WRITE_BUF_LEN);
 		char *buf = calloc(new_len, sizeof(char));
 
 		memcpy(buf, stream->_IO_write_base, current_len);
@@ -59,14 +59,16 @@ static FILE *fdopen(int fd, const char *mode) {
   fstat(fd, &stat);
 
   /*
-        if (S_ISREG(stat.st_mode))
-                stream->_flags |= _IO_FULLY_BUF;
-        else if (isatty(fd))
-                stream->_flags |= _IO_LINE_BUF;
-        else
-                stream->_flags |= _IO_UNBUFFERED;
+    if (S_ISREG(stat.st_mode))
+            stream->_flags |= _IO_FULLY_BUF;
+    else if (isatty(fd))
+            stream->_flags |= _IO_LINE_BUF;
+    else
+            stream->_flags |= _IO_UNBUFFERED;
   */
 
+
+  stream->_IO_write_base = stream->_IO_write_ptr = stream->_IO_write_end = NULL;
   stream->size = stat.st_size;
   return stream;
 }
@@ -107,22 +109,17 @@ FILE *fopen(const char *filename, const char *mode) {
   // support only reading for now
   if (mode[0] == 'r' && mode[1] != '+')
     flags = O_RDONLY;
-  else {
-    //print("Supported only readonly");
-    return NULL;
-  }
+  
+  if ((mode[0] == 'w' || mode[0] == 'a') && mode[1] != '+')
+    flags = O_WRONLY;
 
-  /*
-        else if ((mode[0] == 'w' || mode[0] == 'a') && mode[1] != '+')
-                flags = O_WRONLY;
+  if ((mode[0] == 'w' && mode[1] == '+') || mode[0] == 'a')
+    flags |= O_CREAT;
 
-        if ((mode[0] == 'w' && mode[1] == '+') || mode[0] == 'a')
-                flags |= O_CREAT;
-  */
-
-  int fd = open(filename, flags /*| O_CREAT*/);
+  int fd = open(filename, flags | O_CREAT);
+  
   if (fd < 0)
-    return NULL;
+    return -EBADF;
 
   return fdopen(fd, mode);
 }
@@ -162,4 +159,31 @@ size_t fread(void *buffer, size_t size, size_t count, FILE *stream) {
   size_t final_size = count * size;
   int32_t res = fnget(buffer, final_size, stream);
   return max(res, 0);
+}
+
+int fputs(const char *s, FILE *stream) {
+  assert_stream(stream);
+  int slen = strlen(s);
+	return fnput(s, slen, stream);
+}
+
+int fputc(int c, FILE *stream) {
+	char ch = (unsigned char)c;
+	fnput(&ch, 1, stream);
+	return ch;
+}
+
+int fclose(FILE *stream) {
+	assert_stream(stream);
+	if (!valid_stream(stream))
+		return -EBADF;
+
+	fflush(stream);
+	free(stream->_IO_write_base);
+	stream->_IO_write_base = stream->_IO_write_ptr = stream->_IO_write_end = NULL;
+
+	close(stream->fd);
+	stream->fd = -1;
+
+	return 0;
 }

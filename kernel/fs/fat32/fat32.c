@@ -619,9 +619,11 @@ static uint32_t get_start_cluster(vfs_file* file, loff_t ppos) {
   return cur_cluster;
 }
 
-static void fat_close(vfs_file* file) {
+static int32_t fat_close(vfs_file* file) {
   if (file)
     file->flags = FS_INVALID;
+
+  return 1;
 }
 
 // Public
