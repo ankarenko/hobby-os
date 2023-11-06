@@ -11,14 +11,14 @@ PATHS= \
 	proc/*.c proc/*/**.c \
 	locking/*.c locking/*/**.c \
 	include/*.c \
-	util/*.c
+	util/*.c util/string/*.c
 
 C_ALL_SOURCES = $(wildcard ${PATHS})
 C_SOURCES = $(filter-out ${C_ALL_SOURCES:.c=.test.c}, ${C_ALL_SOURCES})
 C_SOURCES_TEST = $(filter-out main.c, $(wildcard main.test.c ${C_ALL_SOURCES}))
 
 A_SOURCES = $(wildcard ${PATHS:.c=.s})
-HEADERS = $(wildcard ../test/greatest.h *.h ${PATHS:.c=.h} util/*.h)
+HEADERS = $(wildcard ../test/greatest.h *.h ${PATHS:.c=.h} util/*.h util/string/*.h)
 OBJ = \
 	crti.o \
 	crtbegin.o \
@@ -44,11 +44,11 @@ OBJ_TEST = \
 	$(CC) -MD -c $< -o $@ $(CFLAGS)
 
 myos.bin: $(OBJ) linker.ld
-	$(CC) -T linker.ld -o $@ $(CFLAGS) $(OBJ) -nostdlib -lk -lgcc
+	$(CC) -T linker.ld -o $@ $(CFLAGS) $(OBJ) -nostdlib -lgcc
 	grub-file --is-x86-multiboot myos.bin
 
 test.bin: $(OBJ_TEST) linker.ld
-	$(CC) -T linker.ld -o $@ $(CFLAGS) $(OBJ_TEST) -nostdlib -lk -lgcc
+	$(CC) -T linker.ld -o $@ $(CFLAGS) $(OBJ_TEST) -nostdlib -lgcc
 	grub-file --is-x86-multiboot test.bin
  
 crtbegin.o crtend.o:

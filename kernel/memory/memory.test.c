@@ -1,8 +1,9 @@
 #include <test/greatest.h>
-#include "./pmm.h"
-#include "./malloc.h"
-#include "./vmm.h"
-#include "../proc/task.h"
+
+#include "kernel/memory/pmm.h"
+#include "kernel/memory/malloc.h"
+#include "kernel/memory/vmm.h"
+#include "kernel/proc/task.h"
 
 TEST TEST_MMAP(void) {
   mm_struct_mos* mm = kcalloc(1, sizeof(mm_struct_mos));

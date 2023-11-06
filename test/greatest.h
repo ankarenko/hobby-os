@@ -92,9 +92,8 @@ int main(int argc, char **argv) {
 /*********************************************************************/
 
 #include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <kernel/util/stdlib.h>
+#include <kernel/util/string/string.h>
 
 /***********
  * Options *

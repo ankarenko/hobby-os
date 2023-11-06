@@ -1,4 +1,6 @@
+#include <stdint.h>
 #include <test/greatest.h>
+
 #include "list.h"
 
 // make sure data was not corrupted

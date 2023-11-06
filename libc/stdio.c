@@ -74,7 +74,7 @@ static FILE *fdopen(int fd, const char *mode) {
 static int32_t fnget(void *ptr, size_t size, FILE *stream) {
   return read(stream->fd, ptr, 1);
 }
-/*
+
 int fflush(FILE *stream) {
 	if (!stream) {
 		FILE *iter;
@@ -100,7 +100,6 @@ int fflush(FILE *stream) {
 	stream->_IO_write_base = stream->_IO_write_ptr = stream->_IO_write_end = NULL;
 	return 0;
 }
-*/
 
 FILE *fopen(const char *filename, const char *mode) {
   int flags = O_RDWR;
