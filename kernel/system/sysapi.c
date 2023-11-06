@@ -24,6 +24,10 @@ static int32_t sys_fstat(int32_t fd, struct kstat *stat) {
 	return vfs_fstat(fd, stat);
 }
 
+static int32_t sys_write(uint32_t fd, char *buf, size_t count) {
+	return vfs_fwrite(fd, buf, count);
+}
+
 static void* sys_sbrk(size_t n) {
   thread* th = get_current_thread();
   process* parent = th->parent;
@@ -52,6 +56,7 @@ static void *syscalls[] = {
   [__NR_open] = sys_open,
   [__NR_read] = sys_read,
   [__NR_fstat] = sys_fstat,
+  [__NR_write] = sys_write,
   0
 };
 

@@ -74,7 +74,7 @@ int32_t vfs_mkdir(const char* dir_path);
 
 // read_write.c
 int32_t vfs_fread(int32_t fd, char* buf, int32_t count);
-ssize_t vfs_write(int32_t fd, char* buf, int32_t count);
+ssize_t vfs_fwrite(int32_t fd, char* buf, int32_t count);
 char* vfs_read(const char* path);
 loff_t vfs_flseek(int32_t fd, loff_t offset, int whence);
 

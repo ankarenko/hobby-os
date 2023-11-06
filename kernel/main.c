@@ -180,11 +180,11 @@ bool run_cmd(char* cmd_buf) {
     char* line = "#helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-hellowor#";
 
     vfs_flseek(fd, 1024, SEEK_SET);
-    vfs_write(fd, "!", 1);
+    vfs_fwrite(fd, "!", 1);
 
     //vfs_flseek(fd, 80, SEEK_SET);
-    //vfs_write(fd, line, 100);
-    //vfs_write(fd, "!", 1);
+    //vfs_fwrite(fd, line, 100);
+    //vfs_fwrite(fd, "!", 1);
     
   } else if (strcmp(cmd_buf, "rm") == 0) {
     char filepath[100];

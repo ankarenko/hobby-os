@@ -29,10 +29,10 @@ ${OUTPUT}: $(LIBK_OBJS)
 	$(AR) rcs $@ $(LIBK_OBJS)
  
 %.o: %.c
-	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS)
+	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS) $(LIBK_CFLAGS)
  
 %.o: %.s
-	$(CC) -MD -c $< -o $@ $(CFLAGS)
+	$(CC) -MD -c $< -o $@ $(CFLAGS) $(LIBK_CFLAGS)
  
 %.libk.o: %.c
 	$(CC) -MD -c $< -o $@ -std=gnu11 $(LIBK_CFLAGS) $(LIBK_CPPFLAGS)

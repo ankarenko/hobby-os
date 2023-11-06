@@ -16,6 +16,11 @@ void* usbrk(intptr_t increment) {
   SYSCALL_RETURN_POINTER(syscall_sbrk(increment));
 }
 
+_syscall3(write, int, const char *, size_t);
+int write(int fd, const char *buf, size_t size) {
+	SYSCALL_RETURN_ORIGINAL(syscall_write(fd, buf, size));
+}
+
 _syscall2(print, char*, va_list);
 void print(char* format, ...) {
   va_list list;

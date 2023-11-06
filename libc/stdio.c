@@ -2,11 +2,49 @@
 #include <list.h>
 #include <math.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "stdio.h"
+
+#define MIN_WRITE_BUF_LEN 32
+
 LIST_HEAD(lstream);
+
+static bool valid_stream(FILE *stream) {
+	return stream->fd != -1;
+}
+
+static void assert_stream(FILE *stream) {
+	if (stream->_IO_write_base <= stream->_IO_write_ptr && stream->_IO_write_ptr <= stream->_IO_write_end + 1) {
+    //print("Invalid stream\n");F
+    __asm__ __volatile("int $0x01");
+
+  }
+}
+
+static int fnput(const char *s, size_t size, FILE *stream) {
+	assert_stream(stream);
+
+	size_t remaining_len = stream->_IO_write_end - stream->_IO_write_ptr;
+	size_t current_len = stream->_IO_write_end - stream->_IO_write_base;
+
+	if (remaining_len < size) {
+		size_t new_len = max(max(size, current_len << 1), MIN_WRITE_BUF_LEN);
+		char *buf = calloc(new_len, sizeof(char));
+
+		memcpy(buf, stream->_IO_write_base, current_len);
+		free(stream->_IO_write_base);
+
+		stream->_IO_write_base = buf;
+		stream->_IO_write_ptr = buf + current_len - remaining_len;
+		stream->_IO_write_end = buf + new_len;
+	}
+	memcpy(stream->_IO_write_ptr, s, size);
+	stream->_IO_write_ptr += size;
+	stream->_offset += size;
+	return size;
+}
 
 static FILE *fdopen(int fd, const char *mode) {
   FILE *stream = calloc(1, sizeof(FILE));
@@ -36,6 +74,33 @@ static FILE *fdopen(int fd, const char *mode) {
 static int32_t fnget(void *ptr, size_t size, FILE *stream) {
   return read(stream->fd, ptr, 1);
 }
+/*
+int fflush(FILE *stream) {
+	if (!stream) {
+		FILE *iter;
+		list_for_each_entry(iter, &lstream, sibling) {
+			fflush(iter);
+      //if (!(iter->_flags & _IO_NO_WRITES))
+		}
+		return 0;
+	}
+
+	assert_stream(stream);
+	if (!valid_stream(stream))
+		return -EBADF;
+
+	size_t unwritten_len = stream->_IO_write_ptr - stream->_IO_write_base;
+
+	if (!unwritten_len)
+		return 0;
+
+	write(stream->fd, stream->_IO_write_base, unwritten_len);
+	free(stream->_IO_write_base);
+
+	stream->_IO_write_base = stream->_IO_write_ptr = stream->_IO_write_end = NULL;
+	return 0;
+}
+*/
 
 FILE *fopen(const char *filename, const char *mode) {
   int flags = O_RDWR;
@@ -44,7 +109,7 @@ FILE *fopen(const char *filename, const char *mode) {
   if (mode[0] == 'r' && mode[1] != '+')
     flags = O_RDONLY;
   else {
-    print("Supported only readonly");
+    //print("Supported only readonly");
     return NULL;
   }
 

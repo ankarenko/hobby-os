@@ -1,4 +1,5 @@
 {
+  "C_Cpp.dimInactiveRegions": false,
   "files.associations": {
     "stdint.h": "c",
     "pic.h": "c",
@@ -12,6 +13,7 @@
     "kernel_info.h": "c",
     "list.h": "c",
     "malloc.h": "c",
-    "kybrd.h": "c"
+    "kybrd.h": "c",
+    "stdbool.h": "c"
   }
 }

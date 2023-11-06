@@ -83,6 +83,7 @@
 unsigned int sleep(unsigned int seconds);
 void* usbrk(intptr_t increment);
 ssize_t read(int fd, char *buf, size_t size);
+int write(int fd, const char *buf, size_t size);
 
 void print(char* format, ...);
 void terminate();

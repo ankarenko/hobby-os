@@ -797,7 +797,9 @@ void fat_mount() {
 
   minfo.fat_size_clusters = bootsector->bpb.number_of_fats;
   minfo.fat_size_sect =
-      (fat32 ? bootsector->bpb_ext.sectors_per_fat32 : (uint32_t)bootsector->bpb.sectors_per_fat) *
+      (fat32 ? 
+        bootsector->bpb_ext.sectors_per_fat32 : 
+        (uint32_t)bootsector->bpb.sectors_per_fat) *
       (minfo.fat_size_clusters >> 1);  // without copies
   uint32_t bytes_per_sector = bootsector->bpb.bytes_per_sector;
   minfo.fat_offset = bootsector->bpb.reserved_sectors;
@@ -839,10 +841,6 @@ vfs_file fat_get_rootdir() {
   rootdir.device_id = 0;
   rootdir.flags = FS_ROOT_DIRECTORY;
   return rootdir;
-}
-
-ssize_t fat_lseek() {
-  PANIC("Not implemented", NULL);
 }
 
 ssize_t fat_write(vfs_file *file, const char *buf, size_t count, loff_t ppos) {

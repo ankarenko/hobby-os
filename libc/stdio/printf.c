@@ -477,7 +477,7 @@ int fprintf(FILE* stream, const char* format, ...) {
 }
 
 int fflush(FILE* stream) {
-  return 1;
+  return -1;
 }
 
 #endif

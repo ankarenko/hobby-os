@@ -60,9 +60,9 @@ loff_t vfs_flseek(int32_t fd, loff_t offset, int whence) {
   return file->f_pos;
 }
 
-ssize_t vfs_write(int32_t fd, char* buf, int32_t count) {
+ssize_t vfs_fwrite(int32_t fd, char* buf, int32_t count) {
 	if (fd < 0)
-		return NULL;
+		return -EBADF;
 
   process* proc = get_current_process();
   vfs_file* file = proc->files->fd[fd];
@@ -72,7 +72,7 @@ ssize_t vfs_write(int32_t fd, char* buf, int32_t count) {
       return file_systems[file->device_id - 'a']->write(file, buf, count, file->f_pos);
     }
   }
-  return -1;
+  return -ENOENT;
 }
 
 char* vfs_read(const char *path) {
