@@ -117,7 +117,7 @@ bool run_cmd(char* cmd_buf) {
     printf("\nprocesses running: [ ");
     process* proc = NULL;
     list_for_each_entry(proc, get_proc_list(), proc_sibling) {
-      printf("%d (", proc->id);
+      printf("%d (", proc->pid);
       
 
       list_for_each_entry(th, &proc->threads, th_sibling) {

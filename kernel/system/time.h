@@ -3,11 +3,14 @@
 
 #include <stdint.h>
 #include <sys/types.h>
+#include <time.h>
 
+/*
 struct timespec {
   time_t tv_sec;
   long tv_nsec;
 };
+*/
 
 struct tms {
   clock_t tms_utime;

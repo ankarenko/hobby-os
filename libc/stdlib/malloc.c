@@ -52,7 +52,7 @@ void split_block(struct block_meta *block, size_t size) {
 }
 
 struct block_meta *request_space(struct block_meta *last, size_t size) {
-  struct block_meta *block = usbrk(size + sizeof(struct block_meta));
+  struct block_meta *block = sbrk(size + sizeof(struct block_meta));
 
   if (last)
     last->next = block;

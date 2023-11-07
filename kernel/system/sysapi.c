@@ -1,11 +1,27 @@
 #include <stdio.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <errno.h>
+#include <stdarg.h>
 
 #include "kernel/proc/task.h"
 #include "kernel/cpu/idt.h"
 #include "kernel/system/sysapi.h"
+
+#define __NR_exit 1
+#define __NR_fork 2
+#define __NR_read 3
+#define __NR_write 4
+#define __NR_open 5
+#define __NR_close 6
+#define __NR_sbrk 10
+#define __NR_execve 11
+#define __NR_lseek 19
+#define __NR_getpid 20
+#define __NR_kill 37
+#define __NR_fstat 108
+#define __NR_nanosleep 162
+#define __NR_print 0
+
 
 static int32_t sys_debug_printf(const char *format, va_list args) {
   int i = vprintf(format, args);
@@ -37,15 +53,35 @@ static void* sys_sbrk(size_t n) {
   return addr;
 }
 
-static int32_t sys_debug_terminate() {
+static int32_t sys_getpid() {
+	process* proc = get_current_process();
+  return proc->pid;
+}
+
+static int32_t sys_exit() {
   thread* cur_thread = get_current_thread();
   thread_kill(cur_thread->tid);
   return 1;
 }
+
+static int32_t sys_execve(const char *pathname, char *const argv[], char *const envp[]) {
+	//return process_execve(pathname, argv, envp);
+  return -1;
+}
+
+static pid_t sys_fork() {
+  return -1;
+	/*
+  struct process *child = process_fork(current_process);
+	queue_thread(child->thread);
+
+	return child->pid;
+  */
+}
  
-static int32_t sys_debug_sleep_thread(uint32_t msec) {
-  thread_sleep(msec);
-  return 1;
+static int32_t sys_nanosleep(const struct timespec *req, struct timespec *rem) {
+	thread_sleep(req->tv_nsec / 10000);
+	return 0;
 }
 
 static int32_t sys_lseek(int fd, off_t offset, int whence) {
@@ -56,18 +92,25 @@ static int32_t sys_close(uint32_t fd) {
 	return vfs_close(fd);
 }
 
+static int32_t sys_kill(pid_t pid, int sig) {
+  return -1;
+}
+
 static void *syscalls[] = {
-  
-  [__NR_terminate] = sys_debug_terminate,
-  [__NR_sleep] = sys_debug_sleep_thread,
+  [__NR_exit] = sys_exit,
+  [__NR_nanosleep] = sys_nanosleep,
   [__NR_read] = sys_read,
   [__NR_write] = sys_write,
   [__NR_open] = sys_open,
   [__NR_sbrk] = sys_sbrk,
+  [__NR_execve] = sys_execve,
+  [__NR_fork] = sys_fork,
   [__NR_fstat] = sys_fstat,
   [__NR_print] = sys_debug_printf,
   [__NR_lseek] = sys_lseek,
   [__NR_close] = sys_close,
+  [__NR_getpid] = sys_getpid,
+  [__NR_kill] = sys_kill,
   0
 };
 

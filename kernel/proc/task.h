@@ -108,7 +108,7 @@ typedef struct _files_struct {
   to the end of the structure
 */
 typedef struct _process {
-  int32_t id;
+  int32_t pid;
   int32_t priority;
   struct pdirectory* va_dir;
   physical_addr pa_dir;

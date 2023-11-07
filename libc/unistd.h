@@ -7,16 +7,19 @@
 #include <stddef.h>
 #include <sys/types.h>
 
-#define __NR_terminate 1
-#define __NR_sleep 2
+#define __NR_exit 1
+#define __NR_fork 2
 #define __NR_read 3
 #define __NR_write 4
 #define __NR_open 5
 #define __NR_close 6
-#define __NR_lseek 19
 #define __NR_sbrk 10
-#define __NR_stat 106
+#define __NR_execve 11
+#define __NR_lseek 19
+#define __NR_getpid 20
+#define __NR_kill 37
 #define __NR_fstat 108
+#define __NR_nanosleep 162
 #define __NR_print 0
 
 #define _syscall0(name)                       \
@@ -81,13 +84,17 @@
 #define NULL 0
 #define SYSCALL_RETURN_POINTER(expr) ({ int ret = expr; if ((int)HIGHER_HALF_ADDRESS < ret && ret < 0) { return errno = -ret, NULL; } return (void *)ret; })
 
-unsigned int sleep(unsigned int seconds);
-void* usbrk(intptr_t increment);
+int fork();
+int sleep(unsigned int seconds);
+int execve(const char *pathname, char *const argv[], char *const envp[]);
+void* sbrk(intptr_t increment);
 ssize_t read(int fd, char *buf, size_t size);
 int write(int fd, const char *buf, size_t size);
 int lseek(int fd, off_t offset, int whence);
 int close(int fd);
+int getpid();
+
 void print(char* format, ...);
-void terminate();
+void _exit(int32_t status);
 
 #endif

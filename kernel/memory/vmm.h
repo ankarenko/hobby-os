@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "pmm.h"
-#include "vmm_pde.h"
-#include "vmm_pte.h"
+#include "kernel/memory/vmm_pde.h"
+#include "kernel/memory/vmm_pte.h"
+#include "kernel/memory/vmm.h"
 
 struct _mm_struct_mos;
 

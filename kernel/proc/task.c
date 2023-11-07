@@ -192,7 +192,7 @@ bool empack_params(thread* th) {
   char* path = parent->path;
 
   uint32_t argc = 2;
-  int32_t id = parent->id; 
+  int32_t id = parent->pid; 
   char** argv = (char**)sbrk(
     sizeof(uint32_t) * argc, 
     parent->mm_mos
@@ -269,7 +269,7 @@ static process* create_process(char* app_path, struct pdirectory* pdir) {
   INIT_LIST_HEAD(&proc->threads);
   INIT_LIST_HEAD(&proc->proc_sibling);
   list_add(&proc->proc_sibling, get_proc_list());
-  proc->id = ++next_pid;
+  proc->pid = ++next_pid;
   proc->thread_count = 0;
   proc->files = create_files_descriptors();
 

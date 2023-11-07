@@ -4,10 +4,11 @@
 #include <fcntl.h>
 #include <stdio.h>
 
-static char* str = "Hello, world! \n\0";
+static char* str = "Hello, world! \n";
 static int len = 16;
 
 void _start(int argc, char** argv) {
+
   int32_t id = -1;
   
   if (argc == 2) {
@@ -17,12 +18,17 @@ void _start(int argc, char** argv) {
     print("Process id: %d\n", id);
   }
 
+  while (1) {
+    sleep(3);
+    print("\nHello from userprocess: %d", id);
+  }
+
   FILE* stream = fopen("test.txt", "a");
   int32_t size = 100;
   
   if (stream == NULL) {
     print("Not stream");
-    terminate();
+    _exit(0);
   }
 
   fputs("Hello, world\n!", stream);
@@ -41,10 +47,14 @@ void _start(int argc, char** argv) {
   free(buf);
   fclose(stream);
 
+  /*
   while (1) {
-    sleep(300);
+    sleep(3);
     print("\nHello from userprocess: %d", id);
   }
+  */
 
-  terminate();
+  _exit(0);
+  while (1) {};
+  
 }
