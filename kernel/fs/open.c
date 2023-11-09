@@ -1,6 +1,6 @@
 #include <stddef.h>
-#include <errno.h>
 
+#include "kernel/util/errno.h"
 #include "kernel/proc/task.h"
 #include "kernel/util/debug.h"
 

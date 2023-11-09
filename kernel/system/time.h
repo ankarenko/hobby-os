@@ -2,8 +2,10 @@
 #define TIMER_H
 
 #include <stdint.h>
-#include <sys/types.h>
-#include <time.h>
+
+#include "kernel/util/ctype.h"
+#include "kernel/system/time.h"
+#include "kernel/util/types.h"
 
 /*
 struct timespec {
@@ -12,6 +14,7 @@ struct timespec {
 };
 */
 
+
 struct tms {
   clock_t tms_utime;
   clock_t tms_stime;
@@ -19,10 +22,12 @@ struct tms {
   clock_t tms_cstime;
 };
 
+/*
 struct timeval {
   time_t tv_sec;
   suseconds_t tv_usec;
 };
+*/
 
 #define CLOCK_REALTIME 0
 #define CLOCK_MONOTONIC 1

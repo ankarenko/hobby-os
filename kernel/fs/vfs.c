@@ -1,9 +1,9 @@
 #include "vfs.h"
 
-#include <string.h>
-#include <errno.h>
-#include <fcntl.h>
+#include "kernel/util/string/string.h"
 
+#include "kernel/util/errno.h"
+#include "kernel/util/fcntl.h"
 #include "kernel/proc/task.h"
 #include "kernel/memory/malloc.h"
 #include "kernel/util/debug.h"

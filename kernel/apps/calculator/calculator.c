@@ -1,8 +1,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#include <fcntl.h>
 #include <stdio.h>
+
+#include "kernel/util/fcntl.h"
 
 static char* str = "Hello, world! \n";
 static int len = 16;

@@ -15,3 +15,5 @@ disk.img
 floppy.img
 fat32_floppy.img
 *.exe
+ports/newlib/*/**
+ports/newlib/*

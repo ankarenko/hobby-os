@@ -1,5 +1,3 @@
-#include <stdio.h>
-
 #include "kernel/devices/tty.h"
 
 int popchar() {

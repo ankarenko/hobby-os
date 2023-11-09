@@ -1,8 +1,8 @@
-#include <stdio.h>
-#include <sys/types.h>
-#include <errno.h>
 #include <stdarg.h>
 
+#include "kernel/util/ctype.h"
+#include "kernel/util/stdio.h"
+#include "kernel/util/errno.h"
 #include "kernel/proc/task.h"
 #include "kernel/cpu/idt.h"
 #include "kernel/system/sysapi.h"

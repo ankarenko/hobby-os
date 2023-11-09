@@ -1,6 +1,4 @@
-
-#include <ctype.h>
-
+#include "kernel/util/ctype.h"
 #include "kernel/cpu/hal.h"
 #include "kernel/cpu/idt.h"
 #include "kybrd.h"

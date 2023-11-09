@@ -1,8 +1,9 @@
 #include <stdlib.h>
-#include <math.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <unistd.h>
+
+#include "kernel/util/math.h"
 
 #define BLOCK_MAGIC 0x464E
 #define BLOCK_ALIGNMENT 4

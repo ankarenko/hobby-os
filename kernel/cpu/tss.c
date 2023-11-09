@@ -1,4 +1,4 @@
-#include <string.h>
+#include "kernel/util/string/string.h"
 
 #include "./tss.h"
 #include "./gdt.h"

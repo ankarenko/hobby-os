@@ -1,5 +1,5 @@
-#ifndef _LIBC_SYS_TYPES_H
-#define _LIBC_SYS_TYPES_H 1
+#ifndef _UTIL_SYS_TYPES_H
+#define _UTIL_SYS_TYPES_H 1
 
 #include <sys/cdefs.h>
 

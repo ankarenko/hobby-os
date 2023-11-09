@@ -14,6 +14,23 @@
     "list.h": "c",
     "malloc.h": "c",
     "kybrd.h": "c",
-    "stdbool.h": "c"
+    "stdbool.h": "c",
+    "debug.h": "c",
+    "errno.h": "c",
+    "string.h": "c",
+    "*.def": "c",
+    "cctype": "c",
+    "greatest.h": "c",
+    "stdlib.h": "c",
+    "types.h": "c",
+    "cdefs.h": "c",
+    "features.h": "c",
+    "_default_types.h": "c",
+    "stat.h": "c",
+    "select.h": "c",
+    "stddef.h": "c",
+    "_intsup.h": "c",
+    "stdarg.h": "c",
+    "limits.h": "c"
   }
 }

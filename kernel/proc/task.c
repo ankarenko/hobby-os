@@ -1,7 +1,7 @@
-#include <math.h>
-#include <string.h>
-#include <list.h>
+#include "kernel/util/string/string.h"
 
+#include "kernel/util/math.h"
+#include "kernel/util/list.h"
 #include "task.h"
 #include "kernel/memory/vmm.h"
 #include "kernel/cpu/hal.h"

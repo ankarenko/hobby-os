@@ -1,7 +1,7 @@
 #include "flpydsk.h"
 
 #include <stdbool.h>
-#include <string.h>
+#include "kernel/util/string/string.h"
 
 #include "kernel/cpu/hal.h"
 #include "kernel/memory/kernel_info.h"

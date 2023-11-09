@@ -2,7 +2,8 @@
 #define UTIL_QUEUE_H
 
 #include <stdint.h>
-#include <list.h>
+
+#include "kernel/util/list.h"
 
 struct queue
 {

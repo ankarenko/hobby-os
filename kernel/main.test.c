@@ -1,27 +1,23 @@
-// #include <stdio.h>
-// #include <stdint.h>
-// #include <string.h>
-// #include <timer.h>
-#include <ctype.h>
-#include <math.h>
 #include <test/greatest.h>
 
-#include "./devices/tty.h"
-#include "./kernel/cpu/exception.h"
-#include "./kernel/cpu/gdt.h"
-#include "./kernel/cpu/hal.h"
-#include "./kernel/cpu/idt.h"
-#include "./kernel/cpu/tss.h"
-#include "./kernel/devices/kybrd.h"
-#include "./kernel/fs/fat12/fat12.h"
-#include "./kernel/fs/flpydsk.h"
-#include "./kernel/memory/kernel_info.h"
-#include "./kernel/memory/malloc.h"
-#include "./kernel/memory/pmm.h"
-#include "./kernel/memory/vmm.h"
-#include "./kernel/proc/elf.h"
-#include "./kernel/proc/task.h"
-#include "./kernel/system/sysapi.h"
+#include "kernel/util/ctype.h"
+#include "kernel/util/math.h"
+#include "kernel/devices/tty.h"
+#include "kernel/cpu/exception.h"
+#include "kernel/cpu/gdt.h"
+#include "kernel/cpu/hal.h"
+#include "kernel/cpu/idt.h"
+#include "kernel/cpu/tss.h"
+#include "kernel/devices/kybrd.h"
+#include "kernel/fs/fat12/fat12.h"
+#include "kernel/fs/flpydsk.h"
+#include "kernel/memory/kernel_info.h"
+#include "kernel/memory/malloc.h"
+#include "kernel/memory/pmm.h"
+#include "kernel/memory/vmm.h"
+#include "kernel/proc/elf.h"
+#include "kernel/proc/task.h"
+#include "kernel/system/sysapi.h"
 #include "./multiboot.h"
 
 

@@ -1,7 +1,7 @@
 
-#include <math.h>
 #include <stdint.h>
 
+#include "kernel/util/math.h"
 #include "kernel/util/debug.h"
 #include "malloc.h"
 

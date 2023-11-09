@@ -1,9 +1,10 @@
-#include <string.h>
+#include "kernel/util/string/string.h"
 
 #include "kernel/fs/vfs.h"
 #include "kernel/memory/vmm.h"
 #include "kernel/memory/malloc.h"
 #include "kernel/util/debug.h"
+#include "kernel/util/math.h"
 #include "kernel/proc/task.h"
 
 #include "elf.h"

@@ -1,6 +1,5 @@
-#include <stdio.h>
-#include <string.h>
-
+#include "kernel/util/stdio.h"
+#include "kernel/util/string/string.h"
 #include "kernel/cpu/hal.h"
 #include "kernel/cpu/idt.h"
 #include "kernel/memory/vmm.h"

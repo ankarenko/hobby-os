@@ -1,8 +1,8 @@
 #include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
-#include <math.h>
 
+#include "kernel/util/string/string.h"
+#include "kernel/util/math.h"
 #include "kernel/util/path.h"
 #include "kernel/util/debug.h"
 #include "kernel/memory/malloc.h"

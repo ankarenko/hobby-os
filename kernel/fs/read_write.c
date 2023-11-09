@@ -1,6 +1,5 @@
-#include <errno.h>
-#include <fcntl.h>
-
+#include "kernel/util/errno.h"
+#include "kernel/util/fcntl.h"
 #include "kernel/proc/task.h"
 #include "kernel/util/debug.h"
 
@@ -31,7 +30,7 @@ int32_t vfs_fread(int32_t fd, char *buf, int32_t count) {
 	return -EINVAL;
 }
 
-loff_t vfs_flseek(int32_t fd, loff_t offset, int whence) {
+off_t vfs_flseek(int32_t fd, off_t offset, int whence) {
   process* proc = get_current_process();
   vfs_file* file = proc->files->fd[fd];
 

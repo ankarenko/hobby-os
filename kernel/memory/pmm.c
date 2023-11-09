@@ -1,8 +1,9 @@
-#include <math.h>
 #include <stdbool.h>
-#include <string.h>
+#include "kernel/util/string/string.h"
 
 #include "pmm.h"
+
+#include "kernel/util/math.h"
 #include "./kernel_info.h"
 
 #define INDEX_FROM_BIT(a) (a / (4 * PMM_FRAMES_PER_BYTE))

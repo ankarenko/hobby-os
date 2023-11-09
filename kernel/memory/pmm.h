@@ -3,8 +3,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <stdio.h>
 
+#include "kernel/util/stdio.h"
 #include "../multiboot.h"
 
 #define PMM_DEBUG() printf("Available: \n Blocks: %d \n Bytes: %d \n Used: \n Blocks: %d \n Bytes: %d \n", pmm_get_free_frame_count(), pmm_get_free_frame_count() * pmm_get_frame_size(), pmm_get_use_frame_count(), pmm_get_use_frame_count() * pmm_get_frame_size());

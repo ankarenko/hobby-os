@@ -1,9 +1,9 @@
 #include <stdbool.h>
 #include <stddef.h>
-#include <ctype.h>
 #include <stdint.h>
-#include <string.h>
+#include "kernel/util/string/string.h"
 
+#include "kernel/util/ctype.h"
 #include "kernel/cpu/hal.h"
 #include "kernel/memory/kernel_info.h"
 #include "vga.h"

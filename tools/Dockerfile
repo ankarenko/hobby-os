@@ -17,8 +17,8 @@ RUN \
   wget -c https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.gz -O - | tar -xz && \
   wget -c https://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz -O - | tar -xz
 
-COPY ./build_binutils.sh ./
-COPY ./build_gcc.sh ./
+COPY ./tools/build_binutils.sh ./
+COPY ./tools/build_gcc.sh ./
 
 RUN \
   chmod +x ./build_binutils.sh && \
@@ -30,9 +30,67 @@ RUN sh ./build_gcc.sh
 #check
 RUN $TARGET-gcc --version
 
+RUN apt install xorriso grub-pc-bin -y
+RUN apt install nano -y
+
+# making preparation to port newlib
+WORKDIR $HOME/src
+RUN \
+  wget -c ftp://sourceware.org/pub/newlib/newlib-2.5.0.tar.gz -O - | tar -xz && \
+  wget -c https://ftp.gnu.org/gnu/automake/automake-1.11.tar.gz -O - | tar -xz && \
+  wget -c https://ftp.gnu.org/gnu/autoconf/autoconf-2.65.tar.gz -O - | tar -xz
+
+#install autoconf 
+RUN \
+  mkdir /root/bin && mkdir build && cd build && \
+  ../autoconf-2.65/configure --prefix=/root/ && \
+  make && make install
+
+ENV PATH="$PATH:/root/bin"
+
+# install automake
+RUN \
+  rm -rf build/* && cd build && \
+  ../automake-1.11/configure --prefix=/root/ && \
+  make && make install && \
+  rm -rf *
+
+# add myos to config files
+# source: https://wiki.osdev.org/Porting_Newlib
+RUN \
+  sed -i '1000,$s/-gnu\* |/& -myos* |/' newlib-2.5.0/config.sub && \
+  sed -i 's/case "${host_cpu}" in/&\ni[3-7]86-*-myos*)\nsys_dir=myos;;/' newlib-2.5.0/newlib/configure.host && \
+  sed -i 's/case ${sys_dir} in/&\nmyos) AC_CONFIG_SUBDIRS(myos) ;;/' newlib-2.5.0/newlib/libc/sys/configure.in && \
+  autoconf --version && cd newlib-2.5.0/newlib/libc/sys && autoconf
+
+RUN mkdir newlib-2.5.0/newlib/libc/sys/myos
+COPY ./ports/newlib/myos newlib-2.5.0/newlib/libc/sys/myos
+
+# newlib setup
+ENV CURRDIR=$HOME/src
+ 
+# make symlinks (a bad hack) to make newlib work
+# this is where the bootstrapped generic cross compiler toolchain (i686-elf-xxx) is installed in,
+# change this based on your development environment.
+RUN \
+  cd /opt/cross/bin/ && \
+  ln i686-elf-ar i686-myos-ar && \
+  ln i686-elf-as i686-myos-as && \
+  ln i686-elf-gcc i686-myos-gcc && \
+  ln i686-elf-gcc i686-myos-cc && \
+  ln i686-elf-ranlib i686-myos-ranlib
+
+WORKDIR $CURRDIR
+
+RUN mkdir /sysroot
+ENV SYSROOT=/sysroot
+
+RUN \
+  mkdir build-newlib && cd build-newlib && \
+  ../newlib-2.5.0/configure --prefix=/usr --target=i686-myos && \
+  make all && make DESTDIR=$SYSROOT install
+
 VOLUME /os
 WORKDIR /os
-
-RUN apt install xorriso grub-pc-bin -y
 
 CMD bash

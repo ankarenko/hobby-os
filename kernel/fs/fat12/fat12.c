@@ -1,10 +1,11 @@
-#include <ctype.h>
-#include <math.h>
-#include <stdbool.h>
-#include <string.h>
 
+#include <stdbool.h>
+#include "kernel/util/string/string.h"
+
+#include "kernel/util/ctype.h"
 #include "kernel/fs/bpb.h"
 #include "kernel/fs/flpydsk.h"
+#include "kernel/util/math.h"
 
 #include "./fat12.h"
 

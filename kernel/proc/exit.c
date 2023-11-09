@@ -1,5 +1,6 @@
 #include "kernel/memory/malloc.h"
 #include "kernel/proc/task.h"
+#include "kernel/util/math.h"
 #include "kernel/memory/vmm.h"
 #include "kernel/fs/vfs.h"
 

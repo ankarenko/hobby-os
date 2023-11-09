@@ -1,6 +1,6 @@
 #include <stdint.h>
-#include <stdio.h>
 
+#include "kernel/util/stdio.h"
 #include "../devices/tty.h"
 #include "hal.h"
 #include "pic.h"

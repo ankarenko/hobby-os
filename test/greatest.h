@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
 #endif
 /*********************************************************************/
 
-#include <ctype.h>
+#include <kernel/util/ctype.h>
 #include <kernel/util/stdlib.h>
 #include <kernel/util/string/string.h>
 
@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
 #endif
 
 #if GREATEST_USE_LONGJMP
-#include <setjmp.h>
+//#include <setjmp.h>
 #endif
 
 /* Set to 0 to disable all use of time.h / clock(). */
@@ -135,7 +135,7 @@ int main(int argc, char **argv) {
 #endif
 
 #if GREATEST_USE_TIME
-#include <time.h>
+//#include <time.h>
 #endif
 
 /* Floating point type, for ASSERT_IN_RANGE. */

@@ -1,11 +1,11 @@
-#include <ctype.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <math.h>
 #include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
 
+#include "kernel/util/string/string.h"
+#include "kernel/util/stdio.h"
+#include "kernel/util/errno.h"
+#include "kernel/util/fcntl.h"
+#include "kernel/util/ctype.h"
+#include "kernel/util/math.h"
 #include "kernel/fs/bpb.h"
 #include "kernel/fs/flpydsk.h"
 #include "kernel/fs/vfs.h"
@@ -600,7 +600,7 @@ static int32_t delete_file(const char* name, sect_t dir_sector) {
   return 1;
 }
 
-static uint32_t get_start_cluster(vfs_file* file, loff_t ppos) {
+static uint32_t get_start_cluster(vfs_file* file, off_t ppos) {
   if (file->file_length <= ppos) {
     return FAT_ATTR_EOF;
   }
@@ -694,7 +694,7 @@ bool fat_ls(const char* path) {
   return true;
 }
 
-int32_t fat_read(vfs_file* file, uint8_t* buffer, uint32_t length, loff_t ppos) {
+int32_t fat_read(vfs_file* file, uint8_t* buffer, uint32_t length, off_t ppos) {
   if (!file) {
     return -ENOENT;
   }
@@ -705,7 +705,7 @@ int32_t fat_read(vfs_file* file, uint8_t* buffer, uint32_t length, loff_t ppos) 
 
   uint8_t* cur = buffer;
   uint32_t cur_cluster = get_start_cluster(file, ppos);
-  loff_t offset = ppos % (minfo.bytes_per_sect * minfo.sect_per_cluster);
+  off_t offset = ppos % (minfo.bytes_per_sect * minfo.sect_per_cluster);
   uint32_t left_len = length;
 
   do {
@@ -752,7 +752,7 @@ int32_t fat_mkdir(const char* dir_path) {
   sect_t dir_sector = 0;
   
   if (!path_deconstruct(dir_path, &dir_sector, &dirname, NULL)) {
-    return -ENONET;
+    return -ENOENT;
   }
 
   dir_item dir;
@@ -845,7 +845,7 @@ vfs_file fat_get_rootdir() {
   return rootdir;
 }
 
-ssize_t fat_write(vfs_file *file, const char *buf, size_t count, loff_t ppos) {
+ssize_t fat_write(vfs_file *file, const char *buf, size_t count, off_t ppos) {
   uint32_t bytes_per_cluster = minfo.bytes_per_sect * minfo.sect_per_cluster;
   uint32_t file_sect_start = cluster_to_sector(file->first_cluster);
   uint32_t file_start = file_sect_start * minfo.bytes_per_sect; 

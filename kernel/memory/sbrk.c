@@ -1,6 +1,6 @@
-#include <math.h>
-#include <string.h>
+#include "kernel/util/string/string.h"
 
+#include "kernel/util/math.h"
 #include "kernel/proc/task.h"
 #include "malloc.h"
 #include "pmm.h"

@@ -1,6 +1,7 @@
-#include <fcntl.h>
 #include <unistd.h>
 #include <sys/types.h>
+
+#include "kernel/util/fcntl.h"
 
 _syscall3(open, const char*, int32_t, mode_t);
 int open(const char* path, int flags, ...) {

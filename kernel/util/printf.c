@@ -1,11 +1,10 @@
-#include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <string.h>
 #include <stddef.h>
-#include <sys/cdefs.h>
+
+#include "kernel/util/string/string.h"
+#include "kernel/util/stdio.h"
 
 #define isdigit(c) ((c) >= '0' && (c) <= '9')
 

@@ -2,7 +2,6 @@
 #define UTIL_STRING
 
 #include <stddef.h>
-#include <sys/types.h>
 
 #define op_t unsigned long int
 #define OPSIZ (sizeof(op_t))

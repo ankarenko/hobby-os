@@ -1,11 +1,9 @@
-#include <ctype.h>
-#include <math.h>
-#include <list.h>
-#include <errno.h>
-#include <fcntl.h>
-
 #include "test/greatest.h"
 
+#include "kernel/util/errno.h"
+#include "kernel/util/fcntl.h"
+#include "kernel/util/ctype.h"
+#include "kernel/util/math.h"
 #include "kernel/util/debug.h"
 #include "kernel/devices/tty.h"
 #include "kernel/cpu/exception.h"
@@ -20,6 +18,7 @@
 #include "kernel/memory/pmm.h"
 #include "kernel/memory/vmm.h"
 #include "kernel/proc/elf.h"
+#include "kernel/util/list.h"
 #include "kernel/proc/task.h"
 #include "kernel/system/sysapi.h"
 #include "kernel/fs/fat32/fat32.h"

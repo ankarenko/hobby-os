@@ -1,6 +1,6 @@
 #include <stddef.h>
-#include <stdio.h>
 
+#include "kernel/util/stdio.h"
 #include "kernel/cpu/exception.h"
 #include "kernel/cpu/hal.h"
 #include "kernel/cpu/idt.h"

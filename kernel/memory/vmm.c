@@ -1,14 +1,12 @@
-#include "vmm.h"
-
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
-#include <list.h>
-
+#include "kernel/util/stdio.h"
+#include "kernel/util/string/string.h"
+#include "kernel/util/math.h"
+#include "kernel/util/list.h"
 #include "kernel/memory/kernel_info.h"
 #include "kernel/util/debug.h"
 #include "kernel/proc/task.h"
 
+#include "vmm.h"
 
 #define SEC_PAGE_DIRECTORY_BASE 0xFF800000
 #define SEC_PAGE_TABLE_BASE 0xFFBFF000
