@@ -434,7 +434,7 @@ static bool init_new_file(const char* filename, dir_item* item) {
   uint16_t time = 0;
   time_to_fat(&t, &date, &time);
 
-  item->file_size = 1;
+  item->file_size = 0;
   item->attrib = DIR_ATTR_ARCHIVE;
 
   item->date_created = date;
@@ -718,7 +718,8 @@ int32_t fat_read(vfs_file* file, uint8_t* buffer, uint32_t length, off_t ppos) {
     for (uint32_t i = 0; i < minfo.sect_per_cluster; ++i) {
       if (left_len > 0) {
         uint8_t* sector = flpydsk_read_sector(sect_num + i);
-        uint32_t to_read = min(left_len, minfo.bytes_per_sect - offset);
+        int32_t left_len_file = file->file_length - (ppos + length - left_len);
+        uint32_t to_read = min(left_len_file, min(left_len, minfo.bytes_per_sect - offset));
         memcpy(cur, sector + offset, to_read);
         file->f_pos += to_read;
         left_len -= to_read;

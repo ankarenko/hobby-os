@@ -1,11 +1,12 @@
 #ifndef _UTIL_SYS_TYPES_H
 #define _UTIL_SYS_TYPES_H 1
 
-#include <sys/cdefs.h>
+#include <sys/types.h>
 
+/*
 typedef unsigned int dev_t;
 typedef unsigned short umode_t;
-typedef long long off_t;
+typedef long long loff_t;
 typedef long off_t;
 typedef unsigned long long ino_t;
 typedef unsigned int mode_t;
@@ -46,5 +47,5 @@ typedef unsigned long fsfilcnt_t;
 
 #define __need_size_t
 #include <stddef.h>
-
+*/
 #endif

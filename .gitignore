@@ -15,5 +15,9 @@ disk.img
 floppy.img
 fat32_floppy.img
 *.exe
-ports/newlib/*/**
-ports/newlib/*
+ports/newlib/build/*
+ports/newlib/newlib-*
+ports/newlib/myos/*.cache
+ports/newlib/myos/*.m4
+ports/newlib/myos/configure
+ports/newlib/myos/Makefile.in

@@ -5,12 +5,15 @@ DISK=./fat32_floppy.img
 if alias os-machine >/dev/null 2>&1; then 
   ENVIRONMENT="os-machine"
 else 
-  ENVIRONMENT="docker run -it --rm -v $PWD:/os os_tools"; 
+  ENVIRONMENT="docker run -it --rm -v $PWD:/os -v $PWD/ports/newlib/myos:/src/newlib-2.5.0/newlib/libc/sys/myos -v $PWD/ports/newlib/build:/src/build-newlib os_tools"; 
 fi
 
 if [ "$1" = "clean" ] 
 then
   $ENVIRONMENT ./clean.sh
+elif [ "$1" = "libc" ]
+then
+  $ENVIRONMENT sh /src/build_libc.sh
 elif [ "$1" = "rebuild" ] 
 then 
   $ENVIRONMENT ./clean.sh && \

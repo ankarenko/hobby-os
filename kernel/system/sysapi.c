@@ -6,6 +6,7 @@
 #include "kernel/proc/task.h"
 #include "kernel/cpu/idt.h"
 #include "kernel/system/sysapi.h"
+#include "kernel/system/time.h"
 
 #define __NR_exit 1
 #define __NR_fork 2

@@ -1,7 +1,7 @@
 #include "kernel/util/string/string.h"
+#include "kernel/cpu/gdt.h"
 
-#include "./tss.h"
-#include "./gdt.h"
+#include "kernel/cpu/tss.h"
 
 static struct tss_entry TSS;
 

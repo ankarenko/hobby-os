@@ -31,6 +31,11 @@
     "stddef.h": "c",
     "_intsup.h": "c",
     "stdarg.h": "c",
-    "limits.h": "c"
+    "limits.h": "c",
+    "time.h": "c",
+    "syscall.h": "c",
+    "unistd.h": "c",
+    "print.h": "c",
+    "*.tcc": "c"
   }
 }

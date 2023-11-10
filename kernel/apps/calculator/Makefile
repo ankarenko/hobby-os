@@ -9,22 +9,18 @@ ASM_OBJ = ${ASM_SOURCES:.s=.o}
 # with static variables doesn't work -fPIC 
 # with -nostdinc doesnt work, I use stddef for example
 # -fno-builtin not sure
-CFLAGS := $(CFLAGS) -nostdlib -lc -lgcc -g0 -nostartfiles
+CFLAGS := $(CFLAGS) -L $SYSROOT/usr/lib -lc -lg -lgcc -g0 -nostartfiles #-nostdlib
 
 %.o: %.c
-	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS)
+	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS) 
 
 %.o: %.s
 	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS)
 
 calc.exe: $(OBJ) linker.ld
-	$(CC) -T linker.ld -o  $@ $(CFLAGS) $(OBJ) -L ../../../libc -lc
+	$(CC) -T linker.ld -o  $@ $(CFLAGS) $(OBJ)
 
-asm_calc.exe: $(ASM_OBJ) linker.ld
-	$(CC) -T linker.ld -o $@ $(CFLAGS) $(ASM_OBJ) 
-
-
-install: asm_calc.exe calc.exe
+install: calc.exe
 test: install
 clean:
 	rm -rf *.exe

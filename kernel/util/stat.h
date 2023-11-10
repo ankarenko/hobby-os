@@ -3,6 +3,7 @@
 
 #include "kernel/util/types.h"
 #include "kernel/system/time.h"
+#include <sys/stat.h> // to make sure stat structure is consistent with libc
 
 // file
 #define S_IFMT 00170000
@@ -38,8 +39,5 @@
 #define S_ISGID 02000
 #define S_ISVTX 01000
 
-struct stat {
-  off_t st_size;        /* Total size, in bytes */
-};
 
 #endif

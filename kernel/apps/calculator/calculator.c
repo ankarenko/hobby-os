@@ -1,15 +1,46 @@
-#include <unistd.h>
+#include <stdint.h>
+#include <malloc.h>
 #include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
 
-#include "kernel/util/fcntl.h"
+#include "../../../ports/newlib/myos/print.h"
 
-static char* str = "Hello, world! \n";
+static char* str = "Hello, world!";
 static int len = 16;
 
-void _start(int argc, char** argv) {
+void main(int argc, char** argv) {
+  FILE* stream = fopen("test.txt", "a+");
+  
+  if (fputs("Hello, world\n!", stream) == 0) {
+    fflush(stream);
 
+    int32_t size = 100;
+    char* buf = calloc(size + 1, sizeof(char));
+    memset(buf, 0, size);
+    
+    if (fseek(stream, 0, SEEK_SET) == 0) {
+      print("\n_______________________________\n");
+
+      while (fgets(buf, size, stream) != NULL) {
+        print("%s", buf);
+      }
+
+      print("\n________________________________\n");
+    }
+
+    
+
+    // Read the content and print it
+    /*
+    while(fgets(buf, size, stream) != NULL) {
+      buf[size] = '\0';
+      print("%s", buf);
+    }
+    */
+    free(buf);
+  }
+  
+  /*
   int32_t id = -1;
   
   if (argc == 2) {
@@ -18,17 +49,14 @@ void _start(int argc, char** argv) {
     print("File: %s\n", argv[0]);
     print("Process id: %d\n", id);
   }
-
-  while (1) {
-    sleep(3);
-    print("\nHello from userprocess: %d", id);
-  }
-
-  FILE* stream = fopen("test.txt", "a");
+  */
+  
+  //FILE* stream = fopen("test.txt", "a");
+  /*
   int32_t size = 100;
   
   if (stream == NULL) {
-    print("Not stream");
+    //print("Not stream");
     _exit(0);
   }
 
@@ -37,12 +65,12 @@ void _start(int argc, char** argv) {
   fflush(stream); // write to file
 
   char* buf = calloc(size + 1, sizeof(char));
-  lseek(stream->fd, 0, SEEK_SET);
+  lseek(stream->_file, 0, SEEK_SET);
   
   // Read the content and print it
   while(fgets(buf, size, stream)) {
     buf[size] = '\0';
-    print("%s", buf);
+    //print("%s", buf);
   }
 
   free(buf);
@@ -55,7 +83,6 @@ void _start(int argc, char** argv) {
   }
   */
 
-  _exit(0);
+  //_exit(0);
   while (1) {};
-  
 }

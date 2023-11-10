@@ -40,26 +40,32 @@ RUN \
   wget -c https://ftp.gnu.org/gnu/automake/automake-1.11.tar.gz -O - | tar -xz && \
   wget -c https://ftp.gnu.org/gnu/autoconf/autoconf-2.65.tar.gz -O - | tar -xz
 
+RUN mkdir /root/bin
+ENV PATH="$PATH:/root/bin"
+
 #install autoconf 
 RUN \
-  mkdir /root/bin && mkdir build && cd build && \
+  mkdir build-autoconf && cd build-autoconf && \
   ../autoconf-2.65/configure --prefix=/root/ && \
   make && make install
 
-ENV PATH="$PATH:/root/bin"
-
 # install automake
 RUN \
-  rm -rf build/* && cd build && \
+  mkdir build-automake && cd build-automake && \
   ../automake-1.11/configure --prefix=/root/ && \
   make && make install && \
   rm -rf *
+
+# fix of Unescaped left brace in regex is illegal here in regex; marked by <-- HERE in m/\${ <-- HERE ([^ \t=:+{}]+)}/ at /root/bin/automake line 4113.
+# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82856#c3
+RUN sed -i '/$text =~ s\/\\${(\[\^ \\t=:+{}\]+)}\/&substitute_ac_subst_variables_worker ($1)\/ge;/c $text =~ s/\\$\\{([^ \t=:+{}]+)\\}/&substitute_ac_subst_variables_worker ($1)/ge;' /root/bin/automake
 
 # add myos to config files
 # source: https://wiki.osdev.org/Porting_Newlib
 RUN \
   sed -i '1000,$s/-gnu\* |/& -myos* |/' newlib-2.5.0/config.sub && \
   sed -i 's/case "${host_cpu}" in/&\ni[3-7]86-*-myos*)\nsys_dir=myos;;/' newlib-2.5.0/newlib/configure.host && \
+  echo "sys_dir=myos" >> newlib-2.5.0/newlib/configure.host && \
   sed -i 's/case ${sys_dir} in/&\nmyos) AC_CONFIG_SUBDIRS(myos) ;;/' newlib-2.5.0/newlib/libc/sys/configure.in && \
   autoconf --version && cd newlib-2.5.0/newlib/libc/sys && autoconf
 
@@ -83,14 +89,20 @@ RUN \
 WORKDIR $CURRDIR
 
 RUN mkdir /sysroot
-ENV SYSROOT=/sysroot
+ENV SYSROOT=/os/sysroot
 
-RUN \
-  mkdir build-newlib && cd build-newlib && \
-  ../newlib-2.5.0/configure --prefix=/usr --target=i686-myos && \
-  make all && make DESTDIR=$SYSROOT install
+COPY ./tools/build_libc.sh ./
+RUN chmod +x ./build_libc.sh
+#RUN \
+#    chmod +x ./build_libc.sh && \
+#    mkdir -p build-newlib && cd build-newlib && \
+#    ../newlib-2.5.0/configure --prefix=/usr --target=i686-myos
+
+#RUN sh ./build_libc.sh
 
 VOLUME /os
+VOLUME /src/newlib-2.5.0/newlib/libc/sys/myos
+VOLUME /src/build-newlib
 WORKDIR /os
 
 CMD bash

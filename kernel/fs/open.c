@@ -37,6 +37,9 @@ int vfs_fstat(int32_t fd, struct stat* stat) {
   process* proc = get_current_process();
   vfs_file* file = proc->files->fd[fd];
   stat->st_size = file->file_length;
+  stat->st_mode = S_IFCHR;
+  stat->st_blksize = 512;
+  //stat->st_blocks = 1;
   return 1;
 }
 
