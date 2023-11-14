@@ -1,6 +1,8 @@
 #!/bin/sh
 BOOT_DIR=isodir/boot
-DISK=./fat32_floppy.img
+
+#echo 'MYOS_QEMU_PARAMS="-m 128 -blockdev driver=file,node-name=f0,filename=./fat32_floppy.img -device floppy,drive=f0 -no-reboot"' >> ~/.bashrc
+
 
 if alias os-machine >/dev/null 2>&1; then 
   ENVIRONMENT="os-machine"
@@ -30,15 +32,15 @@ then
   $ENVIRONMENT ./make_iso.sh test
 elif [ "$1" = "test" ]
 then
-  $ENVIRONMENT ./clean.sh && \
+  #$ENVIRONMENT ./clean.sh && \
   $ENVIRONMENT ./build.sh test && \
   $ENVIRONMENT ./make_iso.sh test && \
-  qemu-system-i386 -m 128 -monitor unix:qemu-monitor-socket,server,nowait -blockdev driver=file,node-name=f0,filename=$DISK -device floppy,drive=f0 -no-reboot -kernel isodir/boot/test.bin
+  qemu-system-i386 -monitor unix:qemu-monitor-socket,server,nowait $MYOS_QEMU_PARAMS -kernel isodir/boot/test.bin
 elif [ "$1" = "run" ] 
 then
   $ENVIRONMENT ./build.sh install && \
   $ENVIRONMENT ./make_iso.sh myos && \
-  qemu-system-i386 -m 128 -monitor unix:qemu-monitor-socket,server,nowait -blockdev driver=file,node-name=f0,filename=$DISK -device floppy,drive=f0 -no-reboot -kernel isodir/boot/myos.bin
+  qemu-system-i386 -monitor unix:qemu-monitor-socket,server,nowait $MYOS_QEMU_PARAMS -kernel isodir/boot/myos.bin
 else 
   echo "Unknown param: clean, build, run"
 fi

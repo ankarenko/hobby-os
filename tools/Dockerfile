@@ -93,6 +93,10 @@ ENV SYSROOT=/os/sysroot
 
 COPY ./tools/build_libc.sh ./
 RUN chmod +x ./build_libc.sh
+
+COPY ./tools/configure_libc.sh ./
+RUN chmod +x ./configure_libc.sh
+
 #RUN \
 #    chmod +x ./build_libc.sh && \
 #    mkdir -p build-newlib && cd build-newlib && \

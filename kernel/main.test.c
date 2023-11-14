@@ -9,7 +9,6 @@
 #include "kernel/cpu/idt.h"
 #include "kernel/cpu/tss.h"
 #include "kernel/devices/kybrd.h"
-#include "kernel/fs/fat12/fat12.h"
 #include "kernel/fs/flpydsk.h"
 #include "kernel/memory/kernel_info.h"
 #include "kernel/memory/malloc.h"

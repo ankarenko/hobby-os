@@ -5,7 +5,7 @@
       "label": "Launch QEMU2",
       "type": "shell",
       //"command": "echo Hello",
-      "command": "qemu-system-i386 -S -gdb tcp::1234 -no-reboot -daemonize -blockdev driver=file,node-name=f0,filename=./fat32_floppy.img -device floppy,drive=f0 -boot d -kernel isodir/boot/myos.bin -m 128 || exit 0",
+      "command": "qemu-system-i386 -S -gdb tcp::1234 ${env:MYOS_QEMU_PARAMS} -boot d -daemonize -kernel isodir/boot/myos.bin || exit 0",
       "dependsOn": [
         "Build"
       ]
@@ -15,7 +15,7 @@
       "label": "Launch test QEMU",
       "type": "shell",
       //"command": "echo Hello",
-      "command": "qemu-system-i386 -S -gdb tcp::1234 -no-reboot -daemonize -blockdev driver=file,node-name=f0,filename=./fat32_floppy.img -device floppy,drive=f0 -boot d -kernel isodir/boot/test.bin -m 128 || exit 0",
+      "command": "qemu-system-i386 -S -gdb tcp::1234 ${env:MYOS_QEMU_PARAMS} -daemonize -boot d -kernel isodir/boot/test.bin || exit 0",
       "dependsOn": [
         "Build-TEST"
       ]
@@ -35,14 +35,6 @@
       "label": "Kill QEMU",
       "type": "shell",
       "command": "kill -9 $(ps -ef | awk '/[q]emu-system-i386/{print $2}')",
-    },
-    {
-      "label": "Launch QEMU",
-      "command": "qemu-system-i386",
-      "args": ["-S", "-gdb", "tcp::1234", "-m", "128", "-daemonize", "-monitor", "unix:qemu-monitor-socket,server,nowait", "-boot", "d", "-kernel", "isodir/boot/myos.bin"],
-      "dependsOn": [
-        "Build"
-      ]
     }
   ]
 }

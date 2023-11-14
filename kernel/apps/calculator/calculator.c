@@ -5,38 +5,23 @@
 
 #include "../../../ports/newlib/myos/print.h"
 
-static char* str = "Hello, world!";
-static int len = 16;
-
 void main(int argc, char** argv) {
   FILE* stream = fopen("test.txt", "a+");
   
   if (fputs("Hello, world\n!", stream) == 0) {
     fflush(stream);
-
     int32_t size = 100;
     char* buf = calloc(size + 1, sizeof(char));
     memset(buf, 0, size);
     
     if (fseek(stream, 0, SEEK_SET) == 0) {
       print("\n_______________________________\n");
-
       while (fgets(buf, size, stream) != NULL) {
         print("%s", buf);
       }
-
       print("\n________________________________\n");
     }
-
-    
-
-    // Read the content and print it
-    /*
-    while(fgets(buf, size, stream) != NULL) {
-      buf[size] = '\0';
-      print("%s", buf);
-    }
-    */
+    fclose(stream);
     free(buf);
   }
   
