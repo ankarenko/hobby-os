@@ -5,8 +5,6 @@
 #include "kernel/memory/malloc.h"
 #include "kernel/util/debug.h"
 
-//static char buf[BYTES_PER_SECTOR];
-
 char* bread(char *dev_name, sect_t sector, uint32_t size) {
   pata_device *device = get_pata_device(dev_name);
 	char *buf = kcalloc(div_ceil(size, BYTES_PER_SECTOR) * BYTES_PER_SECTOR, sizeof(char));

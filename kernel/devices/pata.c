@@ -2,6 +2,7 @@
 
 #include "kernel/cpu/hal.h"
 #include "kernel/util/errno.h"
+#include "kernel/proc/task.h"
 #include "kernel/util/string/string.h"
 
 #define MAX_ATA_DEVICE 4
@@ -50,6 +51,8 @@ static uint8_t pata_polling(pata_device *device) {
       return ATA_POLLING_SUCCESS;
     if ((status & ATA_SREG_ERR) || (status & ATA_SREG_DF))
       return ATA_POLLING_ERR;
+
+    thread_sleep(1);
   }
 }
 

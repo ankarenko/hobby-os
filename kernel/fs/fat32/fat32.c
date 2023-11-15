@@ -111,10 +111,12 @@ static void ls_dir(uint32_t offset) {
 
   printf("\n");
   for (int32_t i = 0; i < minfo.sector_entries_count; i++, p_iter++) {
-    if (p_dir->filename[0] == FAT_DIRENT_NEVER_USED)
+    if (p_iter->filename[0] == FAT_DIRENT_NEVER_USED)
       break;
     print_dir_record(p_iter);
   }
+
+  kfree(p_dir);
 }
 
 static void to_dos_name(const char* name, char* fname) {
@@ -184,9 +186,11 @@ static dir_item* find_and_create_dir_entry(
       if (c == FAT_DIRENT_NEVER_USED || c == FAT_DIRENT_DELETED) {  // empty space
         memcpy(iter, item, sizeof(dir_item));
         WDISK(dir_sector + i, p_dir);
+        kfree(p_dir);
         return iter;
       }
     }
+    kfree(p_dir);
   }
 
   return NULL;
@@ -242,9 +246,11 @@ static bool clear_dir_entry(char* name, const sect_t dir_sector) {
         } while (cluster < FAT_ATTR_EOF);
 
         update_fat(max_cluster);
+        kfree(p_dir);
         return true;
       }
     }
+    kfree(p_dir);
   }
 
   return false;
@@ -290,9 +296,11 @@ static bool find_subdir(
 
         p_file->p_table_entry.index = j;
         p_file->p_table_entry.dir_sector = dir_sector + i;
+        kfree(p_dir);
         return true;
       }
     }
+    kfree(p_dir);
   }
 
   return false;
@@ -459,6 +467,7 @@ static bool init_new_file(const char* filename, dir_item* item) {
     void* data = RDISK(sector + i);
     memset(data, 0, minfo.bytes_per_sect);
     WDISK(sector + i, data);
+    kfree(data);
   }
   
   fat[cluster] = FAT_ATTR_EOF;
@@ -517,6 +526,7 @@ static int32_t delete_dir(const char* name, sect_t dir_sector) {
   dir_item* p_dir = (dir_item*)RDISK(entry.dir_sector);
   p_dir[entry.index].filename[0] = FAT_DIRENT_DELETED;
   WDISK(entry.dir_sector, p_dir);
+  kfree(p_dir);
 
   uint32_t max_cluster = 0;
 
@@ -553,6 +563,8 @@ static int32_t delete_dir(const char* name, sect_t dir_sector) {
     if (changed) {  // update
       WDISK(del_dir_sector + i, p_dir);
     }
+
+    kfree(p_dir);
   }
 
   fat[file.first_cluster] = FAT_ATTR_FREE;
@@ -722,6 +734,7 @@ int32_t fat_read(vfs_file* file, uint8_t* buffer, uint32_t length, off_t ppos) {
         int32_t left_len_file = file->file_length - (ppos + length - left_len);
         uint32_t to_read = min(left_len_file, min(left_len, minfo.bytes_per_sect - offset));
         memcpy(cur, sector + offset, to_read);
+        kfree(sector);
         file->f_pos += to_read;
         left_len -= to_read;
         cur += to_read;
@@ -819,15 +832,18 @@ void fat_mount() {
   minfo.fat_entries_count = (minfo.fat_size_sect * minfo.bytes_per_sect) / minfo.fat_entry_size;
   fat = kcalloc(minfo.fat_entries_count, minfo.fat_entry_size);
 
+  kfree(bootsector);
+
   for (int i = 0; i < minfo.fat_size_sect; ++i) {
     uint32_t* fat_ptr = (uint32_t*)RDISK(minfo.fat_offset + i);
     memcpy((uint8_t*)fat + i * minfo.bytes_per_sect, fat_ptr, minfo.bytes_per_sect);
+    kfree(fat_ptr);
   }
 
   memset(&empty_dir_entry, 0, sizeof(dir_item));
 
   // read fat table
-  uint32_t* fat_ptr = (uint32_t*)RDISK(minfo.fat_offset);
+  //uint32_t* fat_ptr = (uint32_t*)RDISK(minfo.fat_offset);
   if (fat[1] != 0xfffffff) {
     PANIC("Invalid fat table at sector: %d", minfo.fat_offset);
   }
@@ -887,6 +903,7 @@ ssize_t fat_write(vfs_file *file, const char *buf, size_t count, off_t ppos) {
       size_t to_write = min(minfo.bytes_per_sect - index, left); 
       memcpy(&data[index], &buf[0], to_write);
       WDISK(sect + i, data);
+      kfree(data);
       cur_pos += to_write;
       left -= to_write;
       KASSERT(left >= 0);
@@ -901,6 +918,7 @@ ssize_t fat_write(vfs_file *file, const char *buf, size_t count, off_t ppos) {
   dir_item* dir = RDISK(file->p_table_entry.dir_sector);
   dir[file->p_table_entry.index].file_size = file->file_length;
   WDISK(file->p_table_entry.dir_sector, dir);
+  kfree(dir);
   return count;
 }
 
