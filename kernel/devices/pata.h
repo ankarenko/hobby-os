@@ -37,7 +37,6 @@ typedef struct _pata_device {
 uint8_t pata_init();
 int8_t pata_read(pata_device *device, uint32_t lba, uint8_t n_sectors, uint16_t *buffer);
 int8_t pata_write(pata_device *device, uint32_t lba, uint8_t n_sectors, uint16_t *buffer);
-int8_t patapi_read(pata_device *device, uint32_t lba, uint8_t n_sectors, uint16_t *buffer);
 pata_device *get_pata_device(char *dev_name);
 
 #endif

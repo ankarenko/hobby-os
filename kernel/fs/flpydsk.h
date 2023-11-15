@@ -4,7 +4,9 @@
 
 #include <stdint.h>
 
-#define FLPYDSK_SECTOR_SIZE 512
+#include "kernel/fs/vfs.h"
+
+#define FLPYDSK_SECTOR_SIZE BYTES_PER_SECTOR
 
 //! install floppy driver
 void flpydsk_install(uint32_t irq);

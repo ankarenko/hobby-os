@@ -22,6 +22,7 @@
 #include "kernel/proc/task.h"
 #include "kernel/system/sysapi.h"
 #include "kernel/fs/fat32/fat32.h"
+#include "kernel/devices/pata.h"
 #include "multiboot.h"
 
 void cmd_init();
@@ -336,8 +337,11 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
 
   vmm_init();
 
-  flpydsk_set_working_drive(0);
-  flpydsk_install(IRQ6);
+  //pci_init();
+	pata_init();
+
+  //flpydsk_set_working_drive(0);
+  //flpydsk_install(IRQ6);
 
   fat32_init();
 

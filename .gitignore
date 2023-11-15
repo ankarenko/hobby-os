@@ -22,3 +22,4 @@ ports/newlib/myos/*.m4
 ports/newlib/myos/configure
 qemu-monitor-socket
 ports/newlib/myos/Makefile.in
+zshrc

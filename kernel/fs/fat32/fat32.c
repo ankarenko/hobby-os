@@ -7,12 +7,12 @@
 #include "kernel/util/ctype.h"
 #include "kernel/util/math.h"
 #include "kernel/fs/bpb.h"
-#include "kernel/fs/flpydsk.h"
 #include "kernel/fs/vfs.h"
 #include "kernel/memory/malloc.h"
 #include "kernel/system/time.h"
 #include "kernel/util/debug.h"
 #include "kernel/util/path.h"
+#include "kernel/fs/buffer.h"
 
 #include "./fat32.h"
 
@@ -29,6 +29,11 @@ A/B/C.ext
 
 #define FAT_LEGACY_FILENAME_SIZE 11  // 8.3
 #define MAX_FILE_PATH 100
+
+static char* device_name = "/dev/hda";
+
+#define RDISK(sector) bread(device_name, sector, BYTES_PER_SECTOR)
+#define WDISK(sector, buf) bwrite(device_name, sector, buf, BYTES_PER_SECTOR);
 
 /*
   fat[0] // 0xfffffff8 hard, 0xfffffff0 floppy, 0xfffffffa ram
@@ -90,8 +95,8 @@ static void print_dir_record(dir_item* p_dir) {
 static void update_fat_sect(uint32_t index) {
   uint32_t sector = index / minfo.sector_entries_count;
   uint8_t* addr = &fat[sector * minfo.sector_entries_count];
-  flpydsk_set_buffer(addr);
-  flpydsk_write_sector(sector + minfo.fat_offset);
+  
+  WDISK(sector + minfo.fat_offset, addr);
 }
 
 static void update_fat(uint32_t max_cluster) {
@@ -101,13 +106,14 @@ static void update_fat(uint32_t max_cluster) {
 }
 
 static void ls_dir(uint32_t offset) {
-  dir_item* p_dir = (dir_item*)flpydsk_read_sector(offset);
+  dir_item* p_dir = (dir_item*)RDISK(offset);
+  dir_item* p_iter = p_dir;
 
   printf("\n");
-  for (int32_t i = 0; i < minfo.sector_entries_count; i++, p_dir++) {
+  for (int32_t i = 0; i < minfo.sector_entries_count; i++, p_iter++) {
     if (p_dir->filename[0] == FAT_DIRENT_NEVER_USED)
       break;
-    print_dir_record(p_dir);
+    print_dir_record(p_iter);
   }
 }
 
@@ -171,14 +177,13 @@ static dir_item* find_and_create_dir_entry(
   dir_item* item
 ) {
   for (int32_t i = 0; i < minfo.sect_per_cluster; ++i) {
-    dir_item* p_dir = (dir_item*)flpydsk_read_sector(dir_sector + i);
+    dir_item* p_dir = (dir_item*)RDISK(dir_sector + i);
     dir_item* iter = p_dir;
     for (int32_t j = 0; j < minfo.sector_entries_count; j++, iter++) {
       uint8_t c = iter->filename[0];
       if (c == FAT_DIRENT_NEVER_USED || c == FAT_DIRENT_DELETED) {  // empty space
         memcpy(iter, item, sizeof(dir_item));
-        flpydsk_set_buffer(p_dir);
-        flpydsk_write_sector(dir_sector + i);
+        WDISK(dir_sector + i, p_dir);
         return iter;
       }
     }
@@ -207,7 +212,7 @@ static bool clear_dir_entry(char* name, const sect_t dir_sector) {
   to_dos_name(name, dos_name);
 
   for (int32_t i = 0; i < minfo.sect_per_cluster; ++i) {
-    dir_item* p_dir = (dir_item*)flpydsk_read_sector(dir_sector + i);
+    dir_item* p_dir = (dir_item*)RDISK(dir_sector + i);
     dir_item* iter = p_dir;
 
     for (int32_t j = 0; j < minfo.sector_entries_count; j++, iter++) {
@@ -223,8 +228,7 @@ static bool clear_dir_entry(char* name, const sect_t dir_sector) {
 
       if (is_equal_name(dos_name, iter->filename)) {
         iter->filename[0] = FAT_DIRENT_DELETED;
-        flpydsk_set_buffer(p_dir);
-        flpydsk_write_sector(dir_sector + i);
+        WDISK(dir_sector + i, p_dir);
 
         uint32_t cluster = pack_cluster(iter);
         uint32_t max_cluster = cluster;
@@ -255,7 +259,7 @@ static bool find_subdir(
   to_dos_name(name, dos_name);
 
   for (int32_t i = 0; i < minfo.sect_per_cluster; ++i) {
-    dir_item* p_dir = (dir_item*)flpydsk_read_sector(dir_sector + i);
+    dir_item* p_dir = (dir_item*)RDISK(dir_sector + i);
     dir_item* p_iter = p_dir;
 
     for (int32_t j = 0; j < minfo.sector_entries_count; j++, p_iter++) {
@@ -452,10 +456,9 @@ static bool init_new_file(const char* filename, dir_item* item) {
   // set chunk to null
   sect_t sector = cluster_to_sector(cluster);
   for (int i = 0; i < minfo.sect_per_cluster; ++i) {
-    void* data = flpydsk_read_sector(sector + i);
+    void* data = RDISK(sector + i);
     memset(data, 0, minfo.bytes_per_sect);
-    flpydsk_set_buffer(data);
-    flpydsk_write_sector(sector + i);
+    WDISK(sector + i, data);
   }
   
   fat[cluster] = FAT_ATTR_EOF;
@@ -511,16 +514,15 @@ static int32_t delete_dir(const char* name, sect_t dir_sector) {
   }
 
   table_entry entry = file.p_table_entry;
-  dir_item* p_dir = (dir_item*)flpydsk_read_sector(entry.dir_sector);
+  dir_item* p_dir = (dir_item*)RDISK(entry.dir_sector);
   p_dir[entry.index].filename[0] = FAT_DIRENT_DELETED;
-  flpydsk_set_buffer(p_dir);
-  flpydsk_write_sector(entry.dir_sector);
+  WDISK(entry.dir_sector, p_dir);
 
   uint32_t max_cluster = 0;
 
   sect_t del_dir_sector = cluster_to_sector(file.first_cluster);
   for (int32_t i = 0; i < minfo.sect_per_cluster; ++i) {
-    dir_item* p_dir = (dir_item*)flpydsk_read_sector(del_dir_sector + i);
+    dir_item* p_dir = (dir_item*)RDISK(del_dir_sector + i);
     dir_item* iter = p_dir;
     bool changed = false;
     for (int32_t j = 0; j < minfo.sector_entries_count; j++, iter++) {
@@ -549,8 +551,7 @@ static int32_t delete_dir(const char* name, sect_t dir_sector) {
     }
 
     if (changed) {  // update
-      flpydsk_set_buffer(p_dir);
-      flpydsk_write_sector(del_dir_sector + i);
+      WDISK(del_dir_sector + i, p_dir);
     }
   }
 
@@ -717,7 +718,7 @@ int32_t fat_read(vfs_file* file, uint8_t* buffer, uint32_t length, off_t ppos) {
     sect_t sect_num = cluster_to_sector(cur_cluster);
     for (uint32_t i = 0; i < minfo.sect_per_cluster; ++i) {
       if (left_len > 0) {
-        uint8_t* sector = flpydsk_read_sector(sect_num + i);
+        uint8_t* sector = RDISK(sect_num + i);
         int32_t left_len_file = file->file_length - (ppos + length - left_len);
         uint32_t to_read = min(left_len_file, min(left_len, minfo.bytes_per_sect - offset));
         memcpy(cur, sector + offset, to_read);
@@ -792,7 +793,7 @@ int32_t fat_mkdir(const char* dir_path) {
 }
 
 void fat_mount() {
-  p_bootsector bootsector = (p_bootsector)flpydsk_read_sector(0);
+  p_bootsector bootsector = (p_bootsector)RDISK(0);
 
   if (!is_fat32(bootsector)) {
     PANIC("The disk is not fat32 formatted", "");
@@ -810,7 +811,7 @@ void fat_mount() {
   minfo.sect_per_cluster = bootsector->bpb.sect_per_cluster;
   minfo.data_offset = bootsector->bpb.reserved_sectors + bootsector->bpb.number_of_fats * minfo.fat_size_sect;
   minfo.bytes_per_sect = bootsector->bpb.bytes_per_sector;
-  KASSERT(FLPYDSK_SECTOR_SIZE == minfo.bytes_per_sect);
+  KASSERT(BYTES_PER_SECTOR == minfo.bytes_per_sect);
   minfo.sector_entries_count = minfo.bytes_per_sect / sizeof(uint32_t);
   minfo.fat_entry_size = FAT_ENTRY_SIZE;
   uint32_t offset_in_data_cluster = (bootsector->bpb_ext.root_cluster - bootsector->bpb.number_of_fats) * bootsector->bpb.sect_per_cluster;
@@ -819,14 +820,14 @@ void fat_mount() {
   fat = kcalloc(minfo.fat_entries_count, minfo.fat_entry_size);
 
   for (int i = 0; i < minfo.fat_size_sect; ++i) {
-    uint32_t* fat_ptr = (uint32_t*)flpydsk_read_sector(minfo.fat_offset + i);
+    uint32_t* fat_ptr = (uint32_t*)RDISK(minfo.fat_offset + i);
     memcpy((uint8_t*)fat + i * minfo.bytes_per_sect, fat_ptr, minfo.bytes_per_sect);
   }
 
   memset(&empty_dir_entry, 0, sizeof(dir_item));
 
   // read fat table
-  uint32_t* fat_ptr = (uint32_t*)flpydsk_read_sector(minfo.fat_offset);
+  uint32_t* fat_ptr = (uint32_t*)RDISK(minfo.fat_offset);
   if (fat[1] != 0xfffffff) {
     PANIC("Invalid fat table at sector: %d", minfo.fat_offset);
   }
@@ -881,12 +882,11 @@ ssize_t fat_write(vfs_file *file, const char *buf, size_t count, off_t ppos) {
       if (ppos >= cursor) {
         continue;
       }
-      uint8_t* data = flpydsk_read_sector(sect + i);
+      uint8_t* data = RDISK(sect + i);
       size_t index = cur_pos % minfo.bytes_per_sect;
       size_t to_write = min(minfo.bytes_per_sect - index, left); 
       memcpy(&data[index], &buf[0], to_write);
-      flpydsk_set_buffer(data);
-      flpydsk_write_sector(sect + i);
+      WDISK(sect + i, data);
       cur_pos += to_write;
       left -= to_write;
       KASSERT(left >= 0);
@@ -898,11 +898,9 @@ ssize_t fat_write(vfs_file *file, const char *buf, size_t count, off_t ppos) {
   // update file stats
   file->f_pos = cur_pos;
   file->file_length = max(file->f_pos, file->file_length);
-  dir_item* dir = flpydsk_read_sector(file->p_table_entry.dir_sector);
+  dir_item* dir = RDISK(file->p_table_entry.dir_sector);
   dir[file->p_table_entry.index].file_size = file->file_length;
-  flpydsk_set_buffer(dir);
-  flpydsk_write_sector(file->p_table_entry.dir_sector);
-
+  WDISK(file->p_table_entry.dir_sector, dir);
   return count;
 }
 

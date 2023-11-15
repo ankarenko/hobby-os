@@ -10,7 +10,7 @@
 #include "kernel/system/time.h"
 
 #define DEVICE_MAX 26
-
+#define BYTES_PER_SECTOR 512 
 /**
  *	File flags
  */
