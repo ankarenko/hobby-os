@@ -5,7 +5,7 @@
 #include "kernel/proc/task.h"
 #include "kernel/util/string/string.h"
 
-#define MAX_ATA_DEVICE 4
+#define MAX_ATA_DEVICE 1
 
 static pata_device devices[MAX_ATA_DEVICE];
 static uint8_t number_of_actived_devices = 0;
@@ -51,8 +51,6 @@ static uint8_t pata_polling(pata_device *device) {
       return ATA_POLLING_SUCCESS;
     if ((status & ATA_SREG_ERR) || (status & ATA_SREG_DF))
       return ATA_POLLING_ERR;
-
-    //thread_sleep(10);
   }
 }
 
@@ -81,8 +79,9 @@ static uint8_t pata_identify(pata_device *device) {
 }
 
 static void pata_wait_irq() {
-  while (!ata_irq_called)
-    ;
+  while (!ata_irq_called) {
+    thread_sleep(10);
+  };
   ata_irq_called = false;
 }
 
@@ -162,16 +161,20 @@ pata_device *get_pata_device(char *dev_name) {
   return NULL;
 }
 
+
 uint8_t pata_init() {
   memset(&devices, 0, MAX_ATA_DEVICE * sizeof(pata_device));
+
+  // TODO: though it's not a good idea to do polling in multitasking systems,
+  // but right now it works. probabbly needы to be changed in future
 
   register_interrupt_handler(ATA0_IRQ, pata_irq);
   register_interrupt_handler(ATA1_IRQ, pata_irq);
 
   pata_detect(ATA0_IO_ADDR1, ATA0_IO_ADDR2, ATA0_IRQ, true, "/dev/hda");
-  pata_detect(ATA0_IO_ADDR1, ATA0_IO_ADDR2, ATA0_IRQ, false, "/dev/hdb");
-  pata_detect(ATA1_IO_ADDR1, ATA1_IO_ADDR2, ATA1_IRQ, true, "/dev/hdc");
-  pata_detect(ATA1_IO_ADDR1, ATA1_IO_ADDR2, ATA1_IRQ, false, "/dev/hdd");
+  //pata_detect(ATA0_IO_ADDR1, ATA0_IO_ADDR2, ATA0_IRQ, false, "/dev/hdb");
+  //pata_detect(ATA1_IO_ADDR1, ATA1_IO_ADDR2, ATA1_IRQ, true, "/dev/hdc");
+  //pata_detect(ATA1_IO_ADDR1, ATA1_IO_ADDR2, ATA1_IRQ, false, "/dev/hdd");
 
   return 0;
 }
