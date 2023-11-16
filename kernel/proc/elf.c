@@ -68,7 +68,9 @@ bool elf_load_image(
   thread* th, 
   virtual_addr* entry
 ) {
+  
   uint8_t* elf_file = vfs_read(app_path);
+  //return true;
   process* parent = th->parent;
 
   if (!elf_file) {

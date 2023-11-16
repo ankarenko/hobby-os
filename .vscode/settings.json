@@ -36,6 +36,10 @@
     "syscall.h": "c",
     "unistd.h": "c",
     "print.h": "c",
-    "*.tcc": "c"
+    "*.tcc": "c",
+    "array": "c",
+    "string_view": "c",
+    "initializer_list": "c",
+    "utility": "c"
   }
 }

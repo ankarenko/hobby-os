@@ -52,7 +52,7 @@ static uint8_t pata_polling(pata_device *device) {
     if ((status & ATA_SREG_ERR) || (status & ATA_SREG_DF))
       return ATA_POLLING_ERR;
 
-    thread_sleep(1);
+    //thread_sleep(10);
   }
 }
 
