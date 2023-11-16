@@ -186,6 +186,12 @@ bool run_cmd(char* cmd_buf) {
     //vfs_fwrite(fd, line, 100);
     //vfs_fwrite(fd, "!", 1);
     
+  } else if (strcmp(cmd_buf, "test") == 0) {
+    printf("\nStart:");
+    uint8_t* program = vfs_read("calc.exe");
+    kfree(program);
+
+    printf("\nEnd");
   } else if (strcmp(cmd_buf, "rm") == 0) {
     char filepath[100];
 

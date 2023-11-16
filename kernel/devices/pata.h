@@ -7,10 +7,8 @@
 #include "kernel/cpu/idt.h"
 
 #define ATA0_IO_ADDR1 0x1F0
-#define ATA0_IO_ADDR2 0x3F0
 #define ATA0_IRQ IRQ14
 #define ATA1_IO_ADDR1 0x170
-#define ATA1_IO_ADDR2 0x370
 #define ATA1_IRQ IRQ15
 
 #define ATA_SREG_ERR 0x01

@@ -132,6 +132,8 @@ void vmm_init_and_map(struct pdirectory* va_dir, uint32_t vaddr, uint32_t paddr,
   pd_entry_add_attrib(entry, I86_PTE_PRESENT | I86_PTE_WRITABLE);
 }
 
+
+// TODO: dereferencing zero address should though a page fault!!!
 void vmm_init() {
   uint32_t pa_dir = (uint32_t)pmm_alloc_frame();
   struct pdirectory* va_dir = (struct pdirectory*)(pa_dir + KERNEL_HIGHER_HALF);
@@ -148,7 +150,7 @@ void vmm_init() {
   // NOTE: MQ 2019-05-08 Using the recursive page directory trick when paging (map last entry to directory)
   pd_entry* entry = &va_dir->m_entries[TABLES_PER_DIR - 1];
   //va_dir->m_entries[1023] = (pa_dir & 0xFFFFF000) | I86_PTE_PRESENT | I86_PTE_WRITABLE;
-
+  
   pd_entry_set_frame(entry, pa_dir);
   pd_entry_add_attrib(entry, I86_PDE_PRESENT | I86_PDE_WRITABLE);
 

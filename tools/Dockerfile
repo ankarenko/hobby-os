@@ -35,30 +35,37 @@ RUN apt install nano -y
 
 # making preparation to port newlib
 WORKDIR $HOME/src
-RUN \
-  wget -c ftp://sourceware.org/pub/newlib/newlib-2.5.0.tar.gz -O - | tar -xz && \
-  wget -c https://ftp.gnu.org/gnu/automake/automake-1.11.tar.gz -O - | tar -xz && \
-  wget -c https://ftp.gnu.org/gnu/autoconf/autoconf-2.65.tar.gz -O - | tar -xz
+RUN wget -c ftp://sourceware.org/pub/newlib/newlib-2.5.0.tar.gz -O - | tar -xz
 
 RUN mkdir /root/bin
-ENV PATH="$PATH:/root/bin"
 
-#install autoconf 
+# install automake and autoconf
+WORKDIR $HOME/src
+ARG AUTOMAKE_VER=1.11
+ARG AUTOCONF_VER=2.65
+ENV PATH="$PATH:/root/bin/autoconf-$AUTOCONF_VER/bin:/root/bin/automake-$AUTOMAKE_VER/bin"
+
 RUN \
-  mkdir build-autoconf && cd build-autoconf && \
-  ../autoconf-2.65/configure --prefix=/root/ && \
+  wget -c https://ftp.gnu.org/gnu/automake/automake-$AUTOMAKE_VER.tar.gz -O - | tar -xz && \
+  wget -c https://ftp.gnu.org/gnu/autoconf/autoconf-$AUTOCONF_VER.tar.gz -O - | tar -xz
+
+RUN mkdir /root/bin/autoconf-$AUTOCONF_VER && mkdir /root/bin/automake-$AUTOMAKE_VER
+
+RUN \
+  mkdir build-autoconf-$AUTOCONF_VER && cd build-autoconf-$AUTOCONF_VER && \
+  ../autoconf-$AUTOCONF_VER/configure --prefix=/root/bin/autoconf-$AUTOCONF_VER && \
+  make && make install 
+
+RUN \
+  mkdir build-automake-$AUTOMAKE_VER && cd build-automake-$AUTOMAKE_VER && \
+  ../automake-$AUTOMAKE_VER/configure --prefix=/root/bin/automake-$AUTOMAKE_VER && \
   make && make install
-
-# install automake
-RUN \
-  mkdir build-automake && cd build-automake && \
-  ../automake-1.11/configure --prefix=/root/ && \
-  make && make install && \
-  rm -rf *
 
 # fix of Unescaped left brace in regex is illegal here in regex; marked by <-- HERE in m/\${ <-- HERE ([^ \t=:+{}]+)}/ at /root/bin/automake line 4113.
 # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82856#c3
-RUN sed -i '/$text =~ s\/\\${(\[\^ \\t=:+{}\]+)}\/&substitute_ac_subst_variables_worker ($1)\/ge;/c $text =~ s/\\$\\{([^ \t=:+{}]+)\\}/&substitute_ac_subst_variables_worker ($1)/ge;' /root/bin/automake
+RUN sed -i \
+  '/$text =~ s\/\\${(\[\^ \\t=:+{}\]+)}\/&substitute_ac_subst_variables_worker ($1)\/ge;/c $text =~ s/\\$\\{([^ \t=:+{}]+)\\}/&substitute_ac_subst_variables_worker ($1)/ge;' \
+  /root/bin/automake-$AUTOMAKE_VER/bin/automake
 
 # add myos to config files
 # source: https://wiki.osdev.org/Porting_Newlib
@@ -97,12 +104,32 @@ RUN chmod +x ./build_libc.sh
 COPY ./tools/configure_libc.sh ./
 RUN chmod +x ./configure_libc.sh
 
-#RUN \
-#    chmod +x ./build_libc.sh && \
-#    mkdir -p build-newlib && cd build-newlib && \
-#    ../newlib-2.5.0/configure --prefix=/usr --target=i686-myos
 
-#RUN sh ./build_libc.sh
+# build toolchain
+# install automake and autoconf
+WORKDIR $HOME/src
+ARG AUTOMAKE_VER=1.16.5
+ARG AUTOCONF_VER=2.71
+
+RUN \
+  wget -c https://ftp.gnu.org/gnu/automake/automake-$AUTOMAKE_VER.tar.gz -O - | tar -xz && \
+  wget -c https://ftp.gnu.org/gnu/autoconf/autoconf-$AUTOCONF_VER.tar.gz -O - | tar -xz
+
+RUN mkdir /root/bin/autoconf-$AUTOCONF_VER && mkdir /root/bin/automake-$AUTOMAKE_VER
+
+RUN \
+  mkdir build-autoconf-$AUTOCONF_VER && cd build-autoconf-$AUTOCONF_VER && \
+  ../autoconf-$AUTOCONF_VER/configure --prefix=/root/bin/autoconf-$AUTOCONF_VER && \
+  make && make install 
+
+RUN \
+  mkdir build-automake-$AUTOMAKE_VER && cd build-automake-$AUTOMAKE_VER && \
+  ../automake-$AUTOMAKE_VER/configure --prefix=/root/bin/automake-$AUTOMAKE_VER && \
+  make && make install
+
+# switch betweeen versions
+# export PATH=/root/bin/automake-1.16.5/bin:/root/bin/autoconf-2.71/bin:$PATH
+# export PATH=/root/bin/automake-1.11/bin:/root/bin/autoconf-2.65/bin:$PATH
 
 VOLUME /os
 VOLUME /src/newlib-2.5.0/newlib/libc/sys/myos

@@ -5,7 +5,9 @@
 #include "kernel/proc/task.h"
 #include "kernel/util/string/string.h"
 
-#define MAX_ATA_DEVICE 1
+// support only the primary bus (slave and master)
+// the secondary bus is ignored
+#define MAX_ATA_DEVICE 2  
 
 static pata_device devices[MAX_ATA_DEVICE];
 static uint8_t number_of_actived_devices = 0;
@@ -85,11 +87,11 @@ static void pata_wait_irq() {
   ata_irq_called = false;
 }
 
-static struct ata_device *pata_detect(uint16_t io_addr1, uint16_t io_addr2, uint8_t irq, bool is_master, char *dev_name) {
+static struct ata_device *pata_detect(uint16_t io_addr1, uint8_t irq, bool is_master, char *dev_name) {
   pata_device *device = &devices[number_of_actived_devices];
 
   device->io_base = io_addr1;
-  device->associated_io_base = io_addr2;
+  //device->associated_io_base = io_addr2;
   device->irq = irq;
   device->is_master = is_master;
 
@@ -144,7 +146,7 @@ int8_t pata_write(pata_device *device, uint32_t lba, uint8_t n_sectors, uint16_t
 
   for (int i = 0; i < n_sectors; ++i) {
     outportsw(device->io_base, buffer + i * 256, 256);
-    outportw(device->io_base + 7, 0xE7);
+    outportw(device->io_base + 7, 0xE7); // clear cache
     pata_400ns_delays(device);
 
     if (pata_polling(device) == ATA_POLLING_ERR)
@@ -166,15 +168,12 @@ uint8_t pata_init() {
   memset(&devices, 0, MAX_ATA_DEVICE * sizeof(pata_device));
 
   // TODO: though it's not a good idea to do polling in multitasking systems,
-  // but right now it works. probabbly needы to be changed in future
-
+  // it works and it's fast enough. Probably IRQs needs to be used instead in the future
   register_interrupt_handler(ATA0_IRQ, pata_irq);
   register_interrupt_handler(ATA1_IRQ, pata_irq);
 
-  pata_detect(ATA0_IO_ADDR1, ATA0_IO_ADDR2, ATA0_IRQ, true, "/dev/hda");
-  //pata_detect(ATA0_IO_ADDR1, ATA0_IO_ADDR2, ATA0_IRQ, false, "/dev/hdb");
-  //pata_detect(ATA1_IO_ADDR1, ATA1_IO_ADDR2, ATA1_IRQ, true, "/dev/hdc");
-  //pata_detect(ATA1_IO_ADDR1, ATA1_IO_ADDR2, ATA1_IRQ, false, "/dev/hdd");
-
+  pata_detect(ATA0_IO_ADDR1, ATA0_IRQ, true, "/dev/hda");
+  pata_detect(ATA0_IO_ADDR1, ATA0_IRQ, false, "/dev/hdb");
+  
   return 0;
 }
