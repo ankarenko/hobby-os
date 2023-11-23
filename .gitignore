@@ -24,3 +24,5 @@ qemu-monitor-socket
 ports/newlib/myos/Makefile.in
 zshrc
 cross-compile-tips.txt
+hint.txt
+test.txt

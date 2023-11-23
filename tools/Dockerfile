@@ -7,6 +7,10 @@ ENV PATH="$PREFIX/bin:$PATH"
 ENV BINUTILS_VERSION="2.39"
 ENV GCC_VERSION="12.2.0"
 
+# switch betweeen versions
+# export PATH=/root/bin/automake-1.15.1/bin:/root/bin/autoconf-2.69/bin:$PATH
+# export PATH=/root/bin/automake-1.11/bin:/root/bin/autoconf-2.65/bin:$PATH
+
 RUN \
   apt update && \
   apt install wget -y && \
@@ -72,7 +76,7 @@ RUN sed -i \
 # add myos to config files
 # source: https://wiki.osdev.org/Porting_Newlib
 RUN \
-  sed -i '1000,$s/-gnu\* |/& -myos* |/' newlib-2.5.0/config.sub && \
+  sed -i '1375,+10s/-gnu\* |/& -myos* |/' newlib-2.5.0/config.sub && \
   sed -i 's/case "${host_cpu}" in/&\ni[3-7]86-*-myos*)\nsys_dir=myos;;/' newlib-2.5.0/newlib/configure.host && \
   echo "sys_dir=myos" >> newlib-2.5.0/newlib/configure.host && \
   sed -i 's/case ${sys_dir} in/&\nmyos) AC_CONFIG_SUBDIRS(myos) ;;/' newlib-2.5.0/newlib/libc/sys/configure.in && \
@@ -132,10 +136,10 @@ RUN \
 # configure binutils to be used with our myos and build it
 RUN \
   export PATH=/root/bin/automake-1.15.1/bin:/root/bin/autoconf-2.69/bin:$PATH && \
-  sed -i '1720,$s/gnu\* |/& myos* |/1' binutils-2.39/config.sub && \
+  sed -i '1720,+10s/gnu\* |/& myos* |/' binutils-2.39/config.sub && \
   sed -i 's/# START OF targmatch.h/&\n  i[3-7]86-*-myos*)\n    targ_defvec=i386_elf32_vec\n    targ_selvecs=\n    targ64_selvecs=x86_64_elf64_vec\n    ;;\n#ifdef BFD64\n  x86_64-*-myos*)\n    targ_defvec=x86_64_elf64_vec\n    targ_selvecs=i386_elf32_vec\n    want64=true\n    ;;\n#endif/1' binutils-2.39/bfd/config.bfd && \
-  sed -i 's/case ${generic_target} in/&\n  i386-*-myos*)    fmt=elf;;/1' binutils-2.39/gas/configure.tgt && \
-  sed -i '80,$s/case "${targ}" in/&\ni[3-7]86-*-myos*)\n      targ_emul=elf_i386_myos\n      targ_extra_emuls=elf_i386\n      targ_extra_emuls=elf_i386\n      targ64_extra_emuls="elf_x86_64_myos elf_x86_64"\n      ;;\nx86_64-*-myos*)\n      targ_emul=elf_x86_64_myos\n      targ_extra_emuls="elf_i386_myos elf_x86_64 elf_i386"\n      ;;/1' binutils-2.39/ld/configure.tgt && \
+  sed -i 's/case ${generic_target} in/&\n  i386-*-myos*)    fmt=elf;;/' binutils-2.39/gas/configure.tgt && \
+  sed -i '80,+10s/case "${targ}" in/&\ni[3-7]86-*-myos*)\n      targ_emul=elf_i386_myos\n      targ_extra_emuls=elf_i386\n      targ_extra_emuls=elf_i386\n      targ64_extra_emuls="elf_x86_64_myos elf_x86_64"\n      ;;\nx86_64-*-myos*)\n      targ_emul=elf_x86_64_myos\n      targ_extra_emuls="elf_i386_myos elf_x86_64 elf_i386"\n      ;;/1' binutils-2.39/ld/configure.tgt && \
   touch binutils-2.39/ld/emulparams/elf_i386_myos.sh && \
   printf "source_sh \${srcdir}/emulparams/elf_i386.sh\nTEXT_START_ADDR=0x00400000" > binutils-2.39/ld/emulparams/elf_i386_myos.sh && \
   touch binutils-2.39/ld/emulparams/elf_x86_64_myos.sh && \
@@ -149,26 +153,30 @@ RUN \
   ../binutils-$BINUTILS_VERSION/configure --target=i686-myos --prefix="$PREFIX" --with-sysroot --disable-nls --disable-werror && \
   make && make install
 
-RUN \
-  export PATH=/root/bin/automake-1.15.1/bin:/root/bin/autoconf-2.69/bin:$PATH && \
-  cd build-binutils-myos-2.39
-  #make && make install
+COPY ./tools/myos.h ./
 
 # configure gcc to be used with our myos
 RUN \
-  sed -i '1720,$s/gnu\* |/& myos* |/' gcc-12.2.0//config.sub && \
-  sed -i '674,$s/case ${target} in/&\n*-*-myos*)\n  gas=yes\n  gnu_ld=yes\n  default_use_cxa_atexit=yes\n  use_gcc_stdint=provide\n  ;;/1' gcc-12.2.0/gcc/config.gcc && \
-  sed -i 's/aarch64\*-\*-elf | aarch64\*-\*-fuchsia\* | aarch64\*-\*-rtems\*)/i[34567]86-*-myos*)\n  tm_file="\${tm_file} i386\/unix.h i386\/att.h dbxelf.h elfos.h glibc-stdint.h i386\/i386elf.h myos.h"\n  ;;\nx86_64-\*-myos\*)\n  tm_file="\${tm_file} i386\/unix.h i386\/att.h dbxelf.h elfos.h glibc-stdint.h i386\/i386elf.h i386\/x86-64.h myos.h"\n  ;;\n&/1' gcc-12.2.0/gcc/config.gcc && \
-  touch gcc-12.2.0/gcc/config/myos.h
+  export PATH=/root/bin/automake-1.15.1/bin:/root/bin/autoconf-2.69/bin:$PATH && \
+  sed -i '1720,+10s/gnu\* |/& myos* |/' gcc-12.2.0/config.sub && \
+  sed -i '673,+10s/case ${target} in/&\n*-*-myos*)\n  gas=yes\n  gnu_ld=yes\n  default_use_cxa_atexit=yes\n  use_gcc_stdint=provide\n  ;;/' gcc-12.2.0/gcc/config.gcc && \
+  sed -i 's/aarch64\*-\*-elf | aarch64\*-\*-fuchsia\* | aarch64\*-\*-rtems\*)/i[34567]86-*-myos*)\n  tm_file="\${tm_file} i386\/unix.h i386\/att.h dbxelf.h elfos.h glibc-stdint.h i386\/i386elf.h myos.h"\n  ;;\nx86_64-\*-myos\*)\n  tm_file="\${tm_file} i386\/unix.h i386\/att.h dbxelf.h elfos.h glibc-stdint.h i386\/i386elf.h i386\/x86-64.h myos.h"\n  ;;\n&/' gcc-12.2.0/gcc/config.gcc && \
+  touch gcc-12.2.0/gcc/config/myos.h && cat myos.h > gcc-12.2.0/gcc/config/myos.h && \
+  sed -i '377,+10s/case ${host} in/&\ni[34567]86-\*-myos\*)\n  extra_parts=\"\$extra_parts crti.o crtbegin.o crtend.o crtn.o\"\n  tmake_file="\$tmake_file i386\/t-crtstuff t-crtstuff-pic t-libgcc-pic"\n  ;;\nx86_64-\*-myos\*)\n  extra_parts=\"\$extra_parts crti.o crtbegin.o crtend.o crtn.o\"\n  tmake_file=\"\$tmake_file i386\/t-crtstuff t-crtstuff-pic t-libgcc-pic"\n  ;;/' gcc-12.2.0/libgcc/config.host && \
+  sed -i 's/case \$machine in/&\n    \*-myos\* | \\\n    \*-\*-myos\* | \\/' gcc-12.2.0/fixincludes/mkfixinc.sh
 
-  #sed -i 's/case "${host_cpu}" in/&\ni[3-7]86-*-myos*)\nsys_dir=myos;;/' newlib-2.5.0/newlib/configure.host && \
-  #echo "sys_dir=myos" >> newlib-2.5.0/newlib/configure.host && \
-  #sed -i 's/case ${sys_dir} in/&\nmyos) AC_CONFIG_SUBDIRS(myos) ;;/' newlib-2.5.0/newlib/libc/sys/configure.in && \
-  #autoconf --version && cd newlib-2.5.0/newlib/libc/sys && autoconf
+RUN \
+  export PATH=/root/bin/automake-1.15.1/bin:/root/bin/autoconf-2.69/bin:$PATH && \
+  mkdir build-gcc-myos-12.2.0 && cd build-gcc-myos-12.2.0 &&\
+  ../gcc-12.2.0/configure --target=i686-myos --prefix="$PREFIX" --disable-nls --enable-languages=c --without-headers && \
+  make all-gcc
 
-# switch betweeen versions
-# export PATH=/root/bin/automake-1.15.1/bin:/root/bin/autoconf-2.69/bin:$PATH
-# export PATH=/root/bin/automake-1.11/bin:/root/bin/autoconf-2.65/bin:$PATH
+RUN \
+  export PATH=/root/bin/automake-1.15.1/bin:/root/bin/autoconf-2.69/bin:$PATH && \
+  cd build-gcc-myos-12.2.0 && \
+  make all-target-libgcc && \
+  make install-gcc && \
+  make install-target-libgcc
 
 VOLUME /os
 VOLUME /src/newlib-2.5.0/newlib/libc/sys/myos

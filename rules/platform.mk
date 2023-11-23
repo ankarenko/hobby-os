@@ -1,3 +1,3 @@
-AR=i686-elf-ar
-AS=i686-elf-as
-CC=i686-elf-gcc
+AR=i686-myos-ar
+AS=i686-myos-as
+CC=i686-myos-gcc
