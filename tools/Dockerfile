@@ -69,6 +69,8 @@ RUN sed -i \
 
 # add myos to config files
 # source: https://wiki.osdev.org/Porting_Newlib
+# add myos to config files
+# source: https://wiki.osdev.org/Porting_Newlib
 RUN \
   sed -i '1000,$s/-gnu\* |/& -myos* |/' newlib-2.5.0/config.sub && \
   sed -i 's/case "${host_cpu}" in/&\ni[3-7]86-*-myos*)\nsys_dir=myos;;/' newlib-2.5.0/newlib/configure.host && \
@@ -108,8 +110,8 @@ RUN chmod +x ./configure_libc.sh
 # build toolchain
 # install automake and autoconf
 WORKDIR $HOME/src
-ARG AUTOMAKE_VER=1.16.5
-ARG AUTOCONF_VER=2.71
+ARG AUTOMAKE_VER=1.15.1
+ARG AUTOCONF_VER=2.69
 
 RUN \
   wget -c https://ftp.gnu.org/gnu/automake/automake-$AUTOMAKE_VER.tar.gz -O - | tar -xz && \
@@ -127,8 +129,45 @@ RUN \
   ../automake-$AUTOMAKE_VER/configure --prefix=/root/bin/automake-$AUTOMAKE_VER && \
   make && make install
 
+# configure binutils to be used with our myos and build it
+RUN \
+  export PATH=/root/bin/automake-1.15.1/bin:/root/bin/autoconf-2.69/bin:$PATH && \
+  sed -i '1720,$s/gnu\* |/& myos* |/1' binutils-2.39/config.sub && \
+  sed -i 's/# START OF targmatch.h/&\n  i[3-7]86-*-myos*)\n    targ_defvec=i386_elf32_vec\n    targ_selvecs=\n    targ64_selvecs=x86_64_elf64_vec\n    ;;\n#ifdef BFD64\n  x86_64-*-myos*)\n    targ_defvec=x86_64_elf64_vec\n    targ_selvecs=i386_elf32_vec\n    want64=true\n    ;;\n#endif/1' binutils-2.39/bfd/config.bfd && \
+  sed -i 's/case ${generic_target} in/&\n  i386-*-myos*)    fmt=elf;;/1' binutils-2.39/gas/configure.tgt && \
+  sed -i '80,$s/case "${targ}" in/&\ni[3-7]86-*-myos*)\n      targ_emul=elf_i386_myos\n      targ_extra_emuls=elf_i386\n      targ_extra_emuls=elf_i386\n      targ64_extra_emuls="elf_x86_64_myos elf_x86_64"\n      ;;\nx86_64-*-myos*)\n      targ_emul=elf_x86_64_myos\n      targ_extra_emuls="elf_i386_myos elf_x86_64 elf_i386"\n      ;;/1' binutils-2.39/ld/configure.tgt && \
+  touch binutils-2.39/ld/emulparams/elf_i386_myos.sh && \
+  printf "source_sh \${srcdir}/emulparams/elf_i386.sh\nTEXT_START_ADDR=0x00400000" > binutils-2.39/ld/emulparams/elf_i386_myos.sh && \
+  touch binutils-2.39/ld/emulparams/elf_x86_64_myos.sh && \
+  printf "source_sh \${srcdir}/emulparams/elf_x86_64.sh\nTEXT_START_ADDR=0x00400000" > binutils-2.39/ld/emulparams/elf_x86_64_myos.sh && \
+  sed -i 's/@AMDEP_TRUE@@am__include@ @am__quote@.\/\$(DEPDIR)\/eelf_i386.Pc@am__quote@/&\n@AMDEP_TRUE@@am__include@ @am__quote@.\/\$(DEPDIR)\/eelf_i386_myos.Pc@am__quote@/1' binutils-2.39/ld/Makefile.am && \
+  sed -i 's/@AMDEP_TRUE@@am__include@ @am__quote@.\/\$(DEPDIR)\/eelf_x86_64.Pc@am__quote@/&\n@AMDEP_TRUE@@am__include@ @am__quote@.\/\$(DEPDIR)\/eelf_x86_64_myos.Pc@am__quote@/1' binutils-2.39/ld/Makefile.am && \
+  sed -i 's/ALL_EMULATION_SOURCES = \\/&\n  eelf_i386_myos.c\\/1' binutils-2.39/ld/Makefile.am && \ 
+  sed -i 's/ALL_64_EMULATION_SOURCES = \\/&\n  eelf_x86_64_myos.c\\/1' binutils-2.39/ld/Makefile.am && \ 
+  cd binutils-2.39/ld && automake && cd ../../ && \
+  mkdir build-binutils-myos-2.39 && cd build-binutils-myos-2.39 && \
+  ../binutils-$BINUTILS_VERSION/configure --target=i686-myos --prefix="$PREFIX" --with-sysroot --disable-nls --disable-werror && \
+  make && make install
+
+RUN \
+  export PATH=/root/bin/automake-1.15.1/bin:/root/bin/autoconf-2.69/bin:$PATH && \
+  cd build-binutils-myos-2.39
+  #make && make install
+
+# configure gcc to be used with our myos
+RUN \
+  sed -i '1720,$s/gnu\* |/& myos* |/' gcc-12.2.0//config.sub && \
+  sed -i '674,$s/case ${target} in/&\n*-*-myos*)\n  gas=yes\n  gnu_ld=yes\n  default_use_cxa_atexit=yes\n  use_gcc_stdint=provide\n  ;;/1' gcc-12.2.0/gcc/config.gcc && \
+  sed -i 's/aarch64\*-\*-elf | aarch64\*-\*-fuchsia\* | aarch64\*-\*-rtems\*)/i[34567]86-*-myos*)\n  tm_file="\${tm_file} i386\/unix.h i386\/att.h dbxelf.h elfos.h glibc-stdint.h i386\/i386elf.h myos.h"\n  ;;\nx86_64-\*-myos\*)\n  tm_file="\${tm_file} i386\/unix.h i386\/att.h dbxelf.h elfos.h glibc-stdint.h i386\/i386elf.h i386\/x86-64.h myos.h"\n  ;;\n&/1' gcc-12.2.0/gcc/config.gcc && \
+  touch gcc-12.2.0/gcc/config/myos.h
+
+  #sed -i 's/case "${host_cpu}" in/&\ni[3-7]86-*-myos*)\nsys_dir=myos;;/' newlib-2.5.0/newlib/configure.host && \
+  #echo "sys_dir=myos" >> newlib-2.5.0/newlib/configure.host && \
+  #sed -i 's/case ${sys_dir} in/&\nmyos) AC_CONFIG_SUBDIRS(myos) ;;/' newlib-2.5.0/newlib/libc/sys/configure.in && \
+  #autoconf --version && cd newlib-2.5.0/newlib/libc/sys && autoconf
+
 # switch betweeen versions
-# export PATH=/root/bin/automake-1.16.5/bin:/root/bin/autoconf-2.71/bin:$PATH
+# export PATH=/root/bin/automake-1.15.1/bin:/root/bin/autoconf-2.69/bin:$PATH
 # export PATH=/root/bin/automake-1.11/bin:/root/bin/autoconf-2.65/bin:$PATH
 
 VOLUME /os
