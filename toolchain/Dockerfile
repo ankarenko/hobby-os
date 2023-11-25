@@ -1,6 +1,11 @@
 #Building environment for our OS
 FROM ubuntu:18.04
 
+RUN \
+  apt update && \
+  apt install wget -y && \
+  apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo libisl-0.18-dev libcloog-isl-dev -y
+
 ENV OS_NAME=myos
 ENV PREFIX="$HOME/opt/cross"
 ENV OLD_TARGET=i686-elf
@@ -8,20 +13,20 @@ ENV TARGET=i686-$OS_NAME
 ENV PATH="$PREFIX/bin:$PATH"
 ENV BINUTILS_VERSION="2.39"
 ENV GCC_VERSION="12.2.0"
-
+ENV SRC=$HOME/src
+ENV BUILD=$SRC/build
 # switch betweeen versions
 # export PATH=/root/bin/automake-1.15.1/bin:/root/bin/autoconf-2.69/bin:$PATH
 # export PATH=/root/bin/automake-1.11/bin:/root/bin/autoconf-2.65/bin:$PATH
 
-RUN \
-  apt update && \
-  apt install wget -y && \
-  apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo libisl-0.18-dev libcloog-isl-dev -y
+WORKDIR $SRC
 
-WORKDIR $HOME/src
 RUN \
   wget -c https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.gz -O - | tar -xz && \
   wget -c https://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz -O - | tar -xz
+
+RUN mkdir /root/bin
+RUN mkdir $BUILD
 
 COPY ./toolchain/build_binutils.sh ./
 COPY ./toolchain/build_gcc.sh ./
@@ -39,8 +44,6 @@ RUN apt install nano -y
 # making preparation to port newlib
 RUN wget -c ftp://sourceware.org/pub/newlib/newlib-2.5.0.tar.gz -O - | tar -xz
 
-RUN mkdir /root/bin
-
 # install automake and autoconf
 ARG AUTOMAKE_VER=1.11
 ARG AUTOCONF_VER=2.65
@@ -53,13 +56,13 @@ RUN \
 RUN mkdir /root/bin/autoconf-$AUTOCONF_VER && mkdir /root/bin/automake-$AUTOMAKE_VER
 
 RUN \
-  mkdir build-autoconf-$AUTOCONF_VER && cd build-autoconf-$AUTOCONF_VER && \
-  ../autoconf-$AUTOCONF_VER/configure --prefix=/root/bin/autoconf-$AUTOCONF_VER && \
+  mkdir $BUILD/autoconf-$AUTOCONF_VER && cd $BUILD/autoconf-$AUTOCONF_VER && \
+  $SRC/autoconf-$AUTOCONF_VER/configure --prefix=/root/bin/autoconf-$AUTOCONF_VER && \
   make && make install 
 
 RUN \
-  mkdir build-automake-$AUTOMAKE_VER && cd build-automake-$AUTOMAKE_VER && \
-  ../automake-$AUTOMAKE_VER/configure --prefix=/root/bin/automake-$AUTOMAKE_VER && \
+  mkdir $BUILD/automake-$AUTOMAKE_VER && cd $BUILD/automake-$AUTOMAKE_VER && \
+  $SRC/automake-$AUTOMAKE_VER/configure --prefix=/root/bin/automake-$AUTOMAKE_VER && \
   make && make install
 
 # fix of Unescaped left brace in regex is illegal here in regex; marked by <-- HERE in m/\${ <-- HERE ([^ \t=:+{}]+)}/ at /root/bin/automake line 4113.
@@ -125,13 +128,13 @@ RUN \
 RUN mkdir /root/bin/autoconf-$AUTOCONF_VER && mkdir /root/bin/automake-$AUTOMAKE_VER
 
 RUN \
-  mkdir build-autoconf-$AUTOCONF_VER && cd build-autoconf-$AUTOCONF_VER && \
-  ../autoconf-$AUTOCONF_VER/configure --prefix=/root/bin/autoconf-$AUTOCONF_VER && \
+  mkdir $BUILD/autoconf-$AUTOCONF_VER && cd $BUILD/autoconf-$AUTOCONF_VER && \
+  $SRC/autoconf-$AUTOCONF_VER/configure --prefix=/root/bin/autoconf-$AUTOCONF_VER && \
   make && make install 
 
 RUN \
-  mkdir build-automake-$AUTOMAKE_VER && cd build-automake-$AUTOMAKE_VER && \
-  ../automake-$AUTOMAKE_VER/configure --prefix=/root/bin/automake-$AUTOMAKE_VER && \
+  mkdir $BUILD/automake-$AUTOMAKE_VER && cd $BUILD/automake-$AUTOMAKE_VER && \
+  $SRC/automake-$AUTOMAKE_VER/configure --prefix=/root/bin/automake-$AUTOMAKE_VER && \
   make && make install
 
 # configure binutils to be used with our $OS_NAME and build it
@@ -148,10 +151,14 @@ RUN \
   sed -i 's/@AMDEP_TRUE@@am__include@ @am__quote@.\/\$(DEPDIR)\/eelf_i386.Pc@am__quote@/&\n@AMDEP_TRUE@@am__include@ @am__quote@.\/\$(DEPDIR)\/eelf_i386_'"$OS_NAME"'.Pc@am__quote@/1' binutils-$BINUTILS_VERSION/ld/Makefile.am && \
   sed -i 's/@AMDEP_TRUE@@am__include@ @am__quote@.\/\$(DEPDIR)\/eelf_x86_64.Pc@am__quote@/&\n@AMDEP_TRUE@@am__include@ @am__quote@.\/\$(DEPDIR)\/eelf_x86_64_'"$OS_NAME"'.Pc@am__quote@/1' binutils-$BINUTILS_VERSION/ld/Makefile.am && \
   sed -i 's/ALL_EMULATION_SOURCES = \\/&\n  eelf_i386_'"$OS_NAME"'.c\\/1' binutils-$BINUTILS_VERSION/ld/Makefile.am && \ 
-  sed -i 's/ALL_64_EMULATION_SOURCES = \\/&\n  eelf_x86_64_'"$OS_NAME"'.c\\/1' binutils-$BINUTILS_VERSION/ld/Makefile.am && \ 
+  sed -i 's/ALL_64_EMULATION_SOURCES = \\/&\n  eelf_x86_64_'"$OS_NAME"'.c\\/1' binutils-$BINUTILS_VERSION/ld/Makefile.am
+
+# build binutils
+RUN \
+  export PATH=/root/bin/automake-1.15.1/bin:/root/bin/autoconf-2.69/bin:$PATH && \
   cd binutils-$BINUTILS_VERSION/ld && automake && cd ../../ && \
-  mkdir build-binutils-$OS_NAME-$BINUTILS_VERSION && cd build-binutils-$OS_NAME-$BINUTILS_VERSION && \
-  ../binutils-$BINUTILS_VERSION/configure --target=$TARGET --prefix="$PREFIX" --with-sysroot=$SYSROOT --disable-werror && \
+  mkdir $BUILD/binutils-$OS_NAME-$BINUTILS_VERSION && cd $BUILD/binutils-$OS_NAME-$BINUTILS_VERSION && \
+  $SRC/binutils-$BINUTILS_VERSION/configure --target=$TARGET --prefix="$PREFIX" --with-sysroot=$SYSROOT --disable-werror && \
   make && make install
 
 COPY ./toolchain/$OS_NAME.h ./
@@ -169,24 +176,18 @@ RUN \
 # build gcc
 RUN \
   export PATH=/root/bin/automake-1.15.1/bin:/root/bin/autoconf-2.69/bin:$PATH && \
-  mkdir build-gcc-$OS_NAME-$GCC_VERSION && cd build-gcc-$OS_NAME-$GCC_VERSION &&\
-  ../gcc-$GCC_VERSION/configure --target=$TARGET --prefix="$PREFIX" --with-sysroot=$SYSROOT --enable-languages=c && \
-  make all-gcc
-
-RUN \
-  export PATH=/root/bin/automake-1.15.1/bin:/root/bin/autoconf-2.69/bin:$PATH && \
-  cd build-gcc-$OS_NAME-$GCC_VERSION && \
+  mkdir $BUILD/gcc-$OS_NAME-$GCC_VERSION && cd $BUILD/gcc-$OS_NAME-$GCC_VERSION &&\
+  $SRC/gcc-$GCC_VERSION/configure --target=$TARGET --prefix="$PREFIX" --with-sysroot=$SYSROOT --enable-languages=c && \
+  make all-gcc && \
   make all-target-libgcc && \
   make install-gcc && \   
   make install-target-libgcc
 
 # rebuild newlib with our customized gcc
 RUN \
-  rm -rf build-newlib && rm -rf $SYSROOT/usr/lib/* && \ 
-  sh ./configure_libc.sh && sh ./build_libc.sh
-
-RUN \
-  cp -r build-newlib/$TARGET/newlib/libc/sys/$OS_NAME/crt0.o $SYSROOT/usr/lib/
+  rm -rf $BUILD/newlib && rm -rf $SYSROOT/usr/lib/* && \ 
+  sh ./configure_libc.sh && sh ./build_libc.sh && \
+  cp -r $BUILD/newlib/$TARGET/newlib/libc/sys/$OS_NAME/crt0.o $SYSROOT/usr/lib/
 
 #VOLUME /os
 #VOLUME /src/newlib-2.5.0/newlib/libc/sys/$OS_NAME
