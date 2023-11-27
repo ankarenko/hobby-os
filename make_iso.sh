@@ -3,6 +3,7 @@
 mkdir -p isodir
 mkdir -p isodir/boot
 mkdir -p isodir/boot/grub
+mkdir -p sysroot/boot
  
 cp sysroot/boot/$1.bin isodir/boot/$1.bin
 cat > isodir/boot/grub/grub.cfg << EOF

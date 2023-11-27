@@ -1,52 +1,46 @@
-#Building environment for our OS
+# this docker file represents a toolchain for my os
 FROM ubuntu:18.04
 
 RUN \
   apt update && \
   apt install wget -y && \
-  apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo libisl-0.18-dev libcloog-isl-dev -y
+  apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo libisl-0.18-dev libcloog-isl-dev -y && \
+  apt install xorriso grub-pc-bin -y && \
+  apt install nano -y
 
 ENV OS_NAME=myos
-ENV PREFIX="$HOME/opt/cross"
+ENV PREFIX="/opt/cross"
 ENV OLD_TARGET=i686-elf
 ENV TARGET=i686-$OS_NAME
 ENV PATH="$PREFIX/bin:$PATH"
 ENV BINUTILS_VERSION="2.39"
 ENV GCC_VERSION="12.2.0"
-ENV SRC=$HOME/src
+ENV SRC=/src
 ENV BUILD=$SRC/build
+ENV NEWLIB_VERSION="2.5.0"
+ENV SYSROOT=/os/sysroot
 # switch betweeen versions
 # export PATH=/root/bin/automake-1.15.1/bin:/root/bin/autoconf-2.69/bin:$PATH
 # export PATH=/root/bin/automake-1.11/bin:/root/bin/autoconf-2.65/bin:$PATH
 
 WORKDIR $SRC
+RUN mkdir -p /root/bin
+RUN mkdir -p $BUILD
 
+# download newlib
+RUN wget -c ftp://sourceware.org/pub/newlib/newlib-$NEWLIB_VERSION.tar.gz -O - | tar -xz
+
+# install headers, so libgcc can be compiled properly
 RUN \
-  wget -c https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.gz -O - | tar -xz && \
-  wget -c https://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz -O - | tar -xz
-
-RUN mkdir /root/bin
-RUN mkdir $BUILD
-
-COPY ./toolchain/build_binutils.sh ./
-COPY ./toolchain/build_gcc.sh ./
-
-RUN \
-  chmod +x ./build_binutils.sh && \
-  chmod +x ./build_gcc.sh
-
-RUN sh ./build_binutils.sh
-RUN sh ./build_gcc.sh
-
-RUN apt install xorriso grub-pc-bin -y
-RUN apt install nano -y
-
-# making preparation to port newlib
-RUN wget -c ftp://sourceware.org/pub/newlib/newlib-2.5.0.tar.gz -O - | tar -xz
+  mkdir -p $SYSROOT && cd /os && \
+  mkdir -p sysroot/usr/include && \
+  cp -r $SRC/newlib-$NEWLIB_VERSION/newlib/libc/include/* $SYSROOT/usr/include/
 
 # install automake and autoconf
 ARG AUTOMAKE_VER=1.11
 ARG AUTOCONF_VER=2.65
+# make autoconf and automake of these versions default 
+# as it will be used heavily while rebuilding newlib
 ENV PATH="$PATH:/root/bin/autoconf-$AUTOCONF_VER/bin:/root/bin/automake-$AUTOMAKE_VER/bin"
 
 RUN \
@@ -71,53 +65,9 @@ RUN sed -i \
   '/$text =~ s\/\\${(\[\^ \\t=:+{}\]+)}\/&substitute_ac_subst_variables_worker ($1)\/ge;/c $text =~ s/\\$\\{([^ \t=:+{}]+)\\}/&substitute_ac_subst_variables_worker ($1)/ge;' \
   /root/bin/automake-$AUTOMAKE_VER/bin/automake
 
-# add $OS_NAME to config files
-# source: https://wiki.osdev.org/Porting_Newlib
-# add $OS_NAME to config files
-# source: https://wiki.osdev.org/Porting_Newlib
-RUN \
-  sed -i '1375,+10s/-gnu\* |/& -'"$OS_NAME"'* |/' newlib-2.5.0/config.sub && \
-  sed -i 's/case "${host_cpu}" in/&\ni[3-7]86-*-'"$OS_NAME"'*)\nsys_dir='"$OS_NAME"';;/' newlib-2.5.0/newlib/configure.host && \
-  echo "sys_dir='"$OS_NAME"'" >> newlib-2.5.0/newlib/configure.host && \
-  sed -i 's/case ${sys_dir} in/&\n'"$OS_NAME"') AC_CONFIG_SUBDIRS('"$OS_NAME"') ;;/' newlib-2.5.0/newlib/libc/sys/configure.in && \
-  autoconf --version && cd newlib-2.5.0/newlib/libc/sys && autoconf
-
-RUN mkdir newlib-2.5.0/newlib/libc/sys/$OS_NAME
-COPY ./ports/newlib/$OS_NAME newlib-2.5.0/newlib/libc/sys/$OS_NAME
-
-# newlib setup
-# make symlinks (a bad hack) to make newlib work
-# this is where the bootstrapped generic cross compiler toolchain ($OLD_TARGET-xxx) is installed in,
-# change this based on your development environment.
-RUN \
-  cd /opt/cross/bin/ && \
-  ln $OLD_TARGET-ar $TARGET-ar && \
-  ln $OLD_TARGET-as $TARGET-as && \
-  ln $OLD_TARGET-gcc $TARGET-gcc && \
-  ln $OLD_TARGET-gcc $TARGET-cc && \
-  ln $OLD_TARGET-ranlib $TARGET-ranlib
-
-ENV SYSROOT=$HOME/os/sysroot
-
-COPY ./toolchain/build_libc.sh ./
-RUN chmod +x ./build_libc.sh
-
-COPY ./toolchain/configure_libc.sh ./
-RUN chmod +x ./configure_libc.sh
-RUN sh ./configure_libc.sh && sh ./build_libc.sh
-
-# remove symlinks
-RUN \
-  cd /opt/cross/bin/ && \
-  rm $TARGET-ar && \
-  rm $TARGET-as && \
-  rm $TARGET-gcc && \
-  rm $TARGET-cc && \
-  rm $TARGET-ranlib
-
-# build toolchain
-# install automake and autoconf
-WORKDIR $HOME/src
+# starting to build our os specific toolchain
+# install automake and autoconf compitible with our gcc
+# they are not default, so we will refer them explicitly using 'export'
 ARG AUTOMAKE_VER=1.15.1
 ARG AUTOCONF_VER=2.69
 
@@ -136,6 +86,10 @@ RUN \
   mkdir $BUILD/automake-$AUTOMAKE_VER && cd $BUILD/automake-$AUTOMAKE_VER && \
   $SRC/automake-$AUTOMAKE_VER/configure --prefix=/root/bin/automake-$AUTOMAKE_VER && \
   make && make install
+
+RUN \
+  wget -c https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.gz -O - | tar -xz && \
+  wget -c https://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz -O - | tar -xz
 
 # configure binutils to be used with our $OS_NAME and build it
 RUN \
@@ -183,15 +137,35 @@ RUN \
   make install-gcc && \   
   make install-target-libgcc
 
-# rebuild newlib with our customized gcc
-RUN \
-  rm -rf $BUILD/newlib && rm -rf $SYSROOT/usr/lib/* && \ 
-  sh ./configure_libc.sh && sh ./build_libc.sh && \
-  cp -r $BUILD/newlib/$TARGET/newlib/libc/sys/$OS_NAME/crt0.o $SYSROOT/usr/lib/
+RUN mkdir newlib-$NEWLIB_VERSION/newlib/libc/sys/$OS_NAME
+COPY ./ports/newlib/$OS_NAME newlib-$NEWLIB_VERSION/newlib/libc/sys/$OS_NAME
 
-#VOLUME /os
-#VOLUME /src/newlib-2.5.0/newlib/libc/sys/$OS_NAME
-#VOLUME /src/build-newlib
+# configure newlib
+# add $OS_NAME to config files
+# source: https://wiki.osdev.org/Porting_Newlib
+RUN \
+  sed -i '1375,+10s/-gnu\* |/& -'"$OS_NAME"'* |/' newlib-$NEWLIB_VERSION/config.sub && \
+  sed -i 's/case "${host_cpu}" in/&\ni[3-7]86-*-'"$OS_NAME"'*)\nsys_dir='"$OS_NAME"';;/' newlib-$NEWLIB_VERSION/newlib/configure.host && \
+  echo "sys_dir='"$OS_NAME"'" >> newlib-$NEWLIB_VERSION/newlib/configure.host && \
+  sed -i 's/case ${sys_dir} in/&\n'"$OS_NAME"') AC_CONFIG_SUBDIRS('"$OS_NAME"') ;;/' newlib-$NEWLIB_VERSION/newlib/libc/sys/configure.in
+
+COPY ./toolchain/build_libc.sh ./
+COPY ./toolchain/configure_libc.sh ./
+COPY ./toolchain/libc.sh ./
+
+RUN \
+  chmod +x ./build_libc.sh && \
+  chmod +x ./configure_libc.sh && \
+  chmod +x ./libc.sh
+
+# build newlib with our customized gcc
+RUN \
+  sh ./libc.sh rebuild && sh ./libc.sh install
+
+VOLUME /os
+#VOLUME /os/sysroot
+VOLUME $BUILD
+
 WORKDIR /os
 
 CMD bash
