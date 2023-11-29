@@ -16,6 +16,7 @@
 #define __NR_close 6
 #define __NR_sbrk 10
 #define __NR_execve 11
+#define __NR_time 13
 #define __NR_lseek 19
 #define __NR_getpid 20
 #define __NR_kill 37
@@ -97,6 +98,13 @@ static int32_t sys_kill(pid_t pid, int sig) {
   return -1;
 }
 
+static int32_t sys_time(time_t *tloc) {
+	time_t t = get_seconds(NULL);
+	if (tloc)
+		*tloc = t;
+	return t;
+}
+
 static void *syscalls[] = {
   [__NR_exit] = sys_exit,
   [__NR_nanosleep] = sys_nanosleep,
@@ -106,6 +114,7 @@ static void *syscalls[] = {
   [__NR_sbrk] = sys_sbrk,
   [__NR_execve] = sys_execve,
   [__NR_fork] = sys_fork,
+  [__NR_time] = sys_time,
   [__NR_fstat] = sys_fstat,
   [__NR_print] = sys_debug_printf,
   [__NR_lseek] = sys_lseek,

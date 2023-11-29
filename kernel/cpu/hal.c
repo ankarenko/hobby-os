@@ -1,11 +1,12 @@
 // common.c -- Defines some global functions.
 // From JamesM's kernel development tutorials.
 
-#include "hal.h"
-#include "gdt.h"
-#include "idt.h"
-#include "pic.h"
-#include "pit.h"
+#include "kernel/cpu/hal.h"
+#include "kernel/cpu/gdt.h"
+#include "kernel/cpu/idt.h"
+#include "kernel/cpu/pic.h"
+#include "kernel/cpu/pit.h"
+#include "kernel/cpu/rtc.h"
 
 uint32_t _sel = 0x8;
 
@@ -54,7 +55,9 @@ uint32_t hal_initialize() {
   i86_gdt_initialize();
   i86_idt_initialize(_sel);
   i86_pic_initialize(0x20, 0x28);
+  rtc_init();
   i86_pit_initialize();
+  
   i86_pit_start_counter(100, I86_PIT_OCW_COUNTER_0, I86_PIT_OCW_MODE_SQUAREWAVEGEN);
 
   //! enable interrupts

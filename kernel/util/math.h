@@ -18,6 +18,8 @@
 #define PTR_ALIGN_DOWN(base, size) \
 	((__typeof__(base))ALIGN_DOWN((uintptr_t)(base), (size)))
 
+#define log2(X) ((unsigned)(8 * sizeof(unsigned long long) - __builtin_clzll((X)) - 1))
+
 /* Same as ALIGN_UP(), but automatically casts when base is a pointer.  */
 //#define PTR_ALIGN_UP(base, size) \
 	((__typeof__(base))ALIGN_UP((uintptr_t)(base), (size)))

@@ -20,6 +20,7 @@
 #include "kernel/proc/elf.h"
 #include "kernel/util/list.h"
 #include "kernel/proc/task.h"
+#include "kernel/system/time.h"
 #include "kernel/system/sysapi.h"
 #include "kernel/fs/fat32/fat32.h"
 #include "kernel/devices/pata.h"
@@ -130,6 +131,9 @@ bool run_cmd(char* cmd_buf) {
   } else if (strcmp(cmd_buf, "exit") == 0) {
     printf("Goodbuy!");
     return true;
+  } else if (strcmp(cmd_buf, "time") == 0) {
+    struct time* t = get_time(0); //current time
+    printf("\nCurrent time (UTC): %d:%d:%d, %d.%d.%d", t->hour, t->minute, t->second, t->day, t->month, t->year);
   } else if (strcmp(cmd_buf, "layout") == 0) {
     printf("Kernel start: %X\n", KERNEL_START);
     printf("Text start: %X\n", KERNEL_TEXT_START);
