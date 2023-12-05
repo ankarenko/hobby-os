@@ -330,9 +330,9 @@ void fat12_initialize() {
   //! initialize vfs_filesystem struct
   strcpy(_fsys_fat.name, "FAT12");
   _fsys_fat.mount = fat12_mount;
-  _fsys_fat.open = fat12_open;
-  _fsys_fat.read = fat12_read;
-  _fsys_fat.close = fat12_close;
+  _fsys_fat.fop.open = fat12_open;
+  _fsys_fat.fop.read = fat12_read;
+  _fsys_fat.fop.close = fat12_close;
   _fsys_fat.root = fat12_get_rootdir;
   _fsys_fat.ls = fat12_ls;
 

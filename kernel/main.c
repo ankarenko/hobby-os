@@ -23,7 +23,9 @@
 #include "kernel/system/time.h"
 #include "kernel/system/sysapi.h"
 #include "kernel/fs/fat32/fat32.h"
+#include "kernel/fs/ext2/ext2.h"
 #include "kernel/devices/pata.h"
+#include "kernel/fs/char_dev.h"
 #include "multiboot.h"
 
 void cmd_init();
@@ -353,7 +355,10 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   //flpydsk_set_working_drive(0);
   //flpydsk_install(IRQ6);
 
-  fat32_init();
+  //fat32_init();
+  init_ext2_fs();
+  chrdev_init();
+  
 
   //fat12_initialize();
   syscall_init();

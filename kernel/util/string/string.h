@@ -6,6 +6,7 @@
 #define op_t unsigned long int
 #define OPSIZ (sizeof(op_t))
 
+char *strdup(const char *s);
 void *memset(void *dest, char val, size_t len);
 void *memcpy(void *dest, const void *src, size_t len);
 int strcmp(const char *p1, const char *p2);

@@ -4,7 +4,7 @@
 #include "kernel/proc/task.h"
 #include "kernel/util/debug.h"
 
-#include "./vfs.h"
+#include "kernel/fs/vfs.h"
 
 extern vfs_filesystem* file_systems[DEVICE_MAX];
 
@@ -30,7 +30,7 @@ int32_t vfs_close(int32_t fd) {
 
   if (file)
     if (file_systems[file->device_id - 'a'])
-      return file_systems[file->device_id - 'a']->close(file);
+      return file_systems[file->device_id - 'a']->fop.close(file);
 }
 
 int vfs_fstat(int32_t fd, struct stat* stat) {
@@ -85,7 +85,7 @@ int32_t vfs_open(const char* fname, int32_t flags, ...) {
 
     //! call vfs_filesystem
     if (file_systems[device - 'a']) {
-      vfs_file ret_file = file_systems[device - 'a']->open(filename, flags);
+      vfs_file ret_file = file_systems[device - 'a']->fop.open(filename, flags);
       
       if (ret_file.flags == FS_INVALID || ret_file.flags == FS_NOT_FOUND) {
         return -ENOENT;

@@ -941,15 +941,15 @@ void fat32_init() {
   //! initialize vfs_filesystem struct
   strcpy(fsys_fat.name, "FAT32");
   fsys_fat.mount = fat_mount;
-  fsys_fat.open = fat_open;
-  fsys_fat.read = fat_read;
-  fsys_fat.close = fat_close;
+  fsys_fat.fop.open = fat_open;
+  fsys_fat.fop.read = fat_read;
+  fsys_fat.fop.close = fat_close;
   fsys_fat.root = fat_get_rootdir;  // TODO: needs to be on the same level with VFS
   fsys_fat.ls = fat_ls;
   fsys_fat.cd = fat_cd;
   fsys_fat.delete = fat_delete;
   fsys_fat.mkdir = fat_mkdir;
-  fsys_fat.write = fat_write;
+  fsys_fat.fop.write = fat_write;
 
   //! register ourself to volume manager
   vfs_register_file_system(&fsys_fat, 0);

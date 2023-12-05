@@ -42,13 +42,17 @@ typedef struct _vfs_file {
   table_entry p_table_entry;
 } vfs_file;
 
-typedef struct _vfs_filesystem {
-  char name[8];
-  vfs_file (*open)(const char* filename, mode_t mode);
+typedef struct _vfs_file_operations {
+	vfs_file (*open)(const char* filename, mode_t mode);
   int32_t (*read)(vfs_file* file, uint8_t* buffer, uint32_t length, off_t ppos);
   ssize_t (*write)(vfs_file *file, const char *buf, size_t count, off_t ppos);
   int32_t (*close)(vfs_file*);
   off_t (*llseek)(vfs_file* file, off_t ppos, int);
+} vfs_file_operations;
+
+typedef struct _vfs_filesystem {
+  char name[8];
+  vfs_file_operations fop;
   vfs_file (*root)();
   int32_t (*delete)(const char* path);
   void (*mount)();
