@@ -2,6 +2,7 @@
 #include "kernel/util/debug.h"
 #include "kernel/util/limits.h"
 #include "kernel/util/string/string.h"
+#include "kernel/util/path.h"
 
 #include "kernel/fs/ext2/ext2.h"
 
@@ -18,9 +19,10 @@ static int ext2_recursive_block_action(
 
   int ret = -ENOENT;
   uint32_t *block_buf = (uint32_t *)ext2_bread_block(sb, block);
-  for (uint32_t i = 0, nblocks = minfo->blocksize >> 2; i < nblocks; ++i)
+  for (uint32_t i = 0, nblocks = minfo->blocksize / sizeof(uint32_t); i < nblocks; ++i)
     if ((ret = ext2_recursive_block_action(sb, level - 1, block_buf[i], arg, action)) >= 0)
       break;
+  kfree(block_buf);
   return ret;
 }
 
@@ -31,20 +33,25 @@ static int ext2_find_ino(ext2_mount_info* minfo, uint32_t block, void *arg) {
 	char tmpname[NAME_MAX];
 	uint32_t size = 0;
 	ext2_dir_entry *entry = (ext2_dir_entry *)block_buf;
+
+  int ret = -ENOENT;
 	while (size < minfo->blocksize) {
 		memcpy(tmpname, entry->name, entry->name_len);
-		tmpname[entry->name_len] = 0;
+		tmpname[entry->name_len] = '\0';
 
-		if (strcmp(tmpname, name) == 0)
-			return entry->ino;
+		if (strcmp(tmpname, name) == 0) {
+      ret = entry->ino;
+      break;
+    }
 
 		size = size + entry->rec_len;
 		entry = (ext2_dir_entry *)((char *)entry + entry->rec_len);
 	}
-	return -ENOENT;
+  kfree(block_buf);
+	return ret;
 }
 
-static ext2_inode *ext2_lookup_inode(ext2_inode *dir, char* name) {
+ext2_inode* ext2_lookup_inode(ext2_inode* dir, char* name) {
 	ext2_inode *ei = dir;
 
 	for (uint32_t i = 0, ino = 0; i < ei->i_blocks; ++i) {
@@ -52,13 +59,63 @@ static ext2_inode *ext2_lookup_inode(ext2_inode *dir, char* name) {
 			continue;
 
 		if (
-      ((EXT2_INO_UPPER_LEVEL0 > i) && (ino = ext2_recursive_block_action(minfo, 0, ei->i_block[i], name, ext2_find_ino)) > 0) ||
-			((EXT2_INO_UPPER_LEVEL0 <= i && i < EXT2_INO_UPPER_LEVEL1) && (ino = ext2_recursive_block_action(minfo, 1, ei->i_block[12], name, ext2_find_ino)) > 0) ||
-			((EXT2_INO_UPPER_LEVEL1 <= i && i < EXT2_INO_UPPER_LEVEL2) && (ino = ext2_recursive_block_action(minfo, 2, ei->i_block[13], name, ext2_find_ino)) > 0) ||
-			((EXT2_INO_UPPER_LEVEL2 <= i && i < EXT2_INO_UPPER_LEVEL3) && (ino = ext2_recursive_block_action(minfo, 3, ei->i_block[14], name, ext2_find_ino)) > 0))
+      ((minfo->ino_upper_levels[0] > i) && (ino = ext2_recursive_block_action(minfo, 0, ei->i_block[i], name, ext2_find_ino)) > 0) ||
+			((minfo->ino_upper_levels[0] <= i && i < minfo->ino_upper_levels[1]) && (ino = ext2_recursive_block_action(minfo, 1, ei->i_block[12], name, ext2_find_ino)) > 0) ||
+			((minfo->ino_upper_levels[1] <= i && i < minfo->ino_upper_levels[2]) && (ino = ext2_recursive_block_action(minfo, 2, ei->i_block[13], name, ext2_find_ino)) > 0) ||
+			((minfo->ino_upper_levels[2] <= i && i < minfo->ino_upper_levels[3]) && (ino = ext2_recursive_block_action(minfo, 3, ei->i_block[14], name, ext2_find_ino)) > 0))
 		{
 			return ext2_get_inode(ino);
 		}
 	}
 	return NULL;
+}
+
+int ext2_jmp(ext2_inode* dir, ext2_inode** res, char* path) {
+  char* simplified = NULL;
+  if (!simplify_path(path, &simplified)) {
+    return -EINVAL;
+  }
+
+  if (simplified[0] == '\0') { // if empty return current directory
+    return dir;
+  }
+
+  const char* cur = simplified;
+  
+  if (dir == NULL) {
+    dir = minfo->root_dir;
+  }
+
+  // check if root dir
+  if (simplified[0] == '\/') {
+    dir = minfo->root_dir;
+    cur++;
+  }
+  
+  int ret = 0;
+  ext2_inode* cur_node = dir;
+
+  while (*cur) {
+    char pathname[NAME_MAX + 1];
+    int32_t i = 0;
+    while (cur[i] != '\/' && cur[i] != '\0') {
+      pathname[i] = cur[i];
+      ++i;
+    }
+
+    pathname[i] = '\0';  // null terminate
+
+    if ((cur_node = ext2_lookup_inode(cur_node, pathname)) == NULL) {
+      return -ENOENT;
+    }
+
+    if (cur[i] == '\/') {
+      ++i;
+    }
+
+    cur = &cur[i];
+  }
+
+  *res = cur_node;
+  return ret;
 }

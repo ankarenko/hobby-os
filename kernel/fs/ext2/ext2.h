@@ -62,12 +62,6 @@
 #define EXT2_BOOT_LOADER_INO	          5	// boot loader inode
 #define EXT2_UNDEL_DIR_INO	            6	// undelete directory inode
 
-// look for the standart if you don't understand
-#define EXT2_INO_UPPER_LEVEL0 12
-#define EXT2_INO_UPPER_LEVEL1 268
-#define EXT2_INO_UPPER_LEVEL2 65804
-#define EXT2_INO_UPPER_LEVEL3 16843020
-
 // i_mode values
 // file format --
 #define EXT2_S_IFSOCK	0xC000	// socket
@@ -271,6 +265,9 @@ typedef struct {
   bool is_readonly;
   uint32_t inode_reserved;
   uint32_t gdt_size_blocks; // amount of global descriptor tables
+  uint64_t ino_upper_levels[4];
+  uint32_t inode_size;
+  ext2_inode* root_dir;
 } ext2_mount_info;
 
 extern ext2_mount_info* minfo;
@@ -291,8 +288,11 @@ void ext2_write_group_desc(ext2_group_desc *gdp);
 ssize_t ext2_read_file(
   ext2_mount_info* minfo, ext2_inode* inode, 
   char *buf, size_t count, off_t ppos
-)
+);
+int ext2_readdir(ext2_inode* inode, ext2_dir_entry** dirs);
 
 // inode.c
+ext2_inode* ext2_lookup_inode(ext2_inode* dir, char* name);
+int ext2_jmp(ext2_inode* dir, ext2_inode** res, char* path);
 
 #endif
