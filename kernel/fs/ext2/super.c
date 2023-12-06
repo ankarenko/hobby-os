@@ -44,6 +44,8 @@ void init_ext2_fs() {
   minfo->blocksize = EXT2_BLOCK_SIZE(minfo->sb);
   minfo->inode_reserved = minfo->sb->s_rev_level == EXT2_GOOD_OLD_REV? 
     11 : minfo->sb->s_first_ino;
+  uint32_t num_block_groups = div_ceil(minfo->sb->s_blocks_count, minfo->sb->s_blocks_per_group);
+  minfo->gdt_size_blocks = div_ceil((num_block_groups * sizeof(ext2_group_desc)), minfo->blocksize);
   
   KASSERT(minfo->blocksize <= PAGE_SIZE);
   KASSERT(minfo->blocksize >= BYTES_PER_SECTOR);
@@ -58,6 +60,21 @@ void init_ext2_fs() {
   }
 
   assert_superblock(minfo->sb);
+
+  // get root directory 
+  ext2_inode* root_node = ext2_read_inode(EXT2_ROOT_INO);
+  //ext2_group_desc* gd = ext2_get_group_desc(0);
+  //uint8_t* inode_bitmap = (uint8_t*)ext2_bread_block(minfo, gd->bg_inode_bitmap);
+  
+  // read content
+  if (root_node->i_mode == EXT2_S_IFDIR) {
+    root_node->i_blocks
+    
+  }
+
+  kfree(root_node);
+  //kfree(gd);
+  //kfree(inode_bitmap);
 }
 
 void exit_ext2_fs() {

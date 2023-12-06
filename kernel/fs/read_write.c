@@ -10,7 +10,7 @@ extern vfs_filesystem* file_systems[DEVICE_MAX];
 static int32_t vfs_read_chunk(vfs_file* file, uint8_t* buffer, uint32_t length) {
   if (file) {
     if (file_systems[file->device_id - 'a']) {
-      return file_systems[file->device_id - 'a']->read(file, buffer, length, file->f_pos);
+      return file_systems[file->device_id - 'a']->fop.read(file, buffer, length, file->f_pos);
     }
   }
   return -1;
@@ -68,7 +68,7 @@ ssize_t vfs_fwrite(int32_t fd, char* buf, int32_t count) {
   
   if (file) {
     if (file_systems[file->device_id - 'a']) {
-      return file_systems[file->device_id - 'a']->write(file, buf, count, file->f_pos);
+      return file_systems[file->device_id - 'a']->fop.write(file, buf, count, file->f_pos);
     }
   }
   return -ENOENT;

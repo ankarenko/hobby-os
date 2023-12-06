@@ -270,6 +270,7 @@ typedef struct {
   uint32_t blocksize;
   bool is_readonly;
   uint32_t inode_reserved;
+  uint32_t gdt_size_blocks; // amount of global descriptor tables
 } ext2_mount_info;
 
 extern ext2_mount_info* minfo;
@@ -281,13 +282,16 @@ char *ext2_bread_block(ext2_mount_info* mi, uint32_t iblock);
 char *ext2_bread(ext2_mount_info* mi, uint32_t iblock, uint32_t size);
 void ext2_bwrite_block(ext2_mount_info* mi, uint32_t iblock, char *buf);
 void ext2_bwrite(ext2_mount_info* mi, uint32_t iblock, char *buf, uint32_t size);
-ext2_inode *ext2_get_inode(ino_t);
+ext2_inode *ext2_read_inode(ino_t);
 void ext2_write_inode(ext2_inode *, ino_t);
 ext2_group_desc *ext2_get_group_desc(uint32_t block_group);
 void ext2_write_group_desc(ext2_group_desc *gdp);
 
 // file.c
-
+ssize_t ext2_read_file(
+  ext2_mount_info* minfo, ext2_inode* inode, 
+  char *buf, size_t count, off_t ppos
+)
 
 // inode.c
 

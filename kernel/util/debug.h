@@ -8,6 +8,9 @@
 #define PANIC(fmt, args...) { printf(fmt, args); disable_interrupts(); for (;;); }
 #define LOG(fmt, args...) printf(fmt, args);
 
+
+#define assert_not_reached() PANIC("Should not be reached", NULL)
+
 #ifndef NDEBUG
 #define KASSERT(x) { if (!(x)) PANIC("\nassertion failed: %s", #x); }
 #else

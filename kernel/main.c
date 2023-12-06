@@ -355,8 +355,11 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   //flpydsk_set_working_drive(0);
   //flpydsk_install(IRQ6);
 
+  
   //fat32_init();
   init_ext2_fs();
+
+
   chrdev_init();
   
 
