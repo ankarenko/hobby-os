@@ -155,14 +155,20 @@ void init_ext2_fs() {
   KASSERT(minfo->root_dir->i_mode & EXT2_S_IFDIR != 0); // check if directory
 
   ext2_inode* file = NULL;
-  if (ext2_jmp(NULL, &file, "/diary/../diary/./day1.txt") >= 0) {
-    char* buf = kcalloc(1, file->i_size + 1);
+  if (ext2_jmp(NULL, &file, "greande.txt") >= 0) {
+    char c;
     uint32_t read = 0;
-    if ((read = ext2_read_file(minfo, file, buf, file->i_size, 0)) > 0) {
-      buf[read] = '\0';
-      printf("\n%s\n", buf);
+
+    uint32_t pos = 0;
+    while ((read = ext2_read_file(minfo, file, &c, 1, pos)) > 0) {
+      printf("%c", c);
+      pos += read;
     }
   }
+
+  vfs_register_file_system(&fsys_fat, 0);
+
+  fat_mount();
 }
 
 void exit_ext2_fs() {
@@ -173,3 +179,8 @@ void exit_ext2_fs() {
     minfo = NULL;
   }
 }
+
+vfs_file_system_type ext2_fs_type = {
+	.name = "ext2",
+	.mount = ext2_mount,
+};

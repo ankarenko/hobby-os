@@ -1,6 +1,7 @@
 #include <errno.h>
 
 #include "kernel/fs/ext2/ext2.h"
+#include "kernel/fs/vfs.h"
 #include "kernel/util/math.h"
 #include "kernel/util/debug.h"
 #include "kernel/util/limits.h"
@@ -81,3 +82,14 @@ int ext2_readdir(ext2_inode* inode, ext2_dir_entry** dirs) {
 
 	return entries_size;
 }
+
+vfs_file_operations ext2_file_operations = {
+	//.llseek = generic_file_llseek,
+	.read = ext2_read_file,
+	//.write = ext2_write_file,
+	//.mmap = ext2_mmap_file,
+};
+
+vfs_file_operations ext2_dir_operations = {
+	.readdir = ext2_readdir,
+};

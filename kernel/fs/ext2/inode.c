@@ -3,6 +3,7 @@
 #include "kernel/util/limits.h"
 #include "kernel/util/string/string.h"
 #include "kernel/util/path.h"
+#include "kernel/fs/vfs.h"
 
 #include "kernel/fs/ext2/ext2.h"
 
@@ -119,3 +120,18 @@ int ext2_jmp(ext2_inode* dir, ext2_inode** res, char* path) {
   *res = cur_node;
   return ret;
 }
+
+vfs_inode_operations ext2_file_inode_operations = {
+	//.truncate = ext2_truncate_inode,
+};
+
+vfs_inode_operations ext2_dir_inode_operations = {
+	//.create = ext2_create_inode,
+	.lookup = ext2_lookup_inode,
+	//.mknod = ext2_mknod,
+	//.rename = ext2_rename,
+	//.unlink = ext2_unlink,
+
+};
+
+vfs_inode_operations ext2_special_inode_operations = {};

@@ -22,12 +22,12 @@
 
 typedef int32_t sect_t;
 
-typedef struct _table_entry {
+typedef struct {
   size_t index;
   sect_t dir_sector;
 } table_entry;
 
-typedef struct _vfs_file {
+typedef struct {
   char name[12];
   uint32_t flags;
   uint32_t file_length;
@@ -42,15 +42,16 @@ typedef struct _vfs_file {
   table_entry p_table_entry;
 } vfs_file;
 
-typedef struct _vfs_file_operations {
+typedef struct {
 	vfs_file (*open)(const char* filename, mode_t mode);
   int32_t (*read)(vfs_file* file, uint8_t* buffer, uint32_t length, off_t ppos);
+  int (*readdir)(struct vfs_file *dir, struct dirent *dirent, unsigned int count);
   ssize_t (*write)(vfs_file *file, const char *buf, size_t count, off_t ppos);
   int32_t (*close)(vfs_file*);
   off_t (*llseek)(vfs_file* file, off_t ppos, int);
 } vfs_file_operations;
 
-typedef struct _vfs_filesystem {
+typedef struct {
   char name[8];
   vfs_file_operations fop;
   vfs_file (*root)();
@@ -60,6 +61,26 @@ typedef struct _vfs_filesystem {
   bool (*cd)(const char* path);
   int32_t (*mkdir)(const char* path);
 } vfs_filesystem;
+
+typedef struct {
+	const char *name;
+	void (*mount)();
+	//void (*unmount)(struct vfs_superblock *);
+	//struct vfs_file_system_type *next;
+} vfs_file_system_type;
+
+typedef struct {
+	//struct vfs_inode *(*create)(struct vfs_inode *dir, struct vfs_dentry *dentry, mode_t mode);
+	struct vfs_inode *(*lookup)(struct vfs_inode *dir, struct vfs_dentry *dentry);
+	//int (*mkdir)(struct vfs_inode *, char *, int);
+	//int (*rename)(struct vfs_inode *old_dir, struct vfs_dentry *old_dentry,
+	//			  struct vfs_inode *new_dir, struct vfs_dentry *new_dentry);
+	//int (*unlink)(struct vfs_inode *dir, struct vfs_dentry *dentry);
+	//int (*mknod)(struct vfs_inode *, struct vfs_dentry *, int, dev_t);
+	//void (*truncate)(struct vfs_inode *);
+	//int (*setattr)(struct vfs_dentry *, struct iattr *);
+	//int (*getattr)(struct vfs_mount *mnt, struct vfs_dentry *, struct kstat *);
+} vfs_inode_operations;
 
 // vfs.c
 bool vfs_ls(const char* path);

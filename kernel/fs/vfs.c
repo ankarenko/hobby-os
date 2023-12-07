@@ -1,4 +1,3 @@
-#include "vfs.h"
 
 #include "kernel/util/string/string.h"
 
@@ -7,6 +6,8 @@
 #include "kernel/proc/task.h"
 #include "kernel/memory/malloc.h"
 #include "kernel/util/debug.h"
+
+#include "kernel/fs/vfs.h"
 
 vfs_filesystem* file_systems[DEVICE_MAX];
 
