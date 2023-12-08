@@ -10,6 +10,8 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
+#include "kernel/fs/vfs.h"
+
 #define EXT2_SUPER_MAGIC 0xEF53
 #define EXT2_STARTING_INO 1
 #define EXT2_MAX_DATA_LEVEL 3
@@ -276,37 +278,38 @@ typedef struct {
   bool is_readonly;
 } ext2_fs_info;
 
-extern ext2_mount_info* minfo;
+static inline ext2_fs_info* EXT2_INFO(struct vfs_superblock *sb) {
+  return sb->s_fs_info;
+}
 
-static inline ext2_superblock* EXT2_SB(vfs_superblock *sb) {
+static inline ext2_superblock* EXT2_SB(struct vfs_superblock *sb) {
 	return ((ext2_fs_info*)sb->s_fs_info)->sb;
 }
 
-static inline ext2_inode* EXT2_INODE(vfs_inode *inode) {
+static inline ext2_inode* EXT2_INODE(struct vfs_inode *inode) {
 	return (ext2_inode*)inode->i_fs_info;
 }
 
 // super.c
 void init_ext2_fs();
 void exit_ext2_fs();
-char *ext2_bread_block(ext2_mount_info* mi, uint32_t iblock);
-char *ext2_bread(ext2_mount_info* mi, uint32_t iblock, uint32_t size);
-void ext2_bwrite_block(ext2_mount_info* mi, uint32_t iblock, char *buf);
-void ext2_bwrite(ext2_mount_info* mi, uint32_t iblock, char *buf, uint32_t size);
-ext2_inode *ext2_read_inode(ino_t);
-void ext2_write_inode(ext2_inode *, ino_t);
-ext2_group_desc *ext2_get_group_desc(uint32_t block_group);
-void ext2_write_group_desc(ext2_group_desc *gdp);
+char *ext2_bread_block(struct vfs_superblock *sb, uint32_t iblock);
+char *ext2_bread(struct vfs_superblock *sb, uint32_t iblock, uint32_t size);
+void ext2_bwrite_block(struct vfs_superblock *sb, uint32_t iblock, char *buf);
+void ext2_bwrite(struct vfs_superblock *sb, uint32_t iblock, char *buf, uint32_t size);
+
+void ext2_read_inode(struct vfs_inode* i);
+void ext2_write_inode(struct vfs_inode* i);
+struct vfs_inode* ext2_get_inode(struct vfs_superblock* sb, ino_t ino);
+ext2_group_desc *ext2_get_group_desc(struct vfs_superblock* sb, uint32_t group);
+void ext2_write_group_desc(struct vfs_superblock *sb, ext2_group_desc *gdp);
 
 // file.c
-ssize_t ext2_read_file(
-  ext2_mount_info* minfo, ext2_inode* inode, 
-  char *buf, size_t count, off_t ppos
-);
-int ext2_readdir(ext2_inode* inode, ext2_dir_entry** dirs);
+ssize_t ext2_read_file(struct vfs_superblock *sb, char *buf, size_t count, off_t ppos);
+int ext2_readdir(struct vfs_file* file, struct dirent* dirent);
 
 // inode.c
-ext2_inode* ext2_lookup_inode(ext2_inode* dir, char* name);
-int ext2_jmp(ext2_inode* dir, ext2_inode** res, char* path);
+struct vfs_inode* ext2_lookup_inode(struct vfs_inode *dir, char* name);
+int ext2_jmp(struct vfs_inode *dir, struct vfs_inode** res, char* path);
 
 #endif

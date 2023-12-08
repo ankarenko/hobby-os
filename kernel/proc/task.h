@@ -99,7 +99,7 @@ typedef struct _thread {
 
 typedef struct _files_struct {
 	//struct semaphore lock;
-	vfs_file *fd[MAX_FD];
+	struct vfs_file *fd[MAX_FD];
 } files_struct;
 
 /* 

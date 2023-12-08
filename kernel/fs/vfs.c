@@ -8,7 +8,7 @@
 
 #include "kernel/fs/vfs.h"
 
-static vfs_file_system_type* file_systems;
+static struct vfs_file_system_type* file_systems;
 struct list_head vfsmntlist;
 
 /*
@@ -35,8 +35,8 @@ vfs_file vfs_get_root(uint32_t device_id) {
 }
 */
 
-static vfs_file_system_type** find_filesystem(const char* name) {
-	vfs_file_system_type **p;
+static struct vfs_file_system_type** find_filesystem(const char* name) {
+	struct vfs_file_system_type **p;
 	for (p = &file_systems; *p; p = &(*p)->next) {
 		if (strcmp((*p)->name, name) == 0)
 			break;
@@ -44,8 +44,8 @@ static vfs_file_system_type** find_filesystem(const char* name) {
 	return p;
 }
 
-int register_filesystem(vfs_file_system_type *fs) {
-	vfs_file_system_type** p = find_filesystem(fs->name);
+int register_filesystem(struct vfs_file_system_type *fs) {
+	struct vfs_file_system_type** p = find_filesystem(fs->name);
 
 	if (*p)
 		return -EBUSY;
@@ -55,8 +55,8 @@ int register_filesystem(vfs_file_system_type *fs) {
 	return 0;
 }
 
-int unregister_filesystem(vfs_file_system_type *fs) {
-	vfs_file_system_type** p;
+int unregister_filesystem(struct vfs_file_system_type *fs) {
+	struct vfs_file_system_type** p;
 	for (p = &file_systems; *p; p = &(*p)->next) {
 		if (strcmp((*p)->name, fs->name) == 0) {
 			*p = (*p)->next;
@@ -66,17 +66,17 @@ int unregister_filesystem(vfs_file_system_type *fs) {
 	return -EINVAL;
 }
 
-static void init_rootfs(vfs_file_system_type* fs_type, char *dev_name) {
+static void init_rootfs(struct vfs_file_system_type* fs_type, char *dev_name) {
 	init_ext2_fs();
 
-	vfs_mount *mnt = fs_type->mount(fs_type, dev_name, "/");
+	struct vfs_mount *mnt = fs_type->mount(fs_type, dev_name, "/");
   list_add_tail(&mnt->sibling, &vfsmntlist);
 	
 	//current_process->fs->d_root = mnt->mnt_root;
 	//current_process->fs->mnt_root = mnt;
 }
 
-void vfs_init(vfs_file_system_type* fs, char* dev_name) {
+void vfs_init(struct vfs_file_system_type* fs, char* dev_name) {
 	//log("VFS: Initializing");
 
 	INIT_LIST_HEAD(&vfsmntlist);
