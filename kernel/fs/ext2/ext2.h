@@ -270,7 +270,21 @@ typedef struct {
   ext2_inode* root_dir;
 } ext2_mount_info;
 
+typedef struct {
+  ext2_superblock* sb;
+  uint64_t ino_upper_levels[4];
+  bool is_readonly;
+} ext2_fs_info;
+
 extern ext2_mount_info* minfo;
+
+static inline ext2_superblock* EXT2_SB(vfs_superblock *sb) {
+	return ((ext2_fs_info*)sb->s_fs_info)->sb;
+}
+
+static inline ext2_inode* EXT2_INODE(vfs_inode *inode) {
+	return (ext2_inode*)inode->i_fs_info;
+}
 
 // super.c
 void init_ext2_fs();

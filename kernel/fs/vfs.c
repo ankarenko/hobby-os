@@ -1,6 +1,5 @@
 
 #include "kernel/util/string/string.h"
-
 #include "kernel/util/errno.h"
 #include "kernel/util/fcntl.h"
 #include "kernel/proc/task.h"
@@ -9,8 +8,10 @@
 
 #include "kernel/fs/vfs.h"
 
-vfs_filesystem* file_systems[DEVICE_MAX];
+static vfs_file_system_type* file_systems;
+struct list_head vfsmntlist;
 
+/*
 bool vfs_ls(const char* path) {
   unsigned char device = 'a';
 
@@ -32,24 +33,54 @@ vfs_file vfs_get_root(uint32_t device_id) {
     return file;
   }
 }
+*/
 
-void vfs_register_file_system(vfs_filesystem* fsys, uint32_t device_id) {
-  static int32_t i = 0;
-
-  if (i < DEVICE_MAX)
-    if (fsys) {
-      file_systems[device_id] = fsys;
-      i++;
-    }
+static vfs_file_system_type** find_filesystem(const char* name) {
+	vfs_file_system_type **p;
+	for (p = &file_systems; *p; p = &(*p)->next) {
+		if (strcmp((*p)->name, name) == 0)
+			break;
+	}
+	return p;
 }
 
-void vfs_unregister_file_system(vfs_filesystem* fsys) {
-  for (int i = 0; i < DEVICE_MAX; i++)
-    if (file_systems[i] == fsys)
-      file_systems[i] = 0;
+int register_filesystem(vfs_file_system_type *fs) {
+	vfs_file_system_type** p = find_filesystem(fs->name);
+
+	if (*p)
+		return -EBUSY;
+	else
+		*p = fs;
+
+	return 0;
 }
 
-void vfs_unregister_file_system_by_id(uint32_t device_id) {
-  if (device_id < DEVICE_MAX)
-    file_systems[device_id] = 0;
+int unregister_filesystem(vfs_file_system_type *fs) {
+	vfs_file_system_type** p;
+	for (p = &file_systems; *p; p = &(*p)->next) {
+		if (strcmp((*p)->name, fs->name) == 0) {
+			*p = (*p)->next;
+			return 0;
+		}
+  }
+	return -EINVAL;
+}
+
+static void init_rootfs(vfs_file_system_type* fs_type, char *dev_name) {
+	init_ext2_fs();
+
+	vfs_mount *mnt = fs_type->mount(fs_type, dev_name, "/");
+  list_add_tail(&mnt->sibling, &vfsmntlist);
+	
+	//current_process->fs->d_root = mnt->mnt_root;
+	//current_process->fs->mnt_root = mnt;
+}
+
+void vfs_init(vfs_file_system_type* fs, char* dev_name) {
+	//log("VFS: Initializing");
+
+	INIT_LIST_HEAD(&vfsmntlist);
+
+	//log("VFS: Mount ext2");
+	init_rootfs(fs, dev_name);
 }

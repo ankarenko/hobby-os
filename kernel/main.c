@@ -28,6 +28,8 @@
 #include "kernel/fs/char_dev.h"
 #include "multiboot.h"
 
+extern vfs_file_system_type ext2_fs_type;
+
 void cmd_init();
 
 //! sleeps a little bit. This uses the HALs get_tick_count() which in turn uses the PIT
@@ -357,8 +359,7 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
 
   
   //fat32_init();
-  init_ext2_fs();
-
+  vfs_init(&ext2_fs_type, "/dev/hda");
 
   chrdev_init();
   
