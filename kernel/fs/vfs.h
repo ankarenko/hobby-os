@@ -34,7 +34,7 @@ struct vfs_dentry {
 	char *d_name;
 	struct vfs_superblock* d_sb;
 	struct list_head d_subdirs;
-	//list_head d_sibling;
+	struct list_head d_sibling;
 };
 
 struct vfs_super_operations {
@@ -99,6 +99,11 @@ struct vfs_inode {
 	void *i_fs_info;
 };
 
+struct nameidata {
+	struct vfs_dentry* dentry;
+	struct vfs_mount* mnt;
+};
+
 struct vfs_mount {
 	struct vfs_dentry *mnt_root;
 	struct vfs_dentry *mnt_mountpoint;
@@ -153,6 +158,7 @@ struct vfs_file {
 };
 
 // vfs.c
+struct vfs_mount* do_mount(const char* fstype, int flags, const char* path);
 void vfs_init(struct vfs_file_system_type* fs, char* dev_name);
 void init_ext2_fs();
 void exit_ext2_fs();
@@ -169,6 +175,7 @@ int32_t vfs_open(const char* fname, int32_t flags, ...);
 int vfs_fstat(int32_t fd, struct stat* stat);
 int32_t vfs_delete(const char* fname);
 int32_t vfs_mkdir(const char* dir_path);
+struct vfs_dentry *alloc_dentry(struct vfs_dentry *parent, char *name);
 
 // read_write.c
 int32_t vfs_fread(int32_t fd, char* buf, int32_t count);

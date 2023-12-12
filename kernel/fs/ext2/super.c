@@ -199,19 +199,6 @@ void ext2_read_inode(struct vfs_inode* i) {
   */
 }
 
-struct vfs_dentry* alloc_dentry(struct vfs_dentry* parent, char *name) {
-	struct vfs_dentry *d = kcalloc(1, sizeof(struct vfs_dentry));
-	d->d_name = strdup(name);
-	d->d_parent = parent;
-	INIT_LIST_HEAD(&d->d_subdirs);
-
-	if (parent) {
-		d->d_sb = parent->d_sb;
-  }
-
-	return d;
-}
-
 struct vfs_mount* ext2_mount(struct vfs_file_system_type *fs_type, char *dev_name, char *dir_name) {
   struct vfs_superblock *sb = (struct vfs_superblock *)kcalloc(1, sizeof(struct vfs_superblock));
 	sb->mnt_devname = strdup(dev_name);

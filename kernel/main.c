@@ -28,7 +28,7 @@
 #include "kernel/fs/char_dev.h"
 #include "multiboot.h"
 
-extern vfs_file_system_type ext2_fs_type;
+extern struct vfs_file_system_type ext2_fs_type;
 
 void cmd_init();
 
@@ -39,7 +39,7 @@ void sleep(uint32_t ms) {
     ;
 }
 
-static vfs_file* _cur_dir = NULL;
+static struct vfs_file* _cur_dir = NULL;
 
 //! wait for key stroke
 enum KEYCODE getch() {

@@ -3,10 +3,21 @@
 #include "kernel/util/errno.h"
 #include "kernel/proc/task.h"
 #include "kernel/util/debug.h"
+#include "kernel/util/string/string.h"
 
 #include "kernel/fs/vfs.h"
 
-extern vfs_filesystem* file_systems[DEVICE_MAX];
+struct vfs_dentry *alloc_dentry(struct vfs_dentry *parent, char *name) {
+	struct vfs_dentry *d = kcalloc(1, sizeof(struct vfs_dentry));
+	d->d_name = strdup(name);
+	d->d_parent = parent;
+	INIT_LIST_HEAD(&d->d_subdirs);
+
+	if (parent)
+		d->d_sb = parent->d_sb;
+
+	return d;
+}
 
 static int32_t find_unused_fd_slot() {
   process* proc = get_current_process();
@@ -18,32 +29,37 @@ static int32_t find_unused_fd_slot() {
 	return -1;
 }
 
-static vfs_file *get_empty_file() {
-	vfs_file *file = kcalloc(1, sizeof(vfs_file));
+static struct vfs_file *get_empty_file() {
+	struct vfs_file *file = kcalloc(1, sizeof(struct vfs_file));
   
 	return file;
 }
 
 int32_t vfs_close(int32_t fd) {
+  /*
   process* proc = get_current_process();
   vfs_file* file = proc->files->fd[fd];
 
   if (file)
     if (file_systems[file->device_id - 'a'])
       return file_systems[file->device_id - 'a']->fop.close(file);
+      */
 }
 
 int vfs_fstat(int32_t fd, struct stat* stat) {
+  /*
   process* proc = get_current_process();
   vfs_file* file = proc->files->fd[fd];
   stat->st_size = file->file_length;
   stat->st_mode = S_IFCHR;
   stat->st_blksize = 512;
   //stat->st_blocks = 1;
+  */
   return 1;
 }
 
 int32_t vfs_delete(const char* fname) {
+  /*
   if (!fname)
     return -ENOENT;
 
@@ -51,9 +67,11 @@ int32_t vfs_delete(const char* fname) {
   if (file_systems[device - 'a']) {
     return file_systems[device - 'a']->delete(fname);
   }
+  */
 }
 
 int32_t vfs_mkdir(const char* dir_path) {
+  /*
   if (!dir_path)
     return -ENOENT;
 
@@ -61,9 +79,11 @@ int32_t vfs_mkdir(const char* dir_path) {
   if (file_systems[device - 'a']) {
     return file_systems[device - 'a']->mkdir(dir_path);
   }
+  */
 }
 
 int32_t vfs_open(const char* fname, int32_t flags, ...) {
+  /*
   if (fname) {
     //! default to device 'a'
     unsigned char device = 'a';
@@ -101,6 +121,6 @@ int32_t vfs_open(const char* fname, int32_t flags, ...) {
       return fd;
     }
   }
-
+  */
   return -1;
 }

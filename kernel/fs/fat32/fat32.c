@@ -1,3 +1,4 @@
+/*
 #include <stdbool.h>
 
 #include "kernel/util/string/string.h"
@@ -16,7 +17,7 @@
 
 #include "./fat32.h"
 
-/*
+
 ALLOWED PATH
 
 /A/B/C.ext
@@ -25,7 +26,7 @@ A/B/C.ext
 ./A/C.txt
 /A/../C.txt
 
-*/
+
 
 #define FAT_LEGACY_FILENAME_SIZE 11  // 8.3
 #define MAX_FILE_PATH 100
@@ -35,10 +36,10 @@ static char* device_name = "/dev/hda";
 #define RDISK(sector) breads(device_name, sector);
 #define WDISK(sector, buf) bwrite(device_name, sector, buf, BYTES_PER_SECTOR);
 
-/*
-  fat[0] // 0xfffffff8 hard, 0xfffffff0 floppy, 0xfffffffa ram
-  fat[1] // must be 0xffffffff
-*/
+
+//  fat[0] // 0xfffffff8 hard, 0xfffffff0 floppy, 0xfffffffa ram
+//  fat[1] // must be 0xffffffff
+
 uint32_t* fat = NULL;
 static vfs_filesystem fsys_fat;
 static mount_info minfo;
@@ -685,6 +686,7 @@ int32_t fat_delete(const char* path) {
 }
 
 char* pwd() {
+  
   return cur_path;
 }
 
@@ -955,4 +957,9 @@ void fat32_init() {
   vfs_register_file_system(&fsys_fat, 0);
 
   fat_mount();
+}
+*/
+
+char* pwd() {
+  return 0;
 }

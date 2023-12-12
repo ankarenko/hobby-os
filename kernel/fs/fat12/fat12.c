@@ -1,4 +1,5 @@
 
+/*
 #include <stdbool.h>
 #include "kernel/util/string/string.h"
 
@@ -143,17 +144,11 @@ void fat12_read(vfs_file* file, uint8_t* buffer, uint32_t Length) {
   }
 }
 
-/**
- *	Closes filestr
- */
 void fat12_close(vfs_file* file) {
   if (file)
     file->flags = FS_INVALID;
 }
 
-/**
- *	Locates file or directory in root directory
- */
 vfs_file fat12_look_root_directory(const char* filename) {
   vfs_file file;
 
@@ -323,9 +318,6 @@ void fat12_mount() {
   _mount_info.root_size = div_ceil(bootsector->bpb.num_dir_entries << 5, bootsector->bpb.bytes_per_sector);
 }
 
-/**
- *	Initialize vfs_filesystem
- */
 void fat12_initialize() {
   //! initialize vfs_filesystem struct
   strcpy(_fsys_fat.name, "FAT12");
@@ -342,3 +334,4 @@ void fat12_initialize() {
   //! mounr vfs_filesystem
   fat12_mount();
 }
+*/

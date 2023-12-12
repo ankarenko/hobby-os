@@ -156,6 +156,36 @@ static inline int list_is_last(const struct list_head *list,
 #define list_next_entry(pos, member) \
 	list_entry((pos)->member.next, typeof(*(pos)), member)
 
+
+/**
+ * list_for_each_entry_safe_from - iterate over list from current point safe against removal
+ * @pos:	the type * to use as a loop cursor.
+ * @n:		another type * to use as temporary storage
+ * @head:	the head for your list.
+ * @member:	the name of the list_head within the struct.
+ *
+ * Iterate over list of given type from current point, safe against
+ * removal of list entry.
+ */
+#define list_for_each_entry_safe_from(pos, n, head, member) \
+	for (n = list_next_entry(pos, member);                  \
+		 &pos->member != (head);                            \
+		 pos = n, n = list_next_entry(n, member))
+
+/**
+ * list_for_each_entry_safe - iterate over list of given type safe against removal of list entry
+ * @pos:	the type * to use as a loop cursor.
+ * @n:		another type * to use as temporary storage
+ * @head:	the head for your list.
+ * @member:	the name of the list_head within the struct.
+ */
+#define list_for_each_entry_safe(pos, n, head, member)       \
+	for (pos = list_first_entry(head, typeof(*pos), member), \
+		n = list_next_entry(pos, member);                    \
+		 &pos->member != (head);                             \
+		 pos = n, n = list_next_entry(n, member))
+
+
 /**
  * list_first_entry - get the first element from a list
  * @ptr:	the list head to take the element from.
