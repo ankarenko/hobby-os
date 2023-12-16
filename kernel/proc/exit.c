@@ -9,7 +9,7 @@ bool free_heap(mm_struct_mos* mm) {
   //pmm_free_frames();
 }
 
-bool exit_file(vfs_file* file) {
+bool exit_file(struct vfs_file* file) {
   kfree(file);
   return true;
 }
@@ -42,6 +42,7 @@ bool exit_process(process* proc) {
   
   kfree(proc->mm_mos);
   kfree(proc->path);
+  kfree(proc->fs);
   kfree(proc);
 
   return true;

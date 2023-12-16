@@ -268,7 +268,7 @@ typedef struct {
   uint32_t inode_reserved;
   uint32_t gdt_size_blocks; // amount of global descriptor tables
   uint64_t ino_upper_levels[4];
-  uint32_t inode_size;
+  //uint32_t inode_size;
   ext2_inode* root_dir;
 } ext2_mount_info;
 
@@ -309,7 +309,11 @@ ssize_t ext2_read_file(struct vfs_file* file, char *buf, size_t count, off_t ppo
 int ext2_readdir(struct vfs_file* file, struct dirent* dirent);
 
 // inode.c
-struct vfs_inode* ext2_lookup_inode(struct vfs_inode *dir, char* name);
-int ext2_jmp(struct vfs_inode *dir, struct vfs_inode** res, char* path);
+extern struct vfs_inode_operations ext2_dir_inode_operations;
+extern struct vfs_inode_operations ext2_file_inode_operations;
+extern struct vfs_inode_operations ext2_special_inode_operations;
+
+extern struct vfs_file_operations ext2_file_operations;
+extern struct vfs_file_operations ext2_dir_operations;
 
 #endif

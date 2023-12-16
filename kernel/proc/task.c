@@ -285,6 +285,8 @@ static process* create_process(char* app_path, struct pdirectory* pdir) {
   proc->va_dir = pdir? pdir : create_address_space();
   proc->pa_dir = vmm_get_physical_address(proc->va_dir, false);
 
+  proc->fs = kcalloc(1, sizeof(fs_struct));
+
   unlock_scheduler();
 
 	return proc;

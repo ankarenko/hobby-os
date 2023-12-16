@@ -73,64 +73,12 @@ struct vfs_inode* ext2_lookup_inode(struct vfs_inode *dir, char* name) {
 	return NULL;
 }
 
-int ext2_jmp(struct vfs_inode *dir, struct vfs_inode** res, char* path) {
-	struct vfs_superblock *sb = dir->i_sb;
-
-  char* simplified = NULL;
-  if (!simplify_path(path, &simplified)) {
-    return -EINVAL;
-  }
-
-  if (simplified[0] == '\0') { // if empty return current directory
-    return dir;
-  }
-
-  const char* cur = simplified;
-  
-  if (dir == NULL) {
-    dir = sb->s_root->d_inode;
-  }
-
-  // check if root dir
-  if (simplified[0] == '\/') {
-    dir = sb->s_root->d_inode;
-    cur++;
-  }
-  
-  int ret = 0;
-  ext2_inode* cur_node = dir;
-
-  while (*cur) {
-    char pathname[NAME_MAX + 1];
-    int32_t i = 0;
-    while (cur[i] != '\/' && cur[i] != '\0') {
-      pathname[i] = cur[i];
-      ++i;
-    }
-
-    pathname[i] = '\0';  // null terminate
-
-    if ((cur_node = ext2_lookup_inode(cur_node, pathname)) == NULL) {
-      return -ENOENT;
-    }
-
-    if (cur[i] == '\/') {
-      ++i;
-    }
-
-    cur = &cur[i];
-  }
-
-  *res = cur_node;
-  return ret;
-}
-
 struct vfs_inode_operations ext2_file_inode_operations = {
 	//.truncate = ext2_truncate_inode,
 };
 
 struct vfs_inode_operations ext2_dir_inode_operations = {
-	//.create = ext2_create_inode,
+  //.create = ext2_create_inode,
 	.lookup = ext2_lookup_inode,
 	//.mknod = ext2_mknod,
 	//.rename = ext2_rename,

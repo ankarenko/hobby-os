@@ -1,4 +1,3 @@
-#include "kernel/fs/ext2/ext2.h"
 #include "kernel/fs/buffer.h"
 #include "kernel/memory/malloc.h"
 #include "kernel/util/string/string.h"
@@ -6,12 +5,18 @@
 #include "kernel/memory/vmm.h"
 #include "kernel/util/limits.h"
 
+#include "kernel/fs/ext2/ext2.h"
+
 #define SUPERBLOCK_SIZE_BLOCKS 1
 
 #define get_group_from_inode(sb, ino) ((ino - EXT2_STARTING_INO) / sb->s_inodes_per_group)
 #define get_relative_inode_in_group(sb, ino) ((ino - EXT2_STARTING_INO) % sb->s_inodes_per_group)
 #define get_relative_block_in_group(sb, block) ((block - sb->s_first_data_block) % sb->s_blocks_per_group)
 #define get_group_from_block(sb, block) ((block - sb->s_first_data_block) / sb->s_blocks_per_group)
+
+#define HAS_FLAG(v, flag) ((v & flag) != 0)
+#define IS_DIR(v) (HAS_FLAG(v, EXT2_S_IFDIR))
+#define IS_FILE(v) (HAS_FLAG(v, EXT2_S_IFREG))
 
 char *ext2_bread(struct vfs_superblock* sb, uint32_t block, uint32_t size) {
 	return bread(sb->mnt_devname, block * (sb->s_blocksize / BYTES_PER_SECTOR), size);
@@ -31,9 +36,9 @@ void ext2_bwrite_block(struct vfs_superblock* sb, uint32_t block, char *buf) {
 
 ext2_group_desc *ext2_get_group_desc(struct vfs_superblock* sb, uint32_t group) {
 	ext2_group_desc* gdp = kcalloc(1, sizeof(ext2_group_desc));
-	ext2_superblock* ext2_sb = EXT2_INFO(sb);
+	ext2_superblock* ext2_sb = EXT2_SB(sb);
 	uint32_t block = ext2_sb->s_first_data_block + SUPERBLOCK_SIZE_BLOCKS + (group / EXT2_GROUP_DESC_PER_BLOCK(ext2_sb));
-	char *group_block_buf = ext2_bread_block(ext2_sb, block);
+	char *group_block_buf = ext2_bread_block(sb, block);
 	uint32_t offset = group % EXT2_GROUP_DESC_PER_BLOCK(ext2_sb) * sizeof(ext2_group_desc);
 	memcpy(gdp, group_block_buf + offset, sizeof(ext2_group_desc));
   kfree(group_block_buf);
@@ -46,7 +51,7 @@ void ext2_write_group_desc(struct vfs_superblock *sb, ext2_group_desc *gdp) {
 	uint32_t group = get_group_from_block(ext2_sb, gdp->bg_block_bitmap);
 	uint32_t block = ext2_sb->s_first_data_block + SUPERBLOCK_SIZE_BLOCKS + group / EXT2_GROUP_DESC_PER_BLOCK(ext2_sb);
 	uint32_t offset = group % EXT2_GROUP_DESC_PER_BLOCK(ext2_sb) * sizeof(ext2_group_desc);
-	char *group_block_buf = ext2_bread_block(ext2_sb, block);
+	char *group_block_buf = ext2_bread_block(sb, block);
 	memcpy(group_block_buf + offset, gdp, sizeof(ext2_group_desc));
 	ext2_bwrite_block(ext2_sb, block, group_block_buf);
   kfree(group_block_buf);
@@ -60,10 +65,10 @@ struct vfs_inode* ext2_get_inode(struct vfs_superblock* sb, ino_t ino) {
   ino_t rel_inode = get_relative_inode_in_group(ext2_sb, ino);
 	uint32_t block = gdp->bg_inode_table + rel_inode / EXT2_INODES_PER_BLOCK(ext2_sb);
 	kfree(gdp);
-  uint32_t offset = (rel_inode % EXT2_INODES_PER_BLOCK(ext2_sb)) * mi->inode_size;
-	char *table_buf = ext2_bread_block(ext2_sb, block);
-  ext2_inode* inode = kcalloc(1, mi->inode_size);
-  memcpy(inode, table_buf + offset, mi->inode_size);
+  uint32_t offset = (rel_inode % EXT2_INODES_PER_BLOCK(ext2_sb)) * ext2_sb->s_inode_size;
+	char *table_buf = ext2_bread_block(sb, block);
+  ext2_inode* inode = kcalloc(1, ext2_sb->s_inode_size);
+  memcpy(inode, table_buf + offset, ext2_sb->s_inode_size);
   kfree(table_buf);
 	return inode;
 }
@@ -180,23 +185,19 @@ void ext2_read_inode(struct vfs_inode* i) {
 	i->i_flags = raw_node->i_flags;
 	i->i_fs_info = raw_node;
 
-  /*
-	if (S_ISREG(i->i_mode))
-	{
+  
+	if (IS_FILE(i->i_mode)) {
 		i->i_op = &ext2_file_inode_operations;
 		i->i_fop = &ext2_file_operations;
 	}
-	else if (S_ISDIR(i->i_mode))
-	{
+	else if (IS_DIR(i->i_mode)) {
 		i->i_op = &ext2_dir_inode_operations;
 		i->i_fop = &ext2_dir_operations;
 	}
-	else
-	{
+	else {
 		i->i_op = &ext2_special_inode_operations;
-		init_special_inode(i, i->i_mode, raw_node->i_block[0]);
+		//init_special_inode(i, i->i_mode, raw_node->i_block[0]);
 	}
-  */
 }
 
 struct vfs_mount* ext2_mount(struct vfs_file_system_type *fs_type, char *dev_name, char *dir_name) {
@@ -207,7 +208,7 @@ struct vfs_mount* ext2_mount(struct vfs_file_system_type *fs_type, char *dev_nam
   struct vfs_inode* i_root = ext2_alloc_inode(sb);
 	i_root->i_ino = EXT2_ROOT_INO;
 	ext2_read_inode(i_root);
-  KASSERT(i_root->i_mode & EXT2_S_IFDIR != 0); // check if directory
+  KASSERT(IS_DIR(i_root->i_mode)); // check if directory
 
 	struct vfs_dentry* d_root = alloc_dentry(NULL, dir_name);
 	d_root->d_inode = i_root;

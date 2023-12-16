@@ -121,7 +121,7 @@ struct vfs_file_system_type {
 
 struct vfs_inode_operations {
 	//struct vfs_inode *(*create)(struct vfs_inode *dir, struct vfs_dentry *dentry, mode_t mode);
-	struct vfs_inode *(*lookup)(struct vfs_inode *dir, struct vfs_dentry *dentry);
+	struct vfs_inode *(*lookup)(struct vfs_inode *dir, char* path /*struct vfs_dentry *dentry*/);
 	//int (*mkdir)(struct vfs_inode *, char *, int);
 	//int (*rename)(struct vfs_inode *old_dir, struct vfs_dentry *old_dentry,
 	//			  struct vfs_inode *new_dir, struct vfs_dentry *new_dentry);
@@ -168,6 +168,7 @@ void exit_ext2_fs();
 //vfs_file vfs_get_root(uint32_t device_id);
 int register_filesystem(struct vfs_file_system_type *fs);
 int unregister_filesystem(struct vfs_file_system_type *fs);
+int vfs_jmp(struct nameidata* nd, char* path);
 
 // open.c
 int32_t vfs_close(int32_t fd);

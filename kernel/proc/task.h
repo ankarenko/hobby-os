@@ -102,6 +102,12 @@ typedef struct _files_struct {
 	struct vfs_file *fd[MAX_FD];
 } files_struct;
 
+
+typedef struct _fs_struct {
+	struct vfs_dentry* d_root;
+	struct vfs_mount* mnt_root;
+} fs_struct;
+
 /* 
   be very careful with modifying this as it's used by assembler code 
   if you happen to change that it is better to add new fields 
@@ -122,6 +128,7 @@ typedef struct _process {
   struct list_head threads;
   struct list_head proc_sibling;
   files_struct* files; 
+  fs_struct* fs;
 } process;
 
 thread* get_current_thread();
