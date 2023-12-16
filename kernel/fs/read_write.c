@@ -6,28 +6,36 @@
 #include "./vfs.h"
 
 static int32_t vfs_read_chunk(struct vfs_file* file, uint8_t* buffer, uint32_t length) {
-  /*
-  if (file) {
-    if (file_systems[file->device_id - 'a']) {
-      return file_systems[file->device_id - 'a']->fop.read(file, buffer, length, file->f_pos);
-    }
-  }
-  */
-  return -1;
+
+}
+
+char *vfs_read(const char *path) {
+  int32_t fd = vfs_open(path, O_RDWR);
+	if (fd < 0)
+		return NULL;
+
+  process* proc = get_current_process();
+  struct vfs_file* file = proc->files->fd[fd];
+  int32_t size = file->file_length;
+  file->f_pos = 0; // read from the beggining
+
+	struct kstat *stat = kcalloc(1, sizeof(struct kstat));
+  vfs_fstat(fd, stat);
+	char *buf = kcalloc(stat->st_size + 1, sizeof(char));
+	vfs_fread(fd, buf, stat->st_size);
+  buf[stat->st_size] = '\0';
+	return buf;
 }
 
 int32_t vfs_fread(int32_t fd, char *buf, int32_t count) {
-  /*
-  process* proc = get_current_process();
-  struct vfs_file* file = proc->files->fd[fd];
-  	
-  if (fd < 0 || !file)
+  process* cur_proc = get_current_process();
+	struct vfs_file* file = cur_proc->files->fd[fd];
+	if (fd < 0 || !file)
 		return -EBADF;
 
-	if (file /*&& file->f_mode & FMODE_CAN_READ*///) {
-    //return vfs_read_chunk(file, buf, count);
-  //}
-  
+	if (file /*&& file->f_mode & FMODE_CAN_READ*/)
+		return file->f_op->read(file, buf, count, file->f_pos);
+
 	return -EINVAL;
 }
 
@@ -80,7 +88,7 @@ ssize_t vfs_fwrite(int32_t fd, char* buf, int32_t count) {
   return -ENOENT;
 }
 
-char* vfs_read(const char *path) {
+//char* vfs_read(const char *path) {
   /*
   int32_t fd = vfs_open(path, O_RDWR);
 
@@ -99,6 +107,6 @@ char* vfs_read(const char *path) {
   
 	return buf;
   */
-  return 0;
-}
+  //return 0;
+//}
 

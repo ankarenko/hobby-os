@@ -32,6 +32,8 @@ static int32_t find_unused_fd_slot() {
 static struct vfs_file *get_empty_file() {
 	struct vfs_file *file = kcalloc(1, sizeof(struct vfs_file));
   
+  //file->f_maxcount = INT_MAX;
+	//atomic_set(&file->f_count, 1);
 	return file;
 }
 
@@ -82,45 +84,46 @@ int32_t vfs_mkdir(const char* dir_path) {
   */
 }
 
-int32_t vfs_open(const char* fname, int32_t flags, ...) {
+int32_t vfs_open(const char* path, int32_t flags, ...) {
+  int fd = find_unused_fd_slot(0);
+	mode_t mode = 0;
   /*
-  if (fname) {
-    //! default to device 'a'
-    unsigned char device = 'a';
-
-    //! filename
-    char* filename = (char*)fname;
-
-    //! in all cases, if fname[1]==':' then the first character must be device letter
-    //! FIXME: Using fname[2] do to BUG 2. Please see main.cpp for info
-    if (fname[2] == ':') {
-      device = fname[0];
-      filename += 3;  // strip it from pathname
-    }
-
-    int32_t fd = find_unused_fd_slot();
-    if (fd < 0) {
-      PANIC("Can't find file descriptor slot", NULL);
-    }
-
-    //! call vfs_filesystem
-    if (file_systems[device - 'a']) {
-      vfs_file ret_file = file_systems[device - 'a']->fop.open(filename, flags);
-      
-      if (ret_file.flags == FS_INVALID || ret_file.flags == FS_NOT_FOUND) {
-        return -ENOENT;
-      }
-
-      vfs_file* file = get_empty_file();
-      memcpy(file, &ret_file, sizeof(vfs_file));
-      file->device_id = device;
-      
-      process* proc = get_current_process();
-      proc->files->fd[fd] = file;
-
-      return fd;
-    }
-  }
+	if (flags & O_CREAT)
+	{
+		va_list ap;
+		va_start(ap, flags);
+		mode = va_arg(ap, mode_t);
+		va_end(ap);
+	}
   */
-  return -1;
+
+	struct nameidata nd;
+	int ret = vfs_jmp(&nd, path/*, flags, mode*/);
+	if (ret < 0)
+		return ret;
+
+	struct vfs_file *file = get_empty_file();
+	file->f_dentry = nd.dentry;
+	//file->f_vfsmnt = nd.mnt;
+	//file->f_flags = flags;
+	//file->f_mode = OPEN_FMODE(flags);
+	file->f_op = nd.dentry->d_inode->i_fop;
+  /*
+	if (file->f_mode & FMODE_READ)
+		file->f_mode |= FMODE_CAN_READ;
+	if (file->f_mode & FMODE_WRITE)
+		file->f_mode |= FMODE_CAN_WRITE;
+  */
+	if (file->f_op && file->f_op->open) {
+		ret = file->f_op->open(nd.dentry->d_inode, file);
+		if (ret < 0) {
+			kfree(file);
+			return ret;
+		}
+	}
+
+	//atomic_inc(&file->f_dentry->d_inode->i_count);
+  process* cur_proc = get_current_process();
+	cur_proc->files->fd[fd] = file;
+	return fd;
 }
