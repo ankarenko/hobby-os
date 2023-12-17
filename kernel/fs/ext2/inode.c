@@ -67,7 +67,10 @@ struct vfs_inode* ext2_lookup_inode(struct vfs_inode *dir, char* name) {
 			((mi->ino_upper_levels[1] <= i && i < mi->ino_upper_levels[2]) && (ino = ext2_recursive_block_action(mi, 2, ei->i_block[13], name, ext2_find_ino)) > 0) ||
 			((mi->ino_upper_levels[2] <= i && i < mi->ino_upper_levels[3]) && (ino = ext2_recursive_block_action(mi, 3, ei->i_block[14], name, ext2_find_ino)) > 0))
 		{
-			return ext2_get_inode(sb, ino);
+      struct vfs_inode *inode = dir->i_sb->s_op->alloc_inode(dir->i_sb);
+			inode->i_ino = ino;
+			ext2_read_inode(inode);
+			return inode;
 		}
 	}
 	return NULL;

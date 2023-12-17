@@ -31,6 +31,7 @@
 extern struct vfs_file_system_type ext2_fs_type;
 
 void cmd_init();
+void idle_task();
 
 //! sleeps a little bit. This uses the HALs get_tick_count() which in turn uses the PIT
 void sleep(uint32_t ms) {
@@ -282,7 +283,9 @@ extern void cmd_init() {
   char cmd_buf[100];
 
   while (1) {
-    printf("\nroot@%s: ", pwd());
+    process* proc = get_current_process();
+    printf("\nroot@%s: ", proc->fs->d_root->d_name);
+    
     get_cmd(cmd_buf, 98);
 
     if (run_cmd(cmd_buf) == true)
@@ -327,9 +330,12 @@ GREATEST_MAIN_DEFS();
 void main_thread() {
   thread* th = NULL;
 
-  create_system_process(&cmd_init);
+  create_system_process(&idle_task);
 
-  idle_task();
+  vfs_init(&ext2_fs_type, "/dev/hda");
+  chrdev_init();
+
+  cmd_init();
 }
 
 void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
@@ -359,9 +365,6 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
 
   
   //fat32_init();
-  vfs_init(&ext2_fs_type, "/dev/hda");
-
-  chrdev_init();
   
 
   //fat12_initialize();

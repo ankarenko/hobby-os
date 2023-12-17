@@ -75,7 +75,7 @@ struct vfs_superblock {
 struct vfs_file_operations {
 	int (*open)(struct vfs_inode *inode, struct vfs_file *file);
   int32_t (*read)(struct vfs_file* file, uint8_t* buffer, uint32_t length, off_t ppos);
-  int (*readdir)(struct vfs_file *dir, struct dirent *dirent, unsigned int count);
+  int (*readdir)(struct vfs_file *dir, struct dirent** dirent);
   ssize_t (*write)(struct vfs_file *file, const char *buf, size_t count, off_t ppos);
   int32_t (*close)(struct vfs_file*);
   off_t (*llseek)(struct vfs_file* file, off_t ppos, int);
@@ -150,11 +150,11 @@ struct vfs_inode_operations {
 };
 
 struct dirent {
-	ino_t d_ino;			        /* Inode number */
-	off_t d_off;			        /* Not an offset; see below */
-	unsigned short d_reclen;  /* Length of this record */
-	unsigned short d_type;	  /* Type of file; not supported by all filesystem types */
-	char d_name[];			      /* Null-terminated filename */
+	ino_t d_ino;			          /* Inode number */
+	off_t d_off;			          /* Not an offset; see below */
+	unsigned short d_reclen;    /* Length of this record */
+	unsigned short d_type;	    /* Type of file; not supported by all filesystem types */
+	char d_name[12];			      /* Null-terminated filename */
 };
 
 struct vfs_file {
@@ -180,20 +180,20 @@ void vfs_init(struct vfs_file_system_type* fs, char* dev_name);
 void init_ext2_fs();
 void exit_ext2_fs();
 
-//bool vfs_ls(const char* path);
-//bool vfs_cd(const char* path);
-//vfs_file vfs_get_root(uint32_t device_id);
+bool vfs_ls(const char* path);
+bool vfs_cd(const char* path);
 int register_filesystem(struct vfs_file_system_type *fs);
 int unregister_filesystem(struct vfs_file_system_type *fs);
-int vfs_jmp(struct nameidata* nd, char* path);
+int vfs_jmp(struct nameidata* nd, const char* path);
 
 // open.c
 int32_t vfs_close(int32_t fd);
 int32_t vfs_open(const char* fname, int32_t flags, ...);
-int vfs_fstat(int32_t fd, struct stat* stat);
+int vfs_fstat(int32_t fd, struct kstat* stat);
 int32_t vfs_delete(const char* fname);
 int32_t vfs_mkdir(const char* dir_path);
 struct vfs_dentry *alloc_dentry(struct vfs_dentry *parent, char *name);
+struct vfs_file *get_empty_file();
 
 // read_write.c
 int32_t vfs_fread(int32_t fd, char* buf, int32_t count);

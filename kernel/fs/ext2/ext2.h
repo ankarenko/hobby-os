@@ -300,13 +300,12 @@ void ext2_bwrite(struct vfs_superblock *sb, uint32_t iblock, char *buf, uint32_t
 
 void ext2_read_inode(struct vfs_inode* i);
 void ext2_write_inode(struct vfs_inode* i);
-struct vfs_inode* ext2_get_inode(struct vfs_superblock* sb, ino_t ino);
+struct ext2_inode* ext2_get_inode(struct vfs_superblock* sb, ino_t ino);
 ext2_group_desc *ext2_get_group_desc(struct vfs_superblock* sb, uint32_t group);
 void ext2_write_group_desc(struct vfs_superblock *sb, ext2_group_desc *gdp);
 
 // file.c
 ssize_t ext2_read_file(struct vfs_file* file, char *buf, size_t count, off_t ppos);
-int ext2_readdir(struct vfs_file* file, struct dirent* dirent);
 
 // inode.c
 extern struct vfs_inode_operations ext2_dir_inode_operations;
@@ -315,5 +314,5 @@ extern struct vfs_inode_operations ext2_special_inode_operations;
 
 extern struct vfs_file_operations ext2_file_operations;
 extern struct vfs_file_operations ext2_dir_operations;
-
+extern struct vfs_super_operations ext2_super_operations;
 #endif

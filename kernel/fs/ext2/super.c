@@ -57,7 +57,7 @@ void ext2_write_group_desc(struct vfs_superblock *sb, ext2_group_desc *gdp) {
   kfree(group_block_buf);
 }
 
-struct vfs_inode* ext2_get_inode(struct vfs_superblock* sb, ino_t ino) {
+struct ext2_inode* ext2_get_inode(struct vfs_superblock* sb, ino_t ino) {
 	ext2_superblock* ext2_sb = EXT2_SB(sb);
   ext2_mount_info* mi = EXT2_INFO(sb);
 	uint32_t group = get_group_from_inode(ext2_sb, ino);
@@ -135,6 +135,7 @@ void ext2_fill_super(struct vfs_superblock* vsb) {
   vsb->s_blocksize = EXT2_BLOCK_SIZE(sb);
   vsb->s_magic = sb->s_magic;
   vsb->mnt_devname = strdup(vsb->mnt_devname);
+  vsb->s_op = &ext2_super_operations;
 
   KASSERT(sizeof(ext2_inode) == 128);
   sb->s_inode_size = sb->s_rev_level == EXT2_GOOD_OLD_REV? 128 : sb->s_inode_size;

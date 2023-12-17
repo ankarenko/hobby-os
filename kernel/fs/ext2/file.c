@@ -56,11 +56,11 @@ ssize_t ext2_read_file(struct vfs_file* file, char *buf, size_t count, off_t ppo
       assert_not_reached();
 	}
 
-	//file->f_pos = ppos + count;
+	file->f_pos = ppos + count;
 	return count;
 }
 
-int ext2_readdir(struct vfs_file *file, struct dirent* dirent) {
+int ext2_readdir(struct vfs_file *file, struct dirent** dirent) {
   struct vfs_inode* inode = file->f_dentry->d_inode;
   
   if (!(inode->i_mode & EXT2_S_IFDIR)) { // not a directory
@@ -71,25 +71,33 @@ int ext2_readdir(struct vfs_file *file, struct dirent* dirent) {
 	char *buf = kcalloc(count, sizeof(char));
 	count = ext2_read_file(file, buf, count, 0);
   
-  uint32_t entries_size = 0;
+  uint32_t size = 0;
 
-  struct dirent* idirent = dirent;
+  for (char *ibuf = buf; ibuf - buf < count;) {
+		ext2_dir_entry *entry = (struct ext2_dir_entry *)ibuf;
+		size += sizeof(struct dirent);
+		ibuf += entry->rec_len;
+	}
+
+  *dirent = kcalloc(size, sizeof(char));
+
+  struct dirent* idirent = *dirent;
   for (char *ibuf = buf; ibuf - buf < count;) {
     //KASSERT(iter->rec_len % 4 == 0);
 		ext2_dir_entry *entry = (struct ext2_dir_entry *)ibuf;
 		idirent->d_ino = entry->ino;
 		idirent->d_off = 0;
-		idirent->d_reclen = sizeof(struct dirent) + entry->name_len + 1;
+		idirent->d_reclen = sizeof(struct dirent);
 		idirent->d_type = entry->file_type;
 		memcpy(idirent->d_name, entry->name, entry->name_len);
 		idirent->d_name[entry->name_len] = 0;
-
-		entries_size += idirent->d_reclen;
 		ibuf += entry->rec_len;
 		idirent = (struct dirent *)((char *)idirent + idirent->d_reclen);
 	}
 
-	return entries_size;
+  kfree(buf);
+  KASSERT(size % sizeof(struct dirent) == 0);
+	return size / sizeof(struct dirent);
 }
 
 struct vfs_file_operations ext2_file_operations = {

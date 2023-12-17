@@ -29,7 +29,7 @@ static int32_t find_unused_fd_slot() {
 	return -1;
 }
 
-static struct vfs_file *get_empty_file() {
+struct vfs_file *get_empty_file() {
 	struct vfs_file *file = kcalloc(1, sizeof(struct vfs_file));
   
   //file->f_maxcount = INT_MAX;
@@ -48,16 +48,50 @@ int32_t vfs_close(int32_t fd) {
       */
 }
 
-int vfs_fstat(int32_t fd, struct stat* stat) {
+static void generic_fillattr(struct vfs_inode *inode, struct kstat *stat) {
+	//stat->st_dev = inode->i_sb->s_dev;
+	stat->st_ino = inode->i_ino;
+	stat->st_mode = inode->i_mode;
+	stat->st_nlink = inode->i_nlink;
+	stat->st_uid = inode->i_uid;
+	stat->st_gid = inode->i_gid;
+	stat->st_rdev = inode->i_rdev;
+	//stat->st_atim = inode->i_atime;
+	//stat->st_mtim = inode->i_mtime;
+	//stat->st_ctim = inode->i_ctime;
+	stat->st_size = inode->i_size;
+	stat->st_blocks = inode->i_blocks;
+	stat->st_blksize = inode->i_blksize;
+}
+
+static int do_getattr(/*struct vfs_mount *mnt, */struct vfs_dentry *dentry, struct kstat *stat) {
+	struct vfs_inode *inode = dentry->d_inode;
   /*
-  process* proc = get_current_process();
-  vfs_file* file = proc->files->fd[fd];
-  stat->st_size = file->file_length;
-  stat->st_mode = S_IFCHR;
-  stat->st_blksize = 512;
-  //stat->st_blocks = 1;
+	if (inode->i_op->getattr)
+		return inode->i_op->getattr(mnt, dentry, stat);
   */
-  return 1;
+
+	generic_fillattr(inode, stat);
+  /*
+	if (!stat->st_blksize)
+	{
+		struct vfs_superblock *s = inode->i_sb;
+		unsigned blocks;
+		blocks = (stat->st_size + s->s_blocksize - 1) >> s->s_blocksize_bits;
+		stat->st_blocks = (s->s_blocksize / BYTES_PER_SECTOR) * blocks;
+		stat->st_blksize = s->s_blocksize;
+	}
+  */
+	return 0;
+}
+
+int vfs_fstat(int32_t fd, struct kstat* stat) {
+  process* cur_proc = get_current_process();
+  struct vfs_file *file = cur_proc->files->fd[fd];
+	if (fd < 0 || !file)
+		return -EBADF;
+
+	return do_getattr(/*file->f_vfsmnt,*/ file->f_dentry, stat);
 }
 
 int32_t vfs_delete(const char* fname) {

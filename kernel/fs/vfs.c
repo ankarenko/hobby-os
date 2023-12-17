@@ -14,31 +14,48 @@ struct list_head vfsmntlist;
 
 
 bool vfs_ls(const char* path) {
-  /*
-  unsigned char device = 'a';
+  struct nameidata nd = {
+    .dentry = 0,
+    .mnt = 0
+  };
+  int32_t ret = 0;
+  if ((ret = vfs_jmp(&nd, path)) != 0) {
+    return ret;
+  }
 
-  if (file_systems[device - 'a'])
-    return file_systems[device - 'a']->ls(path);
-    */
+  //  check if dir
+  //  if ( nd.dentry->d_inode->i_mode)
+
+  struct vfs_file *file = get_empty_file();
+  file->f_dentry = nd.dentry;
+
+  struct dirent* dirs = NULL;
+  
+  if (!nd.dentry->d_inode->i_fop->readdir)
+    return false;
+
+  uint32_t count = nd.dentry->d_inode->i_fop->readdir(file, &dirs);
+
+  for (int i = 0; i < count; ++i) {
+    struct dirent* iter = &dirs[i];
+    printf("\n%s", iter->d_name);
+  }
+  
+  kfree(dirs);
+  return count >= 0;
 }
 
 bool vfs_cd(const char* path) {
-  /*
-  unsigned char device = 'a';
-
-  if (file_systems[device - 'a'])
-    return file_systems[device - 'a']->cd(path);
-    */
-}
-
-struct vfs_file vfs_get_root(uint32_t device_id) {
-  /*
-  if (file_systems[device_id - 'a']) {
-    vfs_file file = file_systems[device_id - 'a']->root();
-    file.device_id = device_id;
-    return file;
+  struct nameidata nd;
+  int32_t ret = 0;
+  if ((ret = vfs_jmp(&nd, path)) != 0) {
+    return ret;
   }
-  */
+
+  process* cur_proc = get_current_process();
+  cur_proc->fs->d_root = nd.dentry;
+  cur_proc->fs->mnt_root = nd.mnt;
+  return true;
 }
 
 static struct vfs_file_system_type** find_filesystem(const char* name) {
@@ -75,7 +92,7 @@ int unregister_filesystem(struct vfs_file_system_type *fs) {
 struct vfs_mount* lookup_mnt(struct vfs_dentry* d) {
 	struct vfs_mount* iter;
 	list_for_each_entry(iter, &vfsmntlist, sibling) {
-		if (iter->mnt_mountpoint == d)
+		if (!strcmp(iter->mnt_devname, d->d_sb->mnt_devname))
 			return iter;
 	}
 
@@ -94,7 +111,7 @@ static void init_rootfs(struct vfs_file_system_type* fs_type, char *dev_name) {
 	cur->fs->mnt_root = mnt;
 }
 
-int vfs_jmp(struct nameidata* nd, char* path) {
+int vfs_jmp(struct nameidata* nd, const char* path) {
   char* simplified = NULL;
   if (!simplify_path(path, &simplified)) {
     return -EINVAL;
@@ -108,7 +125,7 @@ int vfs_jmp(struct nameidata* nd, char* path) {
   // check if root dir
   if (simplified[0] == '\/') {
     nd->dentry = cur_proc->fs->mnt_root->mnt_root;
-    while ((char)(cur) == '\/') {
+    while ((char)(*cur) == '\/') {
       cur++;
     }
   } else {
@@ -150,7 +167,7 @@ int vfs_jmp(struct nameidata* nd, char* path) {
 
       struct vfs_inode *inode = NULL;
       if (inode = nd->dentry->d_inode->i_op->lookup) {
-        inode = nd->dentry->d_inode->i_op->lookup(nd->dentry->d_inode, d_child);
+        inode = nd->dentry->d_inode->i_op->lookup(nd->dentry->d_inode, name);
       }
 
       if (inode == NULL) {
