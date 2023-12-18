@@ -100,9 +100,9 @@ struct vfs_inode {
 	gid_t i_gid;
 	dev_t i_rdev;
 	//atomic_t i_count;
-	//struct timespec i_atime;
-	//struct timespec i_mtime;
-	//struct timespec i_ctime;
+	struct timespec i_atime;
+	struct timespec i_mtime;
+	struct timespec i_ctime;
 	uint32_t i_blocks;
 	unsigned long i_blksize;
 	uint32_t i_flags;
@@ -180,8 +180,8 @@ void vfs_init(struct vfs_file_system_type* fs, char* dev_name);
 void init_ext2_fs();
 void exit_ext2_fs();
 
-bool vfs_ls(const char* path);
-bool vfs_cd(const char* path);
+int32_t vfs_ls(const char* path);
+int32_t vfs_cd(const char* path);
 int register_filesystem(struct vfs_file_system_type *fs);
 int unregister_filesystem(struct vfs_file_system_type *fs);
 int vfs_jmp(struct nameidata* nd, const char* path);

@@ -64,19 +64,6 @@
 #define EXT2_BOOT_LOADER_INO	          5	// boot loader inode
 #define EXT2_UNDEL_DIR_INO	            6	// undelete directory inode
 
-// i_mode values
-// file format --
-#define EXT2_S_IFSOCK	0xC000	// socket
-#define EXT2_S_IFLNK	0xA000	// symbolic link
-#define EXT2_S_IFREG	0x8000	// regular file
-#define EXT2_S_IFBLK	0x6000	// block device
-#define EXT2_S_IFDIR	0x4000	// directory
-#define EXT2_S_IFCHR	0x2000	// character device
-#define EXT2_S_IFIFO	0x1000	// fifo
-// process execution user/group override --
-#define EXT2_S_ISUID	0x0800	// Set process User ID
-#define EXT2_S_ISGID	0x0400	// Set process Group ID
-#define EXT2_S_ISVTX	0x0200	// sticky bit
 // access rights --
 #define EXT2_S_IRUSR	0x0100	// user read
 #define EXT2_S_IWUSR	0x0080	// user write
@@ -306,6 +293,7 @@ void ext2_write_group_desc(struct vfs_superblock *sb, ext2_group_desc *gdp);
 
 // file.c
 ssize_t ext2_read_file(struct vfs_file* file, char *buf, size_t count, off_t ppos);
+struct vfs_inode* ext2_alloc_inode(struct vfs_superblock* sb);
 
 // inode.c
 extern struct vfs_inode_operations ext2_dir_inode_operations;

@@ -4,6 +4,7 @@
 #include "kernel/util/debug.h"
 #include "kernel/memory/vmm.h"
 #include "kernel/util/limits.h"
+#include "kernel/util/fcntl.h"
 
 #include "kernel/fs/ext2/ext2.h"
 
@@ -13,10 +14,6 @@
 #define get_relative_inode_in_group(sb, ino) ((ino - EXT2_STARTING_INO) % sb->s_inodes_per_group)
 #define get_relative_block_in_group(sb, block) ((block - sb->s_first_data_block) % sb->s_blocks_per_group)
 #define get_group_from_block(sb, block) ((block - sb->s_first_data_block) / sb->s_blocks_per_group)
-
-#define HAS_FLAG(v, flag) ((v & flag) != 0)
-#define IS_DIR(v) (HAS_FLAG(v, EXT2_S_IFDIR))
-#define IS_FILE(v) (HAS_FLAG(v, EXT2_S_IFREG))
 
 char *ext2_bread(struct vfs_superblock* sb, uint32_t block, uint32_t size) {
 	return bread(sb->mnt_devname, block * (sb->s_blocksize / BYTES_PER_SECTOR), size);
@@ -176,10 +173,10 @@ void ext2_read_inode(struct vfs_inode* i) {
 
 	i->i_nlink = raw_node->i_links_count;
 	i->i_size = raw_node->i_size;
-	//i->i_atime.tv_sec = raw_node->i_atime;
-	//i->i_ctime.tv_sec = raw_node->i_ctime;
-	//i->i_mtime.tv_sec = raw_node->i_mtime;
-	//i->i_atime.tv_nsec = i->i_ctime.tv_nsec = i->i_mtime.tv_nsec = 0;
+	i->i_atime.tv_sec = raw_node->i_atime;
+	i->i_ctime.tv_sec = raw_node->i_ctime;
+	i->i_mtime.tv_sec = raw_node->i_mtime;
+	i->i_atime.tv_nsec = i->i_ctime.tv_nsec = i->i_mtime.tv_nsec = 0;
 
 	i->i_blksize = PMM_FRAME_SIZE; /* This is the optimal IO size (for stat), not the fs block size */
 	i->i_blocks = raw_node->i_blocks;
@@ -187,11 +184,11 @@ void ext2_read_inode(struct vfs_inode* i) {
 	i->i_fs_info = raw_node;
 
   
-	if (IS_FILE(i->i_mode)) {
+	if (S_ISREG(i->i_mode)) {
 		i->i_op = &ext2_file_inode_operations;
 		i->i_fop = &ext2_file_operations;
 	}
-	else if (IS_DIR(i->i_mode)) {
+	else if (S_ISDIR(i->i_mode)) {
 		i->i_op = &ext2_dir_inode_operations;
 		i->i_fop = &ext2_dir_operations;
 	}
@@ -209,7 +206,7 @@ struct vfs_mount* ext2_mount(struct vfs_file_system_type *fs_type, char *dev_nam
   struct vfs_inode* i_root = ext2_alloc_inode(sb);
 	i_root->i_ino = EXT2_ROOT_INO;
 	ext2_read_inode(i_root);
-  KASSERT(IS_DIR(i_root->i_mode)); // check if directory
+  KASSERT(S_ISDIR(i_root->i_mode)); // check if directory
 
 	struct vfs_dentry* d_root = alloc_dentry(NULL, dir_name);
 	d_root->d_inode = i_root;
@@ -222,21 +219,6 @@ struct vfs_mount* ext2_mount(struct vfs_file_system_type *fs_type, char *dev_nam
 	mnt->mnt_mountpoint = mnt->mnt_root = sb->s_root;
 	mnt->mnt_devname = sb->mnt_devname;
   return mnt;
-  
-  // get root directory 
-  /*
-  ext2_inode* file = NULL;
-  if (ext2_jmp(NULL, &file, "greande.txt") >= 0) {
-    char c;
-    uint32_t read = 0;
-
-    uint32_t pos = 0;
-    while ((read = ext2_read_file(minfo, file, &c, 1, pos)) > 0) {
-      printf("%c", c);
-      pos += read;
-    }
-  }
-  */
 }
 
 struct vfs_super_operations ext2_super_operations = {

@@ -5,6 +5,7 @@
 #include "kernel/util/math.h"
 #include "kernel/util/debug.h"
 #include "kernel/util/limits.h"
+#include "kernel/util/fcntl.h"
 
 static void ext2_read_nth_block(
   struct vfs_superblock *sb, uint32_t block, char **iter_buf, 
@@ -60,10 +61,31 @@ ssize_t ext2_read_file(struct vfs_file* file, char *buf, size_t count, off_t ppo
 	return count;
 }
 
+static int ext2_mode_to_vfs(int ft) {
+  switch (ft) {
+    case EXT2_FT_REG_FILE:
+      return S_IFREG;
+    case EXT2_FT_CHRDEV:
+      return S_IFCHR;
+    case EXT2_FT_SOCK:
+      return S_IFSOCK;
+    case EXT2_FT_DIR:
+      return S_IFDIR;
+    case EXT2_FT_BLKDEV:
+      return S_IFBLK;
+    case EXT2_FT_FIFO:
+      return S_IFBLK;
+    case EXT2_FT_SYMLINK:
+      return S_IFLNK;
+    default:
+      return S_IFMT;
+  }
+}
+
 int ext2_readdir(struct vfs_file *file, struct dirent** dirent) {
   struct vfs_inode* inode = file->f_dentry->d_inode;
   
-  if (!(inode->i_mode & EXT2_S_IFDIR)) { // not a directory
+  if (!(S_ISDIR(inode->i_mode))) { // not a directory
     return -ENOTDIR;
   }
 
@@ -88,7 +110,7 @@ int ext2_readdir(struct vfs_file *file, struct dirent** dirent) {
 		idirent->d_ino = entry->ino;
 		idirent->d_off = 0;
 		idirent->d_reclen = sizeof(struct dirent);
-		idirent->d_type = entry->file_type;
+		idirent->d_type = ext2_mode_to_vfs(entry->file_type);
 		memcpy(idirent->d_name, entry->name, entry->name_len);
 		idirent->d_name[entry->name_len] = 0;
 		ibuf += entry->rec_len;

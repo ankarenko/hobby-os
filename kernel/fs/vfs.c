@@ -6,6 +6,10 @@
 #include "kernel/memory/malloc.h"
 #include "kernel/util/debug.h"
 #include "kernel/util/limits.h"
+#include "kernel/util/fcntl.h"
+#include "kernel/system/time.h"
+#include "kernel/devices/tty.h"
+#include "kernel/devices/vga.h"
 
 #include "kernel/fs/vfs.h"
 
@@ -13,7 +17,22 @@ static struct vfs_file_system_type* file_systems;
 struct list_head vfsmntlist;
 
 
-bool vfs_ls(const char* path) {
+char* months[12] = {
+  "jan",
+  "feb",
+  "mar",
+  "apr",
+  "may",
+  "jun",
+  "jul",
+  "aug",
+  "sep",
+  "oct",
+  "nov",
+  "dec"
+};
+
+int32_t vfs_ls(const char* path) {
   struct nameidata nd = {
     .dentry = 0,
     .mnt = 0
@@ -24,7 +43,9 @@ bool vfs_ls(const char* path) {
   }
 
   //  check if dir
-  //  if ( nd.dentry->d_inode->i_mode)
+  if (!S_ISDIR(nd.dentry->d_inode->i_mode)) {
+    return -ENOTDIR;
+  }
 
   struct vfs_file *file = get_empty_file();
   file->f_dentry = nd.dentry;
@@ -32,30 +53,62 @@ bool vfs_ls(const char* path) {
   struct dirent* dirs = NULL;
   
   if (!nd.dentry->d_inode->i_fop->readdir)
-    return false;
+    return -EINVAL;
 
   uint32_t count = nd.dentry->d_inode->i_fop->readdir(file, &dirs);
 
+  struct vfs_inode* inode = nd.dentry->d_inode->i_sb->s_op->alloc_inode(nd.dentry->d_inode->i_sb);
+  
   for (int i = 0; i < count; ++i) {
+    char name[12] = "           ";
     struct dirent* iter = &dirs[i];
-    printf("\n%s", iter->d_name);
+    
+    inode->i_ino = iter->d_ino;
+    nd.dentry->d_inode->i_sb->s_op->read_inode(inode);
+
+    memcpy(&name, iter->d_name, strlen(iter->d_name));
+    
+    lock_scheduler();
+    if (!S_ISDIR(iter->d_type)) {
+      terminal_set_color(VGA_COLOR_LIGHT_RED);
+      printf("\n%s", name);
+      struct time* created = get_time(inode->i_ctime.tv_sec);
+      
+      printf("   %d %s %d%d:%d%d",
+             created->day,
+             months[created->month - 1],
+             created->hour / 10, created->hour % 10,
+             created->minute / 10, created->minute % 10);
+
+      printf("   %u bytes", inode->i_size);
+      kfree(created);
+      terminal_reset_color();
+    } else {
+      printf("\n%s", name);
+    }
+    unlock_scheduler();
   }
+  kfree(inode);
   
   kfree(dirs);
-  return count >= 0;
+  return count;
 }
 
-bool vfs_cd(const char* path) {
+int32_t vfs_cd(const char* path) {
   struct nameidata nd;
   int32_t ret = 0;
   if ((ret = vfs_jmp(&nd, path)) != 0) {
     return ret;
   }
 
+  if (!S_ISDIR(nd.dentry->d_inode->i_mode)) {
+    return -ENOTDIR;
+  }
+
   process* cur_proc = get_current_process();
   cur_proc->fs->d_root = nd.dentry;
   cur_proc->fs->mnt_root = nd.mnt;
-  return true;
+  return 0;
 }
 
 static struct vfs_file_system_type** find_filesystem(const char* name) {

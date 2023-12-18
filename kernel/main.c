@@ -158,8 +158,9 @@ bool run_cmd(char* cmd_buf) {
     printf("\npath: ");
     get_cmd(filepath, 100);
 
-    if (!vfs_cd(filepath)) {
-      printf("\ndirectory not found");
+    int ret = vfs_cd(filepath);
+    if (ret < 0) {
+      printf(ret == -ENOTDIR? "\nnot a directory" : "\ndirectory not found");
     }
   } else if (strcmp(cmd_buf, "mfile") == 0) {
     char filepath[100];

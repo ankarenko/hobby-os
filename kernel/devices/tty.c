@@ -6,8 +6,7 @@
 #include "kernel/util/ctype.h"
 #include "kernel/cpu/hal.h"
 #include "kernel/memory/kernel_info.h"
-#include "vga.h"
-#include "tty.h"
+#include "kernel/devices/tty.h"
 
 static const size_t VGA_WIDTH = 80;
 static const size_t VGA_HEIGHT = 25;
@@ -20,6 +19,14 @@ static size_t terminal_column;
 static uint8_t terminal_color;
 static uint16_t* terminal_buffer;
 // static uint16_t video_memory[VIDEO_MEMORY_SIZE];
+
+void terminal_set_color(enum vga_color color) {
+  terminal_color = vga_entry_color(color, VGA_COLOR_BLACK);
+}
+
+void terminal_reset_color() {
+  terminal_color = vga_entry_color(VGA_COLOR_GREEN, VGA_COLOR_BLACK);
+}
 
 void disable_cursor() {
   outportb(0x3D4, 0x0A);

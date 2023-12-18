@@ -57,7 +57,7 @@ struct vfs_inode* ext2_lookup_inode(struct vfs_inode *dir, char* name) {
 	struct vfs_superblock *sb = dir->i_sb;
   ext2_fs_info* mi = EXT2_INFO(sb);
   
-	for (uint32_t i = 0, ino = 0; i < ei->i_blocks; ++i) {
+	for (int32_t i = 0, ino = 0; i < ei->i_blocks; ++i) {
 		if (!ei->i_block[i])
 			continue;
 
