@@ -9,7 +9,8 @@
 #define LOG(fmt, args...) printf(fmt, args);
 
 
-#define assert_not_reached() PANIC("Should not be reached", NULL)
+#define assert_not_reached() PANIC("\nshould not be reached", NULL)
+#define assert_not_implemented() PANIC("\nnot implemented", NULL)
 
 #ifndef NDEBUG
 #define KASSERT(x) { if (!(x)) PANIC("\nassertion failed: %s", #x); }

@@ -12,7 +12,7 @@
    e.g. Using size of 4096, we get this behavior:
 	{4095, 4096, 4097} = {4096, 4096, 8192}.
   Note: The size argument has side effects (expanded multiple times).  */
-#define ALIGN_UP(base, size) ALIGN_DOWN((base) + (size)-1, (size))
+#define ALIGN_UP(base, size) ALIGN_DOWN((base) + (size) - 1, (size))
 
 /* Same as ALIGN_DOWN(), but automatically casts when base is a pointer.  */
 #define PTR_ALIGN_DOWN(base, size) \

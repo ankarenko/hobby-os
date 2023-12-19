@@ -17,6 +17,11 @@
 #define EXT2_MAX_DATA_LEVEL 3
 #define EXT2_SUPERRBLOCK_POS (1024 / BYTES_PER_SECTOR)
 
+#define EXT2_DIR_PAD 4
+#define EXT2_DIR_ROUND (EXT2_DIR_PAD - 1)
+// calculates directory entry size and alignes it to 4 bytes (according to the standard)
+#define EXT2_DIR_REC_LEN(name_len) (((name_len) + sizeof(ext2_dir_entry) + EXT2_DIR_ROUND) & ~EXT2_DIR_ROUND)
+
 #define EXT2_MIN_BLOCK_SIZE 1024
 #define EXT2_MAX_BLOCK_SIZE 4096
 
@@ -105,6 +110,11 @@
 #define EXT2_FT_FIFO	        5	// Buffer File
 #define EXT2_FT_SOCK	        6	// Socket File
 #define EXT2_FT_SYMLINK	      7	// Symbolic Link
+
+#define get_group_from_inode(sb, ino) ((ino - EXT2_STARTING_INO) / sb->s_inodes_per_group)
+#define get_relative_inode_in_group(sb, ino) ((ino - EXT2_STARTING_INO) % sb->s_inodes_per_group)
+#define get_relative_block_in_group(sb, block) ((block - sb->s_first_data_block) % sb->s_blocks_per_group)
+#define get_group_from_block(sb, block) ((block - sb->s_first_data_block) / sb->s_blocks_per_group)
 
 typedef struct {
 	uint32_t s_inodes_count;	  /* Inodes count */

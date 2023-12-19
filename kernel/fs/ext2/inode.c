@@ -4,6 +4,7 @@
 #include "kernel/util/string/string.h"
 #include "kernel/util/path.h"
 #include "kernel/fs/vfs.h"
+#include "kernel/util/math.h"
 
 #include "kernel/fs/ext2/ext2.h"
 
@@ -76,12 +77,190 @@ struct vfs_inode* ext2_lookup_inode(struct vfs_inode *dir, char* name) {
 	return NULL;
 }
 
+static int ext2_add_entry(struct vfs_superblock *sb, uint32_t block, void *arg) {
+	struct vfs_dentry *dentry = arg;
+	int filename_length = strlen(dentry->d_name);
+
+	char *block_buf = ext2_bread_block(sb, block);
+	int size = 0;
+  int new_rec_len = 0;
+  int ret = -ENOENT;
+
+	ext2_dir_entry *entry = (struct ext2_dir_entry *)block_buf;
+	while (size < sb->s_blocksize && (char *)entry < block_buf + sb->s_blocksize) {
+    // TODO: SA 2023-19-11 needs review
+		// NOTE: MQ 2020-12-01 some ext2 tools mark entry with zero indicate an unused entry
+		if (!entry->ino && (!entry->rec_len || entry->rec_len >= EXT2_DIR_REC_LEN(filename_length))) {
+			entry->ino = dentry->d_inode->i_ino;
+			if (S_ISREG(dentry->d_inode->i_mode))
+				entry->file_type = EXT2_FT_REG_FILE;
+			else if (S_ISDIR(dentry->d_inode->i_mode))
+				entry->file_type = EXT2_FT_DIR;
+			else
+				assert_not_implemented();
+
+			entry->name_len = filename_length;
+			memcpy(entry->name, dentry->d_name, entry->name_len);
+      // new_rec_len is 0?
+			entry->rec_len = max_t(uint16_t, new_rec_len, entry->rec_len);
+
+			ext2_bwrite_block(sb, block, block_buf);
+
+      ret = 0;
+			goto clean;
+		}
+
+    // this part I also dont understand
+    // how do we find an unused entry in a directory?
+		if (EXT2_DIR_REC_LEN(filename_length) + EXT2_DIR_REC_LEN(entry->name_len) < entry->rec_len) {
+			new_rec_len = entry->rec_len - EXT2_DIR_REC_LEN(entry->name_len);
+			entry->rec_len = EXT2_DIR_REC_LEN(entry->name_len);
+			size += entry->rec_len;
+			entry = (ext2_dir_entry *)((char *)entry + entry->rec_len);
+			memset(entry, 0, new_rec_len);
+		} else {
+			size += entry->rec_len;
+			new_rec_len = sb->s_blocksize - size;
+			entry = (ext2_dir_entry *)((char *)entry + entry->rec_len);
+		}
+	}
+
+clean:
+  kfree(block_buf);
+	return ret;
+}
+
+static int ext2_create_entry(struct vfs_superblock *sb, struct vfs_inode *dir, struct vfs_dentry *dentry) {
+	ext2_inode* ei = EXT2_INODE(dir);
+  ext2_fs_info* mi = EXT2_INFO(sb);
+
+	// NOTE: MQ 2020-11-19 support nth-level block
+	for (int i = 0; i < dir->i_blocks; ++i) {
+		if (i >= mi->ino_upper_levels[0])
+			assert_not_reached();
+
+		uint32_t block = ei->i_block[i];
+		if (!block) {
+			block = ext2_create_block(dir->i_sb);
+			ei->i_block[i] = block;
+			dir->i_blocks += 1;
+			dir->i_size += sb->s_blocksize;
+			ext2_write_inode(dir);
+		}
+
+		if (ext2_add_entry(sb, block, dentry) >= 0)
+			return 0;
+	}
+	return -ENOENT;
+}
+
+static int find_unused_inode_number(struct vfs_superblock *sb) {
+	ext2_superblock *ext2_sb = EXT2_SB(sb);
+
+	uint32_t number_of_groups = div_ceil(ext2_sb->s_blocks_count, ext2_sb->s_blocks_per_group);
+	for (uint32_t group = 0; group < number_of_groups; group += 1) {
+		ext2_group_desc *gdp = ext2_get_group_desc(sb, group);
+		unsigned char *inode_bitmap = (unsigned char *)ext2_bread_block(sb, gdp->bg_inode_bitmap);
+
+		for (uint32_t i = 0; i < sb->s_blocksize; ++i)
+			if (inode_bitmap[i] != 0xff)
+				for (uint8_t j = 0; j < 8; ++j)
+					if (!(inode_bitmap[i] & (1 << j)))
+						return group * ext2_sb->s_inodes_per_group + i * 8 + j + EXT2_STARTING_INO;
+	}
+	return -ENOSPC;
+}
+
+static struct vfs_inode *ext2_create_inode(struct vfs_inode *dir, struct vfs_dentry *dentry, mode_t mode) {
+	struct vfs_superblock *sb = dir->i_sb;
+	ext2_superblock *ext2_sb = EXT2_SB(sb);
+	uint32_t ino = find_unused_inode_number(sb);
+	ext2_group_desc *gdp = ext2_get_group_desc(sb, get_group_from_inode(ext2_sb, ino));
+
+	// superblock
+	ext2_sb->s_free_inodes_count -= 1;
+	sb->s_op->write_super(sb);
+
+	// group descriptor
+	gdp->bg_free_inodes_count -= 1;
+	if (S_ISDIR(mode))
+		gdp->bg_used_dirs_count += 1;
+	ext2_write_group_desc(sb, gdp);
+
+	// inode bitmap
+	char *inode_bitmap_buf = ext2_bread_block(sb, gdp->bg_inode_bitmap);
+	uint32_t relative_inode = get_relative_inode_in_group(ext2_sb, ino);
+  // each bit represents one block, 1 byte = 8 bit
+	inode_bitmap_buf[relative_inode / 8] |= 1 << (relative_inode % 8);
+	ext2_bwrite_block(sb, gdp->bg_inode_bitmap, inode_bitmap_buf);
+
+	// inode table
+	struct ext2_inode *ei_new = kcalloc(1, sizeof(struct ext2_inode));
+	ei_new->i_links_count = 1;
+	struct vfs_inode *inode = sb->s_op->alloc_inode(sb);
+	inode->i_ino = ino;
+	inode->i_mode = mode;
+	inode->i_size = 0;
+	inode->i_fs_info = ei_new;
+	inode->i_sb = sb;
+	inode->i_atime.tv_sec = get_seconds(NULL);
+	inode->i_ctime.tv_sec = get_seconds(NULL);
+	inode->i_mtime.tv_sec = get_seconds(NULL);
+	inode->i_flags = 0;
+	inode->i_blocks = 0;
+	// NOTE: MQ 2020-11-18 When creating inode, it is safe to assume that it is linked to dir entry?
+	inode->i_nlink = 1;
+
+	if (S_ISREG(mode)) {
+		inode->i_op = &ext2_file_inode_operations;
+		inode->i_fop = &ext2_file_operations;
+	} else if (S_ISDIR(mode)) {
+		inode->i_op = &ext2_dir_inode_operations;
+		inode->i_fop = &ext2_dir_operations;
+
+		ext2_inode *ei = EXT2_INODE(inode);
+		uint32_t block = ext2_create_block(inode->i_sb);
+		ei->i_block[0] = block;
+		inode->i_blocks += 1;
+		inode->i_size += sb->s_blocksize;
+		ext2_write_inode(inode);
+
+		char *block_buf = ext2_bread_block(inode->i_sb, block);
+
+		ext2_dir_entry *c_entry = (ext2_dir_entry *)block_buf;
+		c_entry->ino = inode->i_ino;
+		memcpy(c_entry->name, ".", 1);
+		c_entry->name_len = 1;
+		c_entry->rec_len = EXT2_DIR_REC_LEN(1);
+		c_entry->file_type = 2;
+
+		ext2_dir_entry *p_entry = (ext2_dir_entry *)(block_buf + c_entry->rec_len);
+		p_entry->ino = dir->i_ino;
+		memcpy(p_entry->name, "..", 2);
+		p_entry->name_len = 2;
+		p_entry->rec_len = sb->s_blocksize - c_entry->rec_len;
+		p_entry->file_type = 2;
+
+		ext2_bwrite_block(inode->i_sb, block, block_buf);
+    kfree(block_buf);
+	}
+	else
+		assert_not_reached();
+
+	sb->s_op->write_inode(inode);
+	dentry->d_inode = inode;
+
+	if (ext2_create_entry(sb, dir, dentry) >= 0)
+		return inode;
+	return NULL;
+}
+
 struct vfs_inode_operations ext2_file_inode_operations = {
 	//.truncate = ext2_truncate_inode,
 };
 
 struct vfs_inode_operations ext2_dir_inode_operations = {
-  //.create = ext2_create_inode,
+  .create = ext2_create_inode,
 	.lookup = ext2_lookup_inode,
 	//.mknod = ext2_mknod,
 	//.rename = ext2_rename,

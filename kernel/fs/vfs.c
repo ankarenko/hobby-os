@@ -16,7 +16,6 @@
 static struct vfs_file_system_type* file_systems;
 struct list_head vfsmntlist;
 
-
 char* months[12] = {
   "jan",
   "feb",
@@ -38,7 +37,7 @@ int32_t vfs_ls(const char* path) {
     .mnt = 0
   };
   int32_t ret = 0;
-  if ((ret = vfs_jmp(&nd, path)) != 0) {
+  if ((ret = vfs_jmp(&nd, path, 0, 0)) != 0) {
     return ret;
   }
 
@@ -97,7 +96,7 @@ int32_t vfs_ls(const char* path) {
 int32_t vfs_cd(const char* path) {
   struct nameidata nd;
   int32_t ret = 0;
-  if ((ret = vfs_jmp(&nd, path)) != 0) {
+  if ((ret = vfs_jmp(&nd, path, 0, 0)) != 0) {
     return ret;
   }
 
@@ -164,7 +163,7 @@ static void init_rootfs(struct vfs_file_system_type* fs_type, char *dev_name) {
 	cur->fs->mnt_root = mnt;
 }
 
-int vfs_jmp(struct nameidata* nd, const char* path) {
+int vfs_jmp(struct nameidata* nd, const char* path, int32_t flags, mode_t mode) {
   char* simplified = NULL;
   if (!simplify_path(path, &simplified)) {
     return -EINVAL;
@@ -211,10 +210,10 @@ int vfs_jmp(struct nameidata* nd, const char* path) {
     
     if (d_child) {
 			nd->dentry = d_child;
-      /*
+      
 			if (i == length && flags & O_CREAT && flags & O_EXCL)
 				return -EEXIST;
-      */
+      
 		} else {
       d_child = alloc_dentry(nd->dentry, name);
 
@@ -224,23 +223,18 @@ int vfs_jmp(struct nameidata* nd, const char* path) {
       }
 
       if (inode == NULL) {
-        ret = -ENOENT; 
+				if (i == length && flags & O_CREAT) {
+					inode = nd->dentry->d_inode->i_op->create(nd->dentry->d_inode, d_child, mode);
+				} else {
+          ret = -ENOENT;
+          kfree(d_child);
+					goto clean;
+				}
+			} else if (i == length && flags & O_CREAT && flags & O_EXCL) {
+				ret = -EEXIST;
+        kfree(d_child);
         goto clean;
       }
-
-      /*
-      if (i == length && flags & O_CREAT)
-        inode = nd->dentry->d_inode->i_op->create(nd->dentry->d_inode, d_child, i == length ? mode : S_IFDIR);
-      else
-      {
-        log("%s is not exist", path);
-        return -ENOENT;
-      }
-      */
-      /*
-			else if (i == length && flags & O_CREAT && flags & O_EXCL)
-				return -EEXIST;
-      */
 
       d_child->d_inode = inode;
 			list_add_tail(&d_child->d_sibling, &nd->dentry->d_subdirs);

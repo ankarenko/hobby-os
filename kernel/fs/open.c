@@ -1,8 +1,10 @@
 #include <stddef.h>
+#include <stdarg.h>
 
 #include "kernel/util/errno.h"
 #include "kernel/proc/task.h"
 #include "kernel/util/debug.h"
+#include "kernel/util/fcntl.h"
 #include "kernel/util/string/string.h"
 
 #include "kernel/fs/vfs.h"
@@ -121,18 +123,16 @@ int32_t vfs_mkdir(const char* dir_path) {
 int32_t vfs_open(const char* path, int32_t flags, ...) {
   int fd = find_unused_fd_slot(0);
 	mode_t mode = 0;
-  /*
-	if (flags & O_CREAT)
-	{
+  
+  if (flags & O_CREAT) {
 		va_list ap;
 		va_start(ap, flags);
 		mode = va_arg(ap, mode_t);
 		va_end(ap);
 	}
-  */
 
 	struct nameidata nd;
-	int ret = vfs_jmp(&nd, path/*, flags, mode*/);
+	int ret = vfs_jmp(&nd, path, flags, mode);
 	if (ret < 0)
 		return ret;
 

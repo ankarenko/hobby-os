@@ -255,7 +255,7 @@ void cmd_read_file() {
   printf("\npath: ");
   get_cmd(filepath, 100);
 
-  int32_t fd = vfs_open(filepath, 0);
+  int32_t fd = vfs_open(filepath, O_CREAT, S_IFREG);
   
   if (fd == -ENOENT || fd < 0) {
     printf("\nfile not found");
