@@ -139,7 +139,7 @@ int32_t vfs_open(const char* path, int32_t flags, ...) {
 	struct vfs_file *file = get_empty_file();
 	file->f_dentry = nd.dentry;
 	//file->f_vfsmnt = nd.mnt;
-	//file->f_flags = flags;
+	file->f_flags = flags;
 	//file->f_mode = OPEN_FMODE(flags);
 	file->f_op = nd.dentry->d_inode->i_fop;
   /*

@@ -159,17 +159,9 @@ struct dirent {
 
 struct vfs_file {
   char name[12];
-  uint32_t flags;
-  uint32_t file_length;
-  uint32_t id;
-  bool eof;
-  uint32_t first_cluster;
-  uint32_t device_id;
-  struct time created;
-  struct time modified;
+  unsigned int f_flags;
   off_t f_pos;
   mode_t f_mode;
-  table_entry p_table_entry;
   struct vfs_dentry* f_dentry;
   struct vfs_file_operations *f_op;
 };

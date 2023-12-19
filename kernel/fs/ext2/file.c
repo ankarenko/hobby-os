@@ -32,6 +32,50 @@ static void ext2_read_nth_block(
   }
   kfree(block_buf);
 }
+// need 
+ssize_t ext2_write_file(struct vfs_file *file, const char *buf, size_t count, off_t ppos) {
+	struct vfs_inode *inode = file->f_dentry->d_inode;
+	struct ext2_inode *ei = EXT2_INODE(inode);
+	struct vfs_superblock *sb = inode->i_sb;
+  ext2_mount_info* mi = EXT2_INFO(sb);
+
+	if (ppos + count > inode->i_size) {
+		inode->i_size = ppos + count;
+    ei->i_size = inode->i_size;
+		inode->i_blocks = div_ceil(ppos + count, sb->s_blocksize /*BYTES_PER_SECTOR*/);
+		sb->s_op->write_inode(inode);
+	}
+
+	uint32_t p = (ppos / sb->s_blocksize) * sb->s_blocksize;
+	char *iter_buf = buf;
+	while (p < ppos + count) {
+		uint32_t relative_block = p / sb->s_blocksize;
+		uint32_t block = 0;
+		// FIXME: MQ 2019-07-18 Only support direct blocks
+		if (relative_block < mi->ino_upper_levels[0]) {
+			block = ei->i_block[relative_block];
+			if (!block) {
+				block = ext2_create_block(sb);
+				ei->i_block[relative_block] = block;
+				inode->i_mtime.tv_sec = get_seconds(NULL);
+				sb->s_op->write_inode(inode);
+			}
+		} else {
+			PANIC("Only support direct blocks, fail writing at %d-nth block", relative_block);
+    }
+
+		char *block_buf = ext2_bread_block(sb, block);
+		uint32_t pstart = (ppos > p) ? ppos - p : 0;
+		uint32_t pend = ((ppos + count) < (p + sb->s_blocksize)) ? (p + sb->s_blocksize - ppos - count) : 0;
+		memcpy(block_buf + pstart, iter_buf, sb->s_blocksize - pstart - pend);
+		ext2_bwrite_block(sb, block, block_buf);
+		p += sb->s_blocksize;
+		iter_buf += sb->s_blocksize - pstart - pend;
+	}
+
+	file->f_pos = ppos + count;
+	return count;
+}
 
 ssize_t ext2_read_file(struct vfs_file* file, char *buf, size_t count, off_t ppos) {
 	struct vfs_inode* inode = file->f_dentry->d_inode;
@@ -125,7 +169,7 @@ int ext2_readdir(struct vfs_file *file, struct dirent** dirent) {
 struct vfs_file_operations ext2_file_operations = {
 	//.llseek = generic_file_llseek,
 	.read = ext2_read_file,
-	//.write = ext2_write_file,
+	.write = ext2_write_file,
 	//.mmap = ext2_mmap_file,
 };
 

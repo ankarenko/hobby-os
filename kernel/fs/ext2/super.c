@@ -5,6 +5,7 @@
 #include "kernel/memory/vmm.h"
 #include "kernel/util/limits.h"
 #include "kernel/util/fcntl.h"
+#include "kernel/util/errno.h"
 
 #include "kernel/fs/ext2/ext2.h"
 
@@ -31,9 +32,55 @@ void ext2_bwrite_block(struct vfs_superblock* sb, uint32_t block, char *buf) {
 	return ext2_bwrite(sb, block, buf, sb->s_blocksize);
 }
 
+static int find_unused_block_number(struct vfs_superblock *sb) {
+	ext2_superblock *ext2_sb = EXT2_SB(sb);
+
+	uint32_t number_of_groups = div_ceil(ext2_sb->s_blocks_count, ext2_sb->s_blocks_per_group);
+	for (uint32_t group = 0; group < number_of_groups; group += 1) {
+		ext2_group_desc *gdp = ext2_get_group_desc(sb, group);
+		unsigned char *block_bitmap = (unsigned char *)ext2_bread_block(sb, gdp->bg_block_bitmap);
+
+		for (uint32_t i = 0; i < sb->s_blocksize; ++i)
+			if (block_bitmap[i] != 0xff)
+				for (int j = 0; j < 8; ++j)
+					if (!(block_bitmap[i] & (1 << j)))
+						return group * ext2_sb->s_blocks_per_group + i * 8 + j + ext2_sb->s_first_data_block;
+	}
+	return -ENOSPC;
+}
+
+uint32_t ext2_create_block(struct vfs_superblock *sb) {
+	ext2_superblock* ext2_sb = EXT2_SB(sb);
+	uint32_t block = find_unused_block_number(sb);
+
+	// superblock
+	ext2_sb->s_free_blocks_count -= 1;
+	sb->s_op->write_super(sb);
+
+	// group
+	ext2_group_desc *gdp = ext2_get_group_desc(sb, get_group_from_block(ext2_sb, block));
+	gdp->bg_free_blocks_count -= 1;
+	ext2_write_group_desc(sb, gdp);
+
+	// block bitmap
+	char *bitmap_buf = ext2_bread_block(sb, gdp->bg_block_bitmap);
+	uint32_t relative_block = get_relative_block_in_group(ext2_sb, block);
+	bitmap_buf[relative_block / 8] |= 1 << (relative_block % 8); // set block as used
+	ext2_bwrite_block(sb, gdp->bg_block_bitmap, bitmap_buf);
+  kfree(bitmap_buf);
+
+	// clear block data
+	char *data_buf = kcalloc(sb->s_blocksize, sizeof(char));
+	ext2_bwrite_block(sb, block, data_buf);
+  kfree(data_buf);
+
+	return block;
+}
+
 ext2_group_desc *ext2_get_group_desc(struct vfs_superblock* sb, uint32_t group) {
 	ext2_group_desc* gdp = kcalloc(1, sizeof(ext2_group_desc));
 	ext2_superblock* ext2_sb = EXT2_SB(sb);
+  // refere GDT from first block group as other GDTs are just copies
 	uint32_t block = ext2_sb->s_first_data_block + SUPERBLOCK_SIZE_BLOCKS + (group / EXT2_GROUP_DESC_PER_BLOCK(ext2_sb));
 	char *group_block_buf = ext2_bread_block(sb, block);
 	uint32_t offset = group % EXT2_GROUP_DESC_PER_BLOCK(ext2_sb) * sizeof(ext2_group_desc);
@@ -46,7 +93,7 @@ void ext2_write_group_desc(struct vfs_superblock *sb, ext2_group_desc *gdp) {
 	ext2_superblock *ext2_sb = EXT2_SB(sb);
   // works because bg_block_bitmap is always within its block group
 	uint32_t group = get_group_from_block(ext2_sb, gdp->bg_block_bitmap);
-	uint32_t block = ext2_sb->s_first_data_block + SUPERBLOCK_SIZE_BLOCKS + group / EXT2_GROUP_DESC_PER_BLOCK(ext2_sb);
+	uint32_t block = ext2_sb->s_first_data_block + SUPERBLOCK_SIZE_BLOCKS; + group / EXT2_GROUP_DESC_PER_BLOCK(ext2_sb);
 	uint32_t offset = group % EXT2_GROUP_DESC_PER_BLOCK(ext2_sb) * sizeof(ext2_group_desc);
 	char *group_block_buf = ext2_bread_block(sb, block);
 	memcpy(group_block_buf + offset, gdp, sizeof(ext2_group_desc));
@@ -81,8 +128,8 @@ void ext2_write_inode(struct vfs_inode* i) {
 	uint32_t group = get_group_from_inode(ext2_sb, i->i_ino);
   ext2_group_desc *gdp = ext2_get_group_desc(i->i_sb, group);
 	uint32_t block = gdp->bg_inode_table + get_relative_inode_in_group(ext2_sb, i->i_ino) / EXT2_INODES_PER_BLOCK(ext2_sb);
-	kfree(gdp);
-  uint32_t offset = (get_relative_inode_in_group(ext2_sb, i->i_ino) % EXT2_INODES_PER_BLOCK(ext2_sb)) * sizeof(struct ext2_inode);
+	kfree(gdp); 
+  uint32_t offset = (get_relative_inode_in_group(ext2_sb, i->i_ino) % EXT2_INODES_PER_BLOCK(ext2_sb)) * ext2_sb->s_inode_size;
 	char *buf = ext2_bread_block(i->i_sb, block);
 	memcpy(buf + offset, ei, sizeof(struct ext2_inode));
 	ext2_bwrite_block(i->i_sb, block, buf);

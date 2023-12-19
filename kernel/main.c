@@ -177,7 +177,7 @@ bool run_cmd(char* cmd_buf) {
     printf("\npath: ");
     get_cmd(text, 100);
 
-    int32_t fd = vfs_open(text, O_CREAT);
+    int32_t fd = vfs_open(text, O_APPEND);
     if (fd < 0) {
       printf("\nunable to open file");
     } else {
@@ -188,8 +188,8 @@ bool run_cmd(char* cmd_buf) {
     //get_cmd(text, 100);
 
     char* line = "#helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-hellowor#";
-
-    vfs_flseek(fd, 1024, SEEK_SET);
+    
+    //vfs_flseek(fd, 11, SEEK_SET);
     vfs_fwrite(fd, "!", 1);
 
     //vfs_flseek(fd, 80, SEEK_SET);

@@ -250,7 +250,7 @@ typedef struct {
 
 typedef struct {
   ext2_superblock* sb;
-  uint32_t blocksize;
+  //uint32_t blocksize;
   bool is_readonly;
   uint32_t inode_reserved;
   uint32_t gdt_size_blocks; // amount of global descriptor tables
@@ -284,6 +284,7 @@ char *ext2_bread_block(struct vfs_superblock *sb, uint32_t iblock);
 char *ext2_bread(struct vfs_superblock *sb, uint32_t iblock, uint32_t size);
 void ext2_bwrite_block(struct vfs_superblock *sb, uint32_t iblock, char *buf);
 void ext2_bwrite(struct vfs_superblock *sb, uint32_t iblock, char *buf, uint32_t size);
+uint32_t ext2_create_block(struct vfs_superblock *sb);
 
 void ext2_read_inode(struct vfs_inode* i);
 void ext2_write_inode(struct vfs_inode* i);
