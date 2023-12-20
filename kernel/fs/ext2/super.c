@@ -114,12 +114,29 @@ struct ext2_inode* ext2_get_inode(struct vfs_superblock* sb, ino_t ino) {
 
 void ext2_write_super(struct vfs_superblock *sb) {
   ext2_superblock *ext2_sb = EXT2_SB(sb);
-  bwrite(sb->mnt_devname, EXT2_STARTING_INO, (char *)ext2_sb, sizeof(ext2_superblock));
+  bwrite(sb->mnt_devname, EXT2_SUPERRBLOCK_POS, (char *)ext2_sb, sizeof(ext2_superblock));
 }
 
 void ext2_write_inode(struct vfs_inode* i) {
-  ext2_superblock* ext2_sb = EXT2_SB(i->i_sb);
-	ext2_inode* ei = EXT2_INODE(i);
+  ext2_superblock *ext2_sb = EXT2_SB(i->i_sb);
+	ext2_inode *ei = EXT2_INODE(i);
+
+	ei->i_mode = i->i_mode;
+	ei->i_gid = i->i_gid;
+	ei->i_uid = i->i_uid;
+
+	ei->i_size = i->i_size;
+	ei->i_atime = i->i_atime.tv_sec;
+	ei->i_ctime = i->i_ctime.tv_sec;
+	ei->i_mtime = i->i_mtime.tv_sec;
+
+	ei->i_blocks = i->i_blocks;
+	ei->i_links_count = i->i_nlink;
+	ei->i_flags = i->i_flags;
+
+	if (S_ISCHR(i->i_mode))
+		ei->i_block[0] = i->i_rdev;
+
 	uint32_t group = get_group_from_inode(ext2_sb, i->i_ino);
   ext2_group_desc *gdp = ext2_get_group_desc(i->i_sb, group);
 	uint32_t block = gdp->bg_inode_table + get_relative_inode_in_group(ext2_sb, i->i_ino) / EXT2_INODES_PER_BLOCK(ext2_sb);

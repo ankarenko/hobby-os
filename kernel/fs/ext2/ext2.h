@@ -189,6 +189,11 @@ typedef struct {
 typedef struct ext2_inode {
 	uint16_t i_mode;		/* File mode */
 	uint16_t i_uid;			/* Low 16 bits of Owner Uid */
+  /*
+  TODO: SA 2023-20-
+  In revision 0, (signed) 32bit value indicating the size of the file in bytes. 
+  In revision 1 and later revisions, and only for regular files, this represents the lower 32-bit of the file size; the upper 32-bit is located in the i_dir_acl.
+  */
 	uint32_t i_size;		/* Size in bytes */
 	uint32_t i_atime;		/* Access time */
 	uint32_t i_ctime;		/* Creation time */

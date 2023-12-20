@@ -210,19 +210,21 @@ static struct vfs_inode *ext2_create_inode(struct vfs_inode *dir, struct vfs_den
 	inode->i_blocks = 0;
 	// NOTE: MQ 2020-11-18 When creating inode, it is safe to assume that it is linked to dir entry?
 	inode->i_nlink = 1;
-
+  
+  ext2_inode *ei = EXT2_INODE(inode);
+	uint32_t block = ext2_create_block(inode->i_sb);
+	ei->i_block[0] = block;
+	inode->i_blocks += 1;
+	
 	if (S_ISREG(mode)) {
 		inode->i_op = &ext2_file_inode_operations;
 		inode->i_fop = &ext2_file_operations;
+    ext2_write_inode(inode);
+    
 	} else if (S_ISDIR(mode)) {
 		inode->i_op = &ext2_dir_inode_operations;
 		inode->i_fop = &ext2_dir_operations;
-
-		ext2_inode *ei = EXT2_INODE(inode);
-		uint32_t block = ext2_create_block(inode->i_sb);
-		ei->i_block[0] = block;
-		inode->i_blocks += 1;
-		inode->i_size += sb->s_blocksize;
+    inode->i_size += sb->s_blocksize;
 		ext2_write_inode(inode);
 
 		char *block_buf = ext2_bread_block(inode->i_sb, block);
@@ -232,14 +234,14 @@ static struct vfs_inode *ext2_create_inode(struct vfs_inode *dir, struct vfs_den
 		memcpy(c_entry->name, ".", 1);
 		c_entry->name_len = 1;
 		c_entry->rec_len = EXT2_DIR_REC_LEN(1);
-		c_entry->file_type = 2;
+		c_entry->file_type = EXT2_FT_DIR;
 
 		ext2_dir_entry *p_entry = (ext2_dir_entry *)(block_buf + c_entry->rec_len);
 		p_entry->ino = dir->i_ino;
 		memcpy(p_entry->name, "..", 2);
 		p_entry->name_len = 2;
 		p_entry->rec_len = sb->s_blocksize - c_entry->rec_len;
-		p_entry->file_type = 2;
+		p_entry->file_type = EXT2_FT_DIR;
 
 		ext2_bwrite_block(inode->i_sb, block, block_buf);
     kfree(block_buf);
@@ -247,7 +249,6 @@ static struct vfs_inode *ext2_create_inode(struct vfs_inode *dir, struct vfs_den
 	else
 		assert_not_reached();
 
-	sb->s_op->write_inode(inode);
 	dentry->d_inode = inode;
 
 	if (ext2_create_entry(sb, dir, dentry) >= 0)
