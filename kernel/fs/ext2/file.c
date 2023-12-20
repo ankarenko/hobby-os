@@ -167,7 +167,7 @@ int ext2_readdir(struct vfs_file *file, struct dirent** dirent) {
 }
 
 struct vfs_file_operations ext2_file_operations = {
-	//.llseek = generic_file_llseek,
+	.llseek = vfs_generic_llseek,
 	.read = ext2_read_file,
 	.write = ext2_write_file,
 	//.mmap = ext2_mmap_file,

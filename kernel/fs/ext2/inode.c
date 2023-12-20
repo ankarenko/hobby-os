@@ -5,6 +5,7 @@
 #include "kernel/util/path.h"
 #include "kernel/fs/vfs.h"
 #include "kernel/util/math.h"
+#include "kernel/memory/malloc.h"
 
 #include "kernel/fs/ext2/ext2.h"
 
@@ -53,6 +54,38 @@ static int ext2_find_ino(struct vfs_superblock *sb, uint32_t block, void *arg) {
 	return ret;
 }
 
+static int ext2_delete_entry(struct vfs_superblock *sb, uint32_t block, void *arg) {
+	const char *name = arg;
+	char *block_buf = ext2_bread_block(sb, block);
+
+	char tmpname[NAME_MAX];
+	uint32_t size = 0;
+	ext2_dir_entry *prev = NULL;
+	ext2_dir_entry *entry = (ext2_dir_entry *)block_buf;
+
+	while (size < sb->s_blocksize) {
+		memcpy(tmpname, entry->name, entry->name_len);
+		tmpname[entry->name_len] = 0;
+
+		if (strcmp(tmpname, name) == 0) {
+			int ino = entry->ino;
+			entry->ino = 0;
+
+			if (prev)
+				prev->rec_len += entry->rec_len;
+
+			ext2_bwrite_block(sb, block, block_buf);
+			return ino;
+		}
+
+		prev = entry;
+		size += entry->rec_len;
+		entry = (ext2_dir_entry *)((char *)entry + entry->rec_len);
+	}
+
+	return -ENOENT;
+}
+
 struct vfs_inode* ext2_lookup_inode(struct vfs_inode *dir, char* name) {
   ext2_inode *ei = EXT2_INODE(dir);
 	struct vfs_superblock *sb = dir->i_sb;
@@ -75,6 +108,35 @@ struct vfs_inode* ext2_lookup_inode(struct vfs_inode *dir, char* name) {
 		}
 	}
 	return NULL;
+}
+
+static int ext2_unlink(struct vfs_inode *dir, char* name) {
+	ext2_inode *ei = EXT2_INODE(dir);
+	struct vfs_superblock *sb = dir->i_sb;
+  ext2_fs_info* mi = EXT2_INFO(sb);
+
+	for (int32_t i = 0, ino = 0; i < ei->i_blocks; ++i) {
+		if (!ei->i_block[i])
+			continue;
+
+		if (
+      ((mi->ino_upper_levels[0] > i) && (ino = ext2_recursive_block_action(sb, 0, ei->i_block[i], name, ext2_delete_entry)) > 0) ||
+			((mi->ino_upper_levels[0] <= i && i < mi->ino_upper_levels[1]) && (ino = ext2_recursive_block_action(mi, 1, ei->i_block[12], name, ext2_delete_entry)) > 0) ||
+			((mi->ino_upper_levels[1] <= i && i < mi->ino_upper_levels[2]) && (ino = ext2_recursive_block_action(mi, 2, ei->i_block[13], name, ext2_delete_entry)) > 0) ||
+			((mi->ino_upper_levels[2] <= i && i < mi->ino_upper_levels[3]) && (ino = ext2_recursive_block_action(mi, 3, ei->i_block[14], name, ext2_delete_entry)) > 0))
+		{
+			struct vfs_inode *inode = dir->i_sb->s_op->alloc_inode(dir->i_sb);
+			inode->i_ino = ino;
+			ext2_read_inode(inode);
+
+			inode->i_nlink -= 1;
+			ext2_write_inode(inode);
+			// TODO: SA 2023-12-20 If i_nlink == 0, we delete ext2 inode
+      kfree(inode);
+			break;
+		}
+	}
+	return 0;
 }
 
 static int ext2_add_entry(struct vfs_superblock *sb, uint32_t block, void *arg) {
@@ -101,7 +163,6 @@ static int ext2_add_entry(struct vfs_superblock *sb, uint32_t block, void *arg) 
 
 			entry->name_len = filename_length;
 			memcpy(entry->name, dentry->d_name, entry->name_len);
-      // new_rec_len is 0?
 			entry->rec_len = max_t(uint16_t, new_rec_len, entry->rec_len);
 
 			ext2_bwrite_block(sb, block, block_buf);
@@ -110,14 +171,15 @@ static int ext2_add_entry(struct vfs_superblock *sb, uint32_t block, void *arg) 
 			goto clean;
 		}
 
-    // this part I also dont understand
     // how do we find an unused entry in a directory?
+    // https://stackoverflow.com/questions/29213455/ext2-directory-entry-list-where-is-the-end
 		if (EXT2_DIR_REC_LEN(filename_length) + EXT2_DIR_REC_LEN(entry->name_len) < entry->rec_len) {
 			new_rec_len = entry->rec_len - EXT2_DIR_REC_LEN(entry->name_len);
 			entry->rec_len = EXT2_DIR_REC_LEN(entry->name_len);
 			size += entry->rec_len;
 			entry = (ext2_dir_entry *)((char *)entry + entry->rec_len);
 			memset(entry, 0, new_rec_len);
+
 		} else {
 			size += entry->rec_len;
 			new_rec_len = sb->s_blocksize - size;
@@ -263,10 +325,9 @@ struct vfs_inode_operations ext2_file_inode_operations = {
 struct vfs_inode_operations ext2_dir_inode_operations = {
   .create = ext2_create_inode,
 	.lookup = ext2_lookup_inode,
+  .unlink = ext2_unlink
 	//.mknod = ext2_mknod,
 	//.rename = ext2_rename,
-	//.unlink = ext2_unlink,
-
 };
 
 struct vfs_inode_operations ext2_special_inode_operations = {};

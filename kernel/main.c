@@ -167,21 +167,20 @@ bool run_cmd(char* cmd_buf) {
 
     printf("\npath: ");
     get_cmd(filepath, 100);
-
-    if (vfs_open(filepath, O_CREAT) < 0) {
+    int fd = 0;
+    if ((fd = vfs_open(filepath, O_CREAT, S_IFREG)) < 0) {
       printf("\ndirectory not found");
     }
+    vfs_close(fd);
   } else if (strcmp(cmd_buf, "write") == 0) {
     char text[100];
 
     printf("\npath: ");
     get_cmd(text, 100);
 
-    int32_t fd = vfs_open(text, O_APPEND);
+    int32_t fd = vfs_open(text, O_CREAT | O_APPEND, S_IFREG);
     if (fd < 0) {
       printf("\nunable to open file");
-    } else {
-      printf("\nfile opened");
     }
 
     //printf("\ntext: ");
@@ -190,8 +189,12 @@ bool run_cmd(char* cmd_buf) {
     char* line = "#helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-hellowor#";
     
     //vfs_flseek(fd, 11, SEEK_SET);
-    vfs_fwrite(fd, "!", 1);
-
+    if (vfs_fwrite(fd, "!", 1) < 0) {
+      printf("\nnot a file");
+    } else {
+      printf("\nfile updated");
+    }
+    vfs_close(fd);
     //vfs_flseek(fd, 80, SEEK_SET);
     //vfs_fwrite(fd, line, 100);
     //vfs_fwrite(fd, "!", 1);
@@ -208,8 +211,8 @@ bool run_cmd(char* cmd_buf) {
     printf("\npath: ");
     get_cmd(filepath, 100);
 
-    if (vfs_delete(filepath) < 0) {
-      printf("\nfile not found");
+    if (vfs_unlink(filepath, 0) < 0) {
+      printf("\nfile or directory not found");
     }
   } else if (strcmp(cmd_buf, "mkdir") == 0) {
     char filepath[100];
@@ -217,8 +220,8 @@ bool run_cmd(char* cmd_buf) {
     printf("\npath: ");
     get_cmd(filepath, 100);
 
-    if (vfs_mkdir(filepath) < 0) {
-      printf("\ndirectory not found");
+    if (vfs_mkdir(filepath, 0) < 0) {
+      printf("\ncannot create directory");
     }
   } else if (strcmp(cmd_buf, "read") == 0) {
     cmd_read_sect();
@@ -231,7 +234,7 @@ bool run_cmd(char* cmd_buf) {
     get_cmd(filepath, 100);
 
     if (!vfs_ls(filepath)) {
-      printf("\ndirectory not found");
+      printf("\ndirectory not found"); 
     }
     //ls(filepath);
   } else if (strcmp(cmd_buf, "run") == 0) {
@@ -255,7 +258,7 @@ void cmd_read_file() {
   printf("\npath: ");
   get_cmd(filepath, 100);
 
-  int32_t fd = vfs_open(filepath, O_CREAT, S_IFREG);
+  int32_t fd = vfs_open(filepath, O_RDONLY, S_IFREG);
   
   if (fd == -ENOENT || fd < 0) {
     printf("\nfile not found");
@@ -271,6 +274,7 @@ void cmd_read_file() {
   };
   printf("\n____________________________________________");
   
+  vfs_close(fd);
   /*
   uint8_t* buf = vfs_read(filepath);
   printf("\n_____________________________________________\n");

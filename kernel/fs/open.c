@@ -40,14 +40,22 @@ struct vfs_file *get_empty_file() {
 }
 
 int32_t vfs_close(int32_t fd) {
-  /*
-  process* proc = get_current_process();
-  vfs_file* file = proc->files->fd[fd];
+  process* cur_proc = get_current_process();
+  struct vfs_file* file = cur_proc->files->fd[fd];
 
-  if (file)
-    if (file_systems[file->device_id - 'a'])
-      return file_systems[file->device_id - 'a']->fop.close(file);
-      */
+  // TODO: AS 2023-11-19 - add synchronization
+	// acquire_semaphore(&files->lock);
+
+	int ret = 0;
+	if (file) {
+		cur_proc->files->fd[fd] = NULL;
+    // should I free vfs_mount, vfs_dentry?
+    kfree(file);
+  } else {
+		ret = -EBADF;
+  }
+
+	return ret;
 }
 
 static void generic_fillattr(struct vfs_inode *inode, struct kstat *stat) {
@@ -58,9 +66,9 @@ static void generic_fillattr(struct vfs_inode *inode, struct kstat *stat) {
 	stat->st_uid = inode->i_uid;
 	stat->st_gid = inode->i_gid;
 	stat->st_rdev = inode->i_rdev;
-	//stat->st_atim = inode->i_atime;
-	//stat->st_mtim = inode->i_mtime;
-	//stat->st_ctim = inode->i_ctime;
+	stat->st_atim = inode->i_atime;
+	stat->st_mtim = inode->i_mtime;
+	stat->st_ctim = inode->i_ctime;
 	stat->st_size = inode->i_size;
 	stat->st_blocks = inode->i_blocks;
 	stat->st_blksize = inode->i_blksize;
@@ -96,35 +104,12 @@ int vfs_fstat(int32_t fd, struct kstat* stat) {
 	return do_getattr(/*file->f_vfsmnt,*/ file->f_dentry, stat);
 }
 
-int32_t vfs_delete(const char* fname) {
-  /*
-  if (!fname)
-    return -ENOENT;
-
-  unsigned char device = 'a';
-  if (file_systems[device - 'a']) {
-    return file_systems[device - 'a']->delete(fname);
-  }
-  */
-}
-
-int32_t vfs_mkdir(const char* dir_path) {
-  /*
-  if (!dir_path)
-    return -ENOENT;
-
-  unsigned char device = 'a';
-  if (file_systems[device - 'a']) {
-    return file_systems[device - 'a']->mkdir(dir_path);
-  }
-  */
-}
-
 int32_t vfs_open(const char* path, int32_t flags, ...) {
   int fd = find_unused_fd_slot(0);
 	mode_t mode = 0;
   
   if (flags & O_CREAT) {
+    // TODO: need loop?
 		va_list ap;
 		va_start(ap, flags);
 		mode = va_arg(ap, mode_t);
@@ -138,7 +123,7 @@ int32_t vfs_open(const char* path, int32_t flags, ...) {
 
 	struct vfs_file *file = get_empty_file();
 	file->f_dentry = nd.dentry;
-	//file->f_vfsmnt = nd.mnt;
+	file->f_vfsmnt = nd.mnt;
 	file->f_flags = flags;
 	//file->f_mode = OPEN_FMODE(flags);
 	file->f_op = nd.dentry->d_inode->i_fop;

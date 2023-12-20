@@ -12,6 +12,7 @@ char *vfs_read(const char *path) {
 
   process* proc = get_current_process();
   struct vfs_file* file = proc->files->fd[fd];
+
   int32_t size = file->f_dentry->d_inode->i_size;
   file->f_pos = 0; // read from the beggining
 
@@ -26,6 +27,11 @@ char *vfs_read(const char *path) {
 int32_t vfs_fread(int32_t fd, char *buf, int32_t count) {
   process* cur_proc = get_current_process();
 	struct vfs_file* file = cur_proc->files->fd[fd];
+
+  if (S_ISDIR(file->f_dentry->d_inode->i_mode)) {
+    return -EISDIR;
+  }
+
 	if (fd < 0 || !file)
 		return -EBADF;
 
@@ -35,36 +41,44 @@ int32_t vfs_fread(int32_t fd, char *buf, int32_t count) {
 	return -EINVAL;
 }
 
+off_t vfs_generic_llseek(struct vfs_file *file, off_t offset, int whence) {
+	struct vfs_inode *inode = file->f_dentry->d_inode;
+	off_t foffset;
+
+	if (whence == SEEK_SET)
+		foffset = offset;
+	else if (whence == SEEK_CUR)
+		foffset = file->f_pos + offset;
+	else if (whence == SEEK_END)
+		foffset = inode->i_size + offset;
+	else
+		return -EINVAL;
+
+	file->f_pos = foffset;
+	return foffset;
+}
+
 off_t vfs_flseek(int32_t fd, off_t offset, int whence) {
   process* proc = get_current_process();
   struct vfs_file* file = proc->files->fd[fd];
 
-  if (!file)
-    return -ENOENT;
-  
-  switch (whence) {
-  case SEEK_SET:
-    file->f_pos = offset;
-    break;
+	if (fd < 0 || !file)
+		return -EBADF;
 
-  case SEEK_CUR:
-    file->f_pos += offset;
-    break;
+	if (file && file->f_op && file->f_op->llseek)
+		return file->f_op->llseek(file, offset, whence);
 
-  case SEEK_END:
-    file->f_pos = file->f_dentry->d_inode->i_size + offset;
-    break;
-  
-  default:
-    return -EINVAL;
-  }
-  
-  return file->f_pos;
+	return -EINVAL;
 }
 
 ssize_t vfs_fwrite(int32_t fd, char* buf, int32_t count) {
   process* cur_proc = get_current_process();
   struct vfs_file *file = cur_proc->files->fd[fd];
+
+  if (S_ISDIR(file->f_dentry->d_inode->i_mode)) {
+    return -EISDIR;
+  }
+  
 	if (fd < 0 || !file)
 		return -EBADF;
 

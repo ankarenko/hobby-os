@@ -10,6 +10,7 @@
 #include "kernel/system/time.h"
 #include "kernel/devices/tty.h"
 #include "kernel/devices/vga.h"
+#include "kernel/fs/ext2/ext2.h"
 
 #include "kernel/fs/vfs.h"
 
@@ -152,7 +153,7 @@ struct vfs_mount* lookup_mnt(struct vfs_dentry* d) {
 }
 
 static void init_rootfs(struct vfs_file_system_type* fs_type, char *dev_name) {
-	init_ext2_fs();
+	ext2_init_fs();
 
 	struct vfs_mount* mnt = fs_type->mount(fs_type, dev_name, "/");
   list_add_tail(&mnt->sibling, &vfsmntlist);
@@ -291,6 +292,16 @@ struct vfs_mount* do_mount(const char* fstype, int flags, const char* path) {
   */
 }
 
+int32_t vfs_mkdir(const char *path, mode_t mode) {
+  int ret = vfs_open(path, O_RDONLY);
+	if (ret < 0 && ret != -ENOENT)
+		return ret;
+	else if (ret >= 0)
+		return -EEXIST;
+
+	struct nameidata nd;
+	return vfs_jmp(&nd, path, O_CREAT, mode | S_IFDIR);
+}
 
 void vfs_init(struct vfs_file_system_type* fs, char* dev_name) {
 	//log("VFS: Initializing");

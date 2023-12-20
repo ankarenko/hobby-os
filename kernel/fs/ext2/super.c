@@ -292,11 +292,11 @@ struct vfs_file_system_type ext2_fs_type = {
 	.mount = ext2_mount,
 };
 
-void init_ext2_fs() {
+void ext2_init_fs() {
 	register_filesystem(&ext2_fs_type);
 }
 
-void exit_ext2_fs() {
+void ext2_exit_fs() {
 	unregister_filesystem(&ext2_fs_type);
 }
 

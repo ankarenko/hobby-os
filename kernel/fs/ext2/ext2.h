@@ -2,8 +2,15 @@
 #define KERNEL_FS_EXT2_H
 
 /**
- * The implementation is based on this file
+ * The implementation is based on this file 
  * https://www.nongnu.org/ext2-doc/ext2.html#bg-block-bitmap
+*/
+
+/**
+ * TODO: SA 2023-12-20:
+ * Current limitations:
+ * - supports only 1th level blocks (direct) when writing writing
+ * - directories are limited to 1 block
 */
 
 #include <stdint.h>
@@ -257,7 +264,8 @@ typedef struct ext2_inode {
 
 typedef struct {
 	uint32_t ino;	    /* Inode number */
-	uint16_t rec_len; /* Directory entry length */
+  // TODO: SA 2023-12-19 sum of all rec_len's has to be equal to a block size?
+	uint16_t rec_len; /* Directory entry length */ 
 	uint8_t name_len; /* Name length */
 	uint8_t file_type;
 	char name[];
@@ -293,8 +301,8 @@ static inline ext2_inode* EXT2_INODE(struct vfs_inode *inode) {
 }
 
 // super.c
-void init_ext2_fs();
-void exit_ext2_fs();
+void ext2_init_fs();
+void ext2_init_fs();
 char *ext2_bread_block(struct vfs_superblock *sb, uint32_t iblock);
 char *ext2_bread(struct vfs_superblock *sb, uint32_t iblock, uint32_t size);
 void ext2_bwrite_block(struct vfs_superblock *sb, uint32_t iblock, char *buf);

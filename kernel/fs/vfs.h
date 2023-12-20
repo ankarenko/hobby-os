@@ -21,6 +21,11 @@
 #define FS_ROOT_DIRECTORY 3
 #define FS_NOT_FOUND 4
 
+/**
+ * TODO: SA 2023-12-20 I suspect there are lots of memory leaks, so 
+ * it needs to be taken care of at some point in the future
+*/
+
 typedef int32_t sect_t;
 
 typedef struct {
@@ -138,11 +143,11 @@ struct vfs_file_system_type {
 
 struct vfs_inode_operations {
 	struct vfs_inode *(*create)(struct vfs_inode *dir, struct vfs_dentry *dentry, mode_t mode);
-	struct vfs_inode *(*lookup)(struct vfs_inode *dir, char* path /*struct vfs_dentry *dentry*/);
+	struct vfs_inode *(*lookup)(struct vfs_inode *dir, char* name);
 	//int (*mkdir)(struct vfs_inode *, char *, int);
 	//int (*rename)(struct vfs_inode *old_dir, struct vfs_dentry *old_dentry,
 	//			  struct vfs_inode *new_dir, struct vfs_dentry *new_dentry);
-	//int (*unlink)(struct vfs_inode *dir, struct vfs_dentry *dentry);
+	int (*unlink)(struct vfs_inode *dir, char* path);
 	//int (*mknod)(struct vfs_inode *, struct vfs_dentry *, int, dev_t);
 	//void (*truncate)(struct vfs_inode *);
 	//int (*setattr)(struct vfs_dentry *, struct iattr *);
@@ -162,6 +167,7 @@ struct vfs_file {
   unsigned int f_flags;
   off_t f_pos;
   mode_t f_mode;
+  struct vfs_mount *f_vfsmnt;
   struct vfs_dentry* f_dentry;
   struct vfs_file_operations *f_op;
 };
@@ -169,9 +175,8 @@ struct vfs_file {
 // vfs.c
 struct vfs_mount* do_mount(const char* fstype, int flags, const char* path);
 void vfs_init(struct vfs_file_system_type* fs, char* dev_name);
-void init_ext2_fs();
-void exit_ext2_fs();
 
+int32_t vfs_mkdir(const char *path, mode_t mode);
 int32_t vfs_ls(const char* path);
 int32_t vfs_cd(const char* path);
 int register_filesystem(struct vfs_file_system_type *fs);
@@ -183,7 +188,6 @@ int32_t vfs_close(int32_t fd);
 int32_t vfs_open(const char* fname, int32_t flags, ...);
 int vfs_fstat(int32_t fd, struct kstat* stat);
 int32_t vfs_delete(const char* fname);
-int32_t vfs_mkdir(const char* dir_path);
 struct vfs_dentry *alloc_dentry(struct vfs_dentry *parent, char *name);
 struct vfs_file *get_empty_file();
 
@@ -192,5 +196,9 @@ int32_t vfs_fread(int32_t fd, char* buf, int32_t count);
 ssize_t vfs_fwrite(int32_t fd, char* buf, int32_t count);
 char* vfs_read(const char* path);
 off_t vfs_flseek(int32_t fd, off_t offset, int whence);
+off_t vfs_generic_llseek(struct vfs_file *file, off_t offset, int whence);
+
+// namei.c
+int vfs_unlink(const char *path, int flag);
 
 #endif

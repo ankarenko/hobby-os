@@ -64,7 +64,7 @@ void tty_init()
 
 	log("TTY: Init serial");
   */
-  vfs_mkdir(PATH_DEV);
+  //vfs_mkdir(PATH_DEV);
   
 	serial_init();
 }
