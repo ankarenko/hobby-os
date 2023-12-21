@@ -20,7 +20,7 @@ static void tty_default_put_char(struct tty_struct *tty, const char ch) {
 }
 
 int tty_register_driver(struct tty_driver *driver) {
-	struct char_device *cdev = alloc_chrdev(driver->name, driver->major, driver->minor_start, driver->num/*, &tty_fops*/);
+	struct char_device *cdev = alloc_chrdev(driver->name, driver->major, driver->minor_start, driver->num, NULL/*, &tty_fops*/);
 	register_chrdev(cdev);
 	driver->cdev = cdev;
   

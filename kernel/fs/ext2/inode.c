@@ -318,6 +318,18 @@ static struct vfs_inode *ext2_create_inode(struct vfs_inode *dir, struct vfs_den
 	return NULL;
 }
 
+static int ext2_mknod(struct vfs_inode *dir, struct vfs_dentry *dentry, int mode, dev_t dev) {
+	struct vfs_inode *inode = ext2_lookup_inode(dir, dentry);
+	if (inode == NULL)
+		inode = ext2_create_inode(dir, dentry, mode);
+	inode->i_rdev = dev;
+	//init_special_inode(inode, mode, dev);
+	ext2_write_inode(inode);
+
+	dentry->d_inode = inode;
+	return 0;
+}
+
 struct vfs_inode_operations ext2_file_inode_operations = {
 	//.truncate = ext2_truncate_inode,
 };
@@ -325,8 +337,8 @@ struct vfs_inode_operations ext2_file_inode_operations = {
 struct vfs_inode_operations ext2_dir_inode_operations = {
   .create = ext2_create_inode,
 	.lookup = ext2_lookup_inode,
-  .unlink = ext2_unlink
-	//.mknod = ext2_mknod,
+  .unlink = ext2_unlink,
+	.mknod = ext2_mknod,
 	//.rename = ext2_rename,
 };
 

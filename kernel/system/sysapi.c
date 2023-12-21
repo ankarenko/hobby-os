@@ -7,6 +7,7 @@
 #include "kernel/cpu/idt.h"
 #include "kernel/system/sysapi.h"
 #include "kernel/system/time.h"
+#include "kernel/cpu/hal.h"
 
 #define __NR_exit 1
 #define __NR_fork 2
@@ -63,7 +64,10 @@ static int32_t sys_getpid() {
 static int32_t sys_exit() {
   thread* cur_thread = get_current_thread();
   thread_kill(cur_thread->tid);
-  return 1;
+  
+  while (true) { // wait until terminated
+    make_schedule();
+  }; 
 }
 
 static int32_t sys_execve(const char *pathname, char *const argv[], char *const envp[]) {

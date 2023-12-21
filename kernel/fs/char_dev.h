@@ -3,9 +3,10 @@
 
 #include <sys/types.h>
 
-#include "kernel/util/list.h"
+#include "kernel/fs/vfs.h"
 
 // cdev
+// 16 bit was not enough and it was extended to 32 bits by linux 
 #define MINORBITS 20
 #define MINORMASK ((1U << MINORBITS) - 1)
 
@@ -27,9 +28,11 @@ struct char_device {
 	struct vfs_file_operations *f_ops;
 };
 
-struct char_device *alloc_chrdev(const char *name, uint32_t major, uint32_t minor, int32_t minorct/*, struct vfs_file_operations *ops*/);
-int register_chrdev(struct char_device *new_cdev);
-static struct char_device *get_chrdev(dev_t dev);
+struct char_device *alloc_chrdev(const char *name, uint32_t major, uint32_t minor, int32_t minorct, struct vfs_file_operations *ops);
+int register_chrdev(struct char_device *cdev);
+int unregister_chrdev(dev_t dev);
 void chrdev_init();
+
+extern struct vfs_file_operations def_chr_fops;
 
 #endif 

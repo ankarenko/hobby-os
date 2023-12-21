@@ -72,7 +72,7 @@ char *strrstr(char *string, char *find);
 char *strreplace(char *s, char old, char new);
 int striof(const char *s1, const char *s2);
 int strliof(const char *s1, const char *s2);
-int strlsplat(const char *s1, int pos, char **sf, char **sl);
+int32_t strlsplat(const char *s1, int32_t pos, char **sf, char **sl);
 char *skip_spaces(const char *str);
 int count_array_of_pointers(void *arr);
 

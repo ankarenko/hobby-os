@@ -66,6 +66,7 @@ struct kstat {
 	struct timespec st_ctim; /* Time of last status change */
 };
 
+// SA TODO: 2023-12-21 s_dirt flag will be useful
 struct vfs_superblock {
 	unsigned long s_blocksize;
 	//dev_t s_dev;
@@ -148,7 +149,7 @@ struct vfs_inode_operations {
 	//int (*rename)(struct vfs_inode *old_dir, struct vfs_dentry *old_dentry,
 	//			  struct vfs_inode *new_dir, struct vfs_dentry *new_dentry);
 	int (*unlink)(struct vfs_inode *dir, char* path);
-	//int (*mknod)(struct vfs_inode *, struct vfs_dentry *, int, dev_t);
+	int (*mknod)(struct vfs_inode *, struct vfs_dentry *, int, dev_t);
 	//void (*truncate)(struct vfs_inode *);
 	//int (*setattr)(struct vfs_dentry *, struct iattr *);
 	//int (*getattr)(struct vfs_mount *mnt, struct vfs_dentry *, struct kstat *);

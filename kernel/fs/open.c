@@ -104,6 +104,25 @@ int vfs_fstat(int32_t fd, struct kstat* stat) {
 	return do_getattr(/*file->f_vfsmnt,*/ file->f_dentry, stat);
 }
 
+int vfs_mknod(const char *path, int mode, dev_t dev) {
+	char *dir, *name;
+	strlsplat(path, strliof(path, "/"), &dir, &name);
+
+	struct nameidata nd;
+	int ret = vfs_jmp(&nd, dir, 0, S_IFDIR);
+	if (ret < 0)
+		return ret;
+
+	struct vfs_dentry *d_child = alloc_dentry(nd.dentry, name);
+	ret = nd.dentry->d_inode->i_op->mknod(nd.dentry->d_inode, d_child, mode, dev);
+	if (ret < 0)
+		return ret;
+
+	list_add_tail(&d_child->d_sibling, &nd.dentry->d_subdirs);
+
+	return ret;
+}
+
 int32_t vfs_open(const char* path, int32_t flags, ...) {
   int fd = find_unused_fd_slot(0);
 	mode_t mode = 0;
