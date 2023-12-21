@@ -99,9 +99,9 @@ int lseek(int fd, off_t offset, int whence) {
 
 _syscall3(open, const char*, int32_t, mode_t);
 int open(const char *name, int flags, ...) {
-  //kernel_print("\nopen!!");
-  /*
+  
   mode_t mode = 0;
+  //kernel_print("\nmode: %d", mode);
   
   if (flags & O_CREAT) {
     va_list ap;
@@ -109,9 +109,10 @@ int open(const char *name, int flags, ...) {
     mode = va_arg(ap, mode_t);
     va_end(ap);
   }
-  */
- //kernel_print("\ninvoking: %s", name);
-  SYSCALL_RETURN_ORIGINAL(syscall_open(name, flags, 0));
+
+  //kernel_print("\nmode: %d", mode);
+
+  SYSCALL_RETURN_ORIGINAL(syscall_open(name, flags, mode));
 }
 
 _syscall1(sbrk, intptr_t);

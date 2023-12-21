@@ -138,7 +138,7 @@ bool initialise_multitasking(virtual_addr entry);
 thread* kernel_thread_create(process* parent, virtual_addr eip);
 process* create_system_process(virtual_addr entry);
 struct list_head* get_proc_list();
-process* create_elf_process(char* path);
+process* create_elf_process(process* parent, char* path);
 
 // sched.c
 void lock_scheduler();

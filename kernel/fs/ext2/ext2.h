@@ -273,17 +273,6 @@ typedef struct {
 
 typedef struct {
   ext2_superblock* sb;
-  //uint32_t blocksize;
-  bool is_readonly;
-  uint32_t inode_reserved;
-  uint32_t gdt_size_blocks; // amount of global descriptor tables
-  uint64_t ino_upper_levels[4];
-  //uint32_t inode_size;
-  ext2_inode* root_dir;
-} ext2_mount_info;
-
-typedef struct {
-  ext2_superblock* sb;
   uint64_t ino_upper_levels[4];
   bool is_readonly;
 } ext2_fs_info;

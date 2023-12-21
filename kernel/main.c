@@ -241,8 +241,8 @@ bool run_cmd(char* cmd_buf) {
     char filepath[100];
     printf("\npath: ");
     get_cmd(filepath, 100);
-
-    create_elf_process(filepath);
+    process* cur_proc = get_current_process();
+    create_elf_process(cur_proc, filepath);
   } else if (strcmp(cmd_buf, "") == 0) {
     
   } else {

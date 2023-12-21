@@ -37,7 +37,7 @@ ssize_t ext2_write_file(struct vfs_file *file, const char *buf, size_t count, of
 	struct vfs_inode *inode = file->f_dentry->d_inode;
 	struct ext2_inode *ei = EXT2_INODE(inode);
 	struct vfs_superblock *sb = inode->i_sb;
-  ext2_mount_info* mi = EXT2_INFO(sb);
+  ext2_fs_info* mi = EXT2_INFO(sb);
 
 	if (ppos + count > inode->i_size) {
 		inode->i_size = ppos + count;
@@ -81,7 +81,7 @@ ssize_t ext2_read_file(struct vfs_file* file, char *buf, size_t count, off_t ppo
 	struct vfs_inode* inode = file->f_dentry->d_inode;
   ext2_inode* ei = EXT2_INODE(inode);
 	struct vfs_superblock* sb = inode->i_sb;
-  ext2_mount_info* mi = EXT2_INFO(sb);
+  ext2_fs_info* mi = EXT2_INFO(sb);
 
 	count = min_t(size_t, ppos + count, ei->i_size) - ppos;
 	uint32_t p = (ppos / sb->s_blocksize) * sb->s_blocksize;
@@ -89,7 +89,7 @@ ssize_t ext2_read_file(struct vfs_file* file, char *buf, size_t count, off_t ppo
 
 	while (p < ppos + count) {
 		uint32_t relative_block = p / sb->s_blocksize;
-		if (relative_block < mi->ino_upper_levels[0])
+    if (relative_block < mi->ino_upper_levels[0])
 			ext2_read_nth_block(sb, ei->i_block[relative_block], &iter_buf, ppos, &p, count, 0);
 		else if (relative_block < mi->ino_upper_levels[1])
 			ext2_read_nth_block(sb, ei->i_block[12], &iter_buf, ppos, &p, count, 1);

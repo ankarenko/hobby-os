@@ -262,7 +262,7 @@ static files_struct* create_files_descriptors() {
   return files;
 }
 
-static process* create_process(char* app_path, struct pdirectory* pdir) {
+static process* create_process(process *parent, char* name, struct pdirectory* pdir) {
   lock_scheduler();
 
   process* proc = kcalloc(1, sizeof(process));
@@ -272,11 +272,7 @@ static process* create_process(char* app_path, struct pdirectory* pdir) {
   proc->pid = ++next_pid;
   proc->thread_count = 0;
   proc->files = create_files_descriptors();
-
-  uint32_t len = strlen(app_path);
-  proc->path = kcalloc(len, sizeof(char));
-  memcpy(proc->path, app_path, len);
-
+  proc->path = strdup(name);
   proc->mm_mos = kcalloc(1, sizeof(mm_struct_mos));
   INIT_LIST_HEAD(&proc->mm_mos->mmap);
 
@@ -286,8 +282,11 @@ static process* create_process(char* app_path, struct pdirectory* pdir) {
   proc->pa_dir = vmm_get_physical_address(proc->va_dir, false);
 
   proc->fs = kcalloc(1, sizeof(fs_struct));
-  //proc->fs->mnt_root = 
-
+  if (parent) {
+		memcpy(proc->fs, parent->fs, sizeof(fs_struct));
+		//list_add_tail(&proc->sibling, &parent->children);
+	}
+  
   unlock_scheduler();
 
 	return proc;
@@ -343,7 +342,7 @@ void terminate_process() {
 }
 
 process* create_system_process(virtual_addr entry) {
-  process* proc = create_process("system", vmm_get_directory());
+  process* proc = create_process(NULL, "system", vmm_get_directory());
   thread* th = kernel_thread_create(proc, entry);
   
   if (!th) {
@@ -354,8 +353,8 @@ process* create_system_process(virtual_addr entry) {
   return proc;
 }
 
-process* create_elf_process(char* path) {
-  process* proc = create_process(path, NULL);
+process* create_elf_process(process* parent, char* path) {
+  process* proc = create_process(parent, path, NULL);
   thread* th = user_thread_create(proc);
 
   if (!th || !proc) {
@@ -377,7 +376,7 @@ process* get_current_process() {
 bool initialise_multitasking(virtual_addr entry) {
   sched_init();
 
-  process* parent = create_process("",  vmm_get_directory());
+  process* parent = create_process(NULL, "",  vmm_get_directory());
   _current_thread = kernel_thread_create(parent, entry);
   sched_push_queue(_current_thread, THREAD_READY);
   

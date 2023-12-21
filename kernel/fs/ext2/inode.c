@@ -12,7 +12,7 @@
 static int ext2_recursive_block_action(
   struct vfs_superblock* sb,
 	int level, uint32_t block, void* arg,
-	int (*action)(ext2_mount_info*, uint32_t, void *)) {
+	int (*action)(struct vfs_superblock *, uint32_t, void *)) {
 
 	KASSERT(level <= EXT2_MAX_DATA_LEVEL);
   //ext2_superblock* sb = EXT2_SB(vsb);

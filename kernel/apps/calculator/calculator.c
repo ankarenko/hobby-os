@@ -6,7 +6,7 @@
 #include "../../../ports/newlib/myos/print.h"
 
 void main(int argc, char** argv) {
-  FILE* stream = fopen("test.txt", "a+");
+  FILE* stream = fopen("test.txt", "ab+");
   
   if (fputs("Hello, world\n!", stream) == 0) {
     fflush(stream);

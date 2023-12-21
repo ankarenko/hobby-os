@@ -98,7 +98,7 @@ void ext2_write_group_desc(struct vfs_superblock *sb, ext2_group_desc *gdp) {
 
 struct ext2_inode* ext2_get_inode(struct vfs_superblock* sb, ino_t ino) {
 	ext2_superblock* ext2_sb = EXT2_SB(sb);
-  ext2_mount_info* mi = EXT2_INFO(sb);
+  ext2_fs_info* mi = EXT2_INFO(sb);
 	uint32_t group = get_group_from_inode(ext2_sb, ino);
 	ext2_group_desc *gdp = ext2_get_group_desc(sb, group);
   ino_t rel_inode = get_relative_inode_in_group(ext2_sb, ino);
