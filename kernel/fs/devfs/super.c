@@ -77,7 +77,7 @@ struct vfs_file_system_type devfs_fs_type = {
 
 void init_devfs() {
   register_filesystem(&devfs_fs_type);
-  //do_mount("devfs", MS_NOUSER, "/dev");
+  do_mount("devfs", 0, "/dev");
   vfs_mknod("/dev/input", S_IFDIR, 0);
   vfs_mknod("/dev/pts", S_IFDIR, 0);
 }

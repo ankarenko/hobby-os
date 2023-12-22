@@ -323,7 +323,7 @@ static int ext2_mknod(struct vfs_inode *dir, struct vfs_dentry *dentry, int mode
 	if (inode == NULL)
 		inode = ext2_create_inode(dir, dentry, mode);
 	inode->i_rdev = dev;
-	//init_special_inode(inode, mode, dev);
+	init_special_inode(inode, mode, dev);
 	ext2_write_inode(inode);
 
 	dentry->d_inode = inode;

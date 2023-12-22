@@ -192,6 +192,7 @@ int vfs_fstat(int32_t fd, struct kstat* stat);
 int32_t vfs_delete(const char* fname);
 struct vfs_dentry *alloc_dentry(struct vfs_dentry *parent, char *name);
 struct vfs_file *get_empty_file();
+int generic_memory_readdir(struct vfs_file *file, struct dirent **dirent);
 
 // read_write.c
 int32_t vfs_fread(int32_t fd, char* buf, int32_t count);

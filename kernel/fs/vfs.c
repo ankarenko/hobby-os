@@ -12,6 +12,7 @@
 #include "kernel/util/fcntl.h"
 #include "kernel/util/limits.h"
 #include "kernel/util/string/string.h"
+#include "kernel/fs/devfs/devfs.h"
 
 static struct vfs_file_system_type* file_systems;
 struct list_head vfsmntlist;
@@ -49,44 +50,55 @@ int32_t vfs_ls(const char* path) {
 
   struct dirent* dirs = NULL;
 
-  if (!nd.dentry->d_inode->i_fop->readdir)
+  if (!nd.dentry->d_inode->i_fop->readdir) {
+    assert_not_implemented();
     return -EINVAL;
+  }
 
   uint32_t count = nd.dentry->d_inode->i_fop->readdir(file, &dirs);
 
   struct vfs_inode* inode = nd.dentry->d_inode->i_sb->s_op->alloc_inode(nd.dentry->d_inode->i_sb);
 
   for (int i = 0; i < count; ++i) {
+    lock_scheduler();
     char name[12] = "           ";
     struct dirent* iter = &dirs[i];
 
     inode->i_ino = iter->d_ino;
-    nd.dentry->d_inode->i_sb->s_op->read_inode(inode);
+    if (nd.dentry->d_inode->i_sb->s_op->read_inode) {
+      nd.dentry->d_inode->i_sb->s_op->read_inode(inode);
 
-    memcpy(&name, iter->d_name, strlen(iter->d_name));
+      memcpy(&name, iter->d_name, strlen(iter->d_name));
+      if (!S_ISDIR(iter->d_type)) {
+        terminal_set_color(VGA_COLOR_LIGHT_RED);
+        printf("\n%s", name);
+        struct time* created = get_time(inode->i_ctime.tv_sec);
 
-    lock_scheduler();
-    if (!S_ISDIR(iter->d_type)) {
-      terminal_set_color(VGA_COLOR_LIGHT_RED);
-      printf("\n%s", name);
-      struct time* created = get_time(inode->i_ctime.tv_sec);
+        printf("   %d %s %d%d:%d%d",
+              created->day,
+              months[created->month - 1],
+              created->hour / 10, created->hour % 10,
+              created->minute / 10, created->minute % 10);
 
-      printf("   %d %s %d%d:%d%d",
-             created->day,
-             months[created->month - 1],
-             created->hour / 10, created->hour % 10,
-             created->minute / 10, created->minute % 10);
-
-      printf("   %u bytes", inode->i_size);
-      kfree(created);
-      terminal_reset_color();
+        printf("   %u bytes", inode->i_size);
+        kfree(created);
+        terminal_reset_color();
+      } else {
+        printf("\n%s", name);
+      }
     } else {
-      printf("\n%s", name);
+      memcpy(&name, iter->d_name, strlen(iter->d_name));
+      if (!S_ISDIR(iter->d_type)) {
+        printf("\n%s", name);
+      } else {
+        terminal_set_color(VGA_COLOR_LIGHT_RED);
+        printf("\n%s", name);
+        terminal_reset_color();
+      }
     }
     unlock_scheduler();
   }
   kfree(inode);
-
   kfree(dirs);
   return count;
 }
@@ -195,6 +207,10 @@ int vfs_jmp(struct nameidata* nd, const char* path, int32_t flags, mode_t mode) 
 
     name[i] = '\0';  // null terminate
 
+    while (cur[i] == '\/') {
+      ++i;
+    }
+
     // look in subdirectories first
     struct vfs_dentry* iter = NULL;
     struct vfs_dentry* d_child = NULL;
@@ -237,10 +253,6 @@ int vfs_jmp(struct nameidata* nd, const char* path, int32_t flags, mode_t mode) 
       d_child->d_inode = inode;
       list_add_tail(&d_child->d_sibling, &nd->dentry->d_subdirs);
       nd->dentry = d_child;
-    }
-
-    while (cur[i] == '\/') {
-      ++i;
     }
 
     cur = &cur[i];
@@ -288,6 +300,7 @@ struct vfs_mount* do_mount(const char* fstype, int flags, const char* path) {
     if (!strcmp(iter->d_name, name)) {
       // TODO: MQ 2020-10-24 Make sure path is empty folder
       list_del(&iter->d_sibling);
+      // TODO: SA 2023-12-22 kfree properies of the iter?
       kfree(iter);
     }
   }
@@ -314,4 +327,6 @@ void vfs_init(struct vfs_file_system_type* fs, char* dev_name) {
   INIT_LIST_HEAD(&vfsmntlist);
 
   init_rootfs(fs, dev_name);
+
+  init_devfs();
 }

@@ -5,8 +5,8 @@
 
 // super.c
 struct vfs_inode *devfs_get_inode(struct vfs_superblock *sb, uint32_t mode);
-void devfs_init();
-void devfs_exit_();
+void init_devfs();
+void exit_devfs();
 
 // inode.c
 extern struct vfs_inode_operations devfs_dir_inode_operations;
