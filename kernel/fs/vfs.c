@@ -1,42 +1,39 @@
+#include "kernel/fs/vfs.h"
 
-#include "kernel/util/string/string.h"
-#include "kernel/util/errno.h"
-#include "kernel/util/fcntl.h"
-#include "kernel/proc/task.h"
-#include "kernel/memory/malloc.h"
-#include "kernel/util/debug.h"
-#include "kernel/util/limits.h"
-#include "kernel/util/fcntl.h"
-#include "kernel/system/time.h"
 #include "kernel/devices/tty.h"
 #include "kernel/devices/vga.h"
+#include "kernel/fs/char_dev.h"
 #include "kernel/fs/ext2/ext2.h"
-
-#include "kernel/fs/vfs.h"
+#include "kernel/memory/malloc.h"
+#include "kernel/proc/task.h"
+#include "kernel/system/time.h"
+#include "kernel/util/debug.h"
+#include "kernel/util/errno.h"
+#include "kernel/util/fcntl.h"
+#include "kernel/util/limits.h"
+#include "kernel/util/string/string.h"
 
 static struct vfs_file_system_type* file_systems;
 struct list_head vfsmntlist;
 
 char* months[12] = {
-  "jan",
-  "feb",
-  "mar",
-  "apr",
-  "may",
-  "jun",
-  "jul",
-  "aug",
-  "sep",
-  "oct",
-  "nov",
-  "dec"
-};
+    "jan",
+    "feb",
+    "mar",
+    "apr",
+    "may",
+    "jun",
+    "jul",
+    "aug",
+    "sep",
+    "oct",
+    "nov",
+    "dec"};
 
 int32_t vfs_ls(const char* path) {
   struct nameidata nd = {
-    .dentry = 0,
-    .mnt = 0
-  };
+      .dentry = 0,
+      .mnt = 0};
   int32_t ret = 0;
   if ((ret = vfs_jmp(&nd, path, 0, 0)) != 0) {
     return ret;
@@ -47,33 +44,33 @@ int32_t vfs_ls(const char* path) {
     return -ENOTDIR;
   }
 
-  struct vfs_file *file = get_empty_file();
+  struct vfs_file* file = get_empty_file();
   file->f_dentry = nd.dentry;
 
   struct dirent* dirs = NULL;
-  
+
   if (!nd.dentry->d_inode->i_fop->readdir)
     return -EINVAL;
 
   uint32_t count = nd.dentry->d_inode->i_fop->readdir(file, &dirs);
 
   struct vfs_inode* inode = nd.dentry->d_inode->i_sb->s_op->alloc_inode(nd.dentry->d_inode->i_sb);
-  
+
   for (int i = 0; i < count; ++i) {
     char name[12] = "           ";
     struct dirent* iter = &dirs[i];
-    
+
     inode->i_ino = iter->d_ino;
     nd.dentry->d_inode->i_sb->s_op->read_inode(inode);
 
     memcpy(&name, iter->d_name, strlen(iter->d_name));
-    
+
     lock_scheduler();
     if (!S_ISDIR(iter->d_type)) {
       terminal_set_color(VGA_COLOR_LIGHT_RED);
       printf("\n%s", name);
       struct time* created = get_time(inode->i_ctime.tv_sec);
-      
+
       printf("   %d %s %d%d:%d%d",
              created->day,
              months[created->month - 1],
@@ -89,7 +86,7 @@ int32_t vfs_ls(const char* path) {
     unlock_scheduler();
   }
   kfree(inode);
-  
+
   kfree(dirs);
   return count;
 }
@@ -112,56 +109,56 @@ int32_t vfs_cd(const char* path) {
 }
 
 static struct vfs_file_system_type** find_filesystem(const char* name) {
-	struct vfs_file_system_type **p;
-	for (p = &file_systems; *p; p = &(*p)->next) {
-		if (strcmp((*p)->name, name) == 0)
-			break;
-	}
-	return p; 
-}
-
-int register_filesystem(struct vfs_file_system_type *fs) {
-	struct vfs_file_system_type** p = find_filesystem(fs->name);
-
-	if (*p)
-		return -EBUSY;
-	else
-		*p = fs;
-
-	return 0;
-}
-
-int unregister_filesystem(struct vfs_file_system_type *fs) {
-	struct vfs_file_system_type** p;
-	for (p = &file_systems; *p; p = &(*p)->next) {
-		if (strcmp((*p)->name, fs->name) == 0) {
-			*p = (*p)->next;
-			return 0;
-		}
+  struct vfs_file_system_type** p;
+  for (p = &file_systems; *p; p = &(*p)->next) {
+    if (strcmp((*p)->name, name) == 0)
+      break;
   }
-	return -EINVAL;
+  return p;
+}
+
+int register_filesystem(struct vfs_file_system_type* fs) {
+  struct vfs_file_system_type** p = find_filesystem(fs->name);
+
+  if (*p)
+    return -EBUSY;
+  else
+    *p = fs;
+
+  return 0;
+}
+
+int unregister_filesystem(struct vfs_file_system_type* fs) {
+  struct vfs_file_system_type** p;
+  for (p = &file_systems; *p; p = &(*p)->next) {
+    if (strcmp((*p)->name, fs->name) == 0) {
+      *p = (*p)->next;
+      return 0;
+    }
+  }
+  return -EINVAL;
 }
 
 struct vfs_mount* lookup_mnt(struct vfs_dentry* d) {
-	struct vfs_mount* iter;
-	list_for_each_entry(iter, &vfsmntlist, sibling) {
-		if (!strcmp(iter->mnt_devname, d->d_sb->mnt_devname))
-			return iter;
-	}
+  struct vfs_mount* iter;
+  list_for_each_entry(iter, &vfsmntlist, sibling) {
+    if (!strcmp(iter->mnt_devname, d->d_sb->mnt_devname))
+      return iter;
+  }
 
-	return NULL;
+  return NULL;
 }
 
-static void init_rootfs(struct vfs_file_system_type* fs_type, char *dev_name) {
-	ext2_init_fs();
+static void init_rootfs(struct vfs_file_system_type* fs_type, char* dev_name) {
+  ext2_init_fs();
 
-	struct vfs_mount* mnt = fs_type->mount(fs_type, dev_name, "/");
+  struct vfs_mount* mnt = fs_type->mount(fs_type, dev_name, "/");
   list_add_tail(&mnt->sibling, &vfsmntlist);
 
   process* cur = get_current_process();
 
-	cur->fs->d_root = mnt->mnt_root;
-	cur->fs->mnt_root = mnt;
+  cur->fs->d_root = mnt->mnt_root;
+  cur->fs->mnt_root = mnt;
 }
 
 int vfs_jmp(struct nameidata* nd, const char* path, int32_t flags, mode_t mode) {
@@ -171,10 +168,10 @@ int vfs_jmp(struct nameidata* nd, const char* path, int32_t flags, mode_t mode) 
   }
 
   const char* cur = simplified;
-  
+
   process* cur_proc = get_current_process();
   nd->mnt = cur_proc->fs->mnt_root;
-  
+
   // check if root dir
   if (simplified[0] == '\/') {
     nd->dentry = cur_proc->fs->mnt_root->mnt_root;
@@ -184,7 +181,7 @@ int vfs_jmp(struct nameidata* nd, const char* path, int32_t flags, mode_t mode) 
   } else {
     nd->dentry = cur_proc->fs->d_root;
   }
-  
+
   int ret = 0;
   int32_t length = strlen(path);
 
@@ -199,50 +196,50 @@ int vfs_jmp(struct nameidata* nd, const char* path, int32_t flags, mode_t mode) 
     name[i] = '\0';  // null terminate
 
     // look in subdirectories first
-    struct vfs_dentry *iter = NULL;
-		struct vfs_dentry *d_child = NULL;
+    struct vfs_dentry* iter = NULL;
+    struct vfs_dentry* d_child = NULL;
 
     list_for_each_entry(iter, &nd->dentry->d_subdirs, d_sibling) {
-			if (!strcmp(name, iter->d_name)) {
-				d_child = iter;
-				break;
-			}
-		}
-    
+      if (!strcmp(name, iter->d_name)) {
+        d_child = iter;
+        break;
+      }
+    }
+
     if (d_child) {
-			nd->dentry = d_child;
-      
-			if (i == length && flags & O_CREAT && flags & O_EXCL)
-				return -EEXIST;
-      
-		} else {
+      nd->dentry = d_child;
+
+      if (i == length && flags & O_CREAT && flags & O_EXCL)
+        return -EEXIST;
+
+    } else {
       d_child = alloc_dentry(nd->dentry, name);
 
-      struct vfs_inode *inode = NULL;
+      struct vfs_inode* inode = NULL;
       if (inode = nd->dentry->d_inode->i_op->lookup) {
         inode = nd->dentry->d_inode->i_op->lookup(nd->dentry->d_inode, name);
       }
 
       if (inode == NULL) {
-				if (i == length && flags & O_CREAT) {
-					inode = nd->dentry->d_inode->i_op->create(nd->dentry->d_inode, d_child, mode);
-				} else {
+        if (i == length && flags & O_CREAT) {
+          inode = nd->dentry->d_inode->i_op->create(nd->dentry->d_inode, d_child, mode);
+        } else {
           ret = -ENOENT;
           kfree(d_child);
-					goto clean;
-				}
-			} else if (i == length && flags & O_CREAT && flags & O_EXCL) {
-				ret = -EEXIST;
+          goto clean;
+        }
+      } else if (i == length && flags & O_CREAT && flags & O_EXCL) {
+        ret = -EEXIST;
         kfree(d_child);
         goto clean;
       }
 
       d_child->d_inode = inode;
-			list_add_tail(&d_child->d_sibling, &nd->dentry->d_subdirs);
-			nd->dentry = d_child;
+      list_add_tail(&d_child->d_sibling, &nd->dentry->d_subdirs);
+      nd->dentry = d_child;
     }
 
-    while (cur[i] == '\/') { 
+    while (cur[i] == '\/') {
       ++i;
     }
 
@@ -250,7 +247,7 @@ int vfs_jmp(struct nameidata* nd, const char* path, int32_t flags, mode_t mode) 
   }
 
   // find what mnt we are in
-  struct vfs_mount *mnt = lookup_mnt(nd->dentry);
+  struct vfs_mount* mnt = lookup_mnt(nd->dentry);
   if (mnt) {
     nd->mnt = mnt;
   }
@@ -260,54 +257,61 @@ clean:
   return ret;
 }
 
-struct vfs_mount* do_mount(const char* fstype, int flags, const char* path) {
-	/*
-  char* dir = NULL;
-	char* name = NULL;
-	strlsplat(path, strliof(path, "/"), &dir, &name);
-	if (!dir) {
-		dir = "/";
+void init_special_inode(struct vfs_inode* inode, mode_t mode, dev_t dev) {
+  inode->i_mode = mode;
+  if (S_ISCHR(mode)) {
+    inode->i_fop = &def_chr_fops;
+    inode->i_rdev = dev;
+  } else {
+    assert_not_reached();
   }
-
-	struct vfs_file_system_type* fs = *find_filesystem(fstype);
-	struct vfs_mount* mnt = fs->mount(fs, fstype, name);
-	struct nameidata nd;
-
-	path_walk(&nd, dir, O_RDONLY, S_IFDIR);
-
-	struct vfs_dentry *iter, *next;
-  list_for_each_entry_safe(iter, next, &nd.dentry->d_subdirs, d_sibling) {
-		if (!strcmp(iter->d_name, name)) {
-			// TODO: MQ 2020-10-24 Make sure path is empty folder
-			list_del(&iter->d_sibling);
-			kfree(iter);
-		}
-	}
-
-	mnt->mnt_mountpoint->d_parent = nd.dentry;
-	list_add_tail(&mnt->mnt_mountpoint->d_sibling, &nd.dentry->d_subdirs);
-	list_add_tail(&mnt->sibling, &vfsmntlist);
-
-	return mnt;
-  */
 }
 
-int32_t vfs_mkdir(const char *path, mode_t mode) {
-  int ret = vfs_open(path, O_RDONLY);
-	if (ret < 0 && ret != -ENOENT)
-		return ret;
-	else if (ret >= 0)
-		return -EEXIST;
+struct vfs_mount* do_mount(const char* fstype, int flags, const char* path) {
+  char* dir = NULL;
+  char* name = NULL;
+  strlsplat(path, strliof(path, "/"), &dir, &name);
+  if (!dir) {
+    dir = "/";
+  }
 
-	struct nameidata nd;
-	return vfs_jmp(&nd, path, O_CREAT, mode | S_IFDIR);
+  struct vfs_file_system_type* fs = *find_filesystem(fstype);
+  struct vfs_mount* mnt = fs->mount(fs, fstype, name);
+  struct nameidata nd;
+
+  if (vfs_jmp(&nd, dir, O_RDONLY, S_IFDIR) < 0) {
+    return NULL;
+  }
+
+  struct vfs_dentry *iter, *next;
+  list_for_each_entry_safe(iter, next, &nd.dentry->d_subdirs, d_sibling) {
+    if (!strcmp(iter->d_name, name)) {
+      // TODO: MQ 2020-10-24 Make sure path is empty folder
+      list_del(&iter->d_sibling);
+      kfree(iter);
+    }
+  }
+
+  mnt->mnt_mountpoint->d_parent = nd.dentry;
+  list_add_tail(&mnt->mnt_mountpoint->d_sibling, &nd.dentry->d_subdirs);
+  list_add_tail(&mnt->sibling, &vfsmntlist);
+
+  return mnt;
+}
+
+int32_t vfs_mkdir(const char* path, mode_t mode) {
+  int ret = vfs_open(path, O_RDONLY);
+  if (ret < 0 && ret != -ENOENT)
+    return ret;
+  else if (ret >= 0)
+    return -EEXIST;
+
+  struct nameidata nd;
+  return vfs_jmp(&nd, path, O_CREAT, mode | S_IFDIR);
 }
 
 void vfs_init(struct vfs_file_system_type* fs, char* dev_name) {
-	//log("VFS: Initializing");
-
   INIT_LIST_HEAD(&vfsmntlist);
 
-	//log("VFS: Mount ext2");
-	init_rootfs(fs, dev_name);
+  init_rootfs(fs, dev_name);
 }

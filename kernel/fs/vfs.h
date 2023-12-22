@@ -176,7 +176,8 @@ struct vfs_file {
 // vfs.c
 struct vfs_mount* do_mount(const char* fstype, int flags, const char* path);
 void vfs_init(struct vfs_file_system_type* fs, char* dev_name);
-
+void init_special_inode(struct vfs_inode* inode, mode_t mode, dev_t dev);
+struct vfs_inode *init_inode();
 int32_t vfs_mkdir(const char *path, mode_t mode);
 int32_t vfs_ls(const char* path);
 int32_t vfs_cd(const char* path);
