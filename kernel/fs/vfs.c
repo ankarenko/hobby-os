@@ -305,6 +305,14 @@ struct vfs_mount* do_mount(const char* fstype, int flags, const char* path) {
     }
   }
 
+  struct vfs_dentry* current = alloc_dentry(mnt->mnt_root, ".");
+  current->d_inode = mnt->mnt_root->d_inode;
+  list_add_tail(&current->d_sibling, &mnt->mnt_root->d_subdirs);
+
+  struct vfs_dentry* back = alloc_dentry(nd.dentry, "..");
+  back->d_inode = nd.dentry->d_inode;
+  list_add_tail(&back->d_sibling, &mnt->mnt_root->d_subdirs);
+
   mnt->mnt_mountpoint->d_parent = nd.dentry;
   list_add_tail(&mnt->mnt_mountpoint->d_sibling, &nd.dentry->d_subdirs);
   list_add_tail(&mnt->sibling, &vfsmntlist);

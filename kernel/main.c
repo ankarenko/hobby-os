@@ -289,7 +289,10 @@ extern void cmd_init() {
 
   while (1) {
     process* proc = get_current_process();
-    printf("\nroot@%s: ", proc->fs->d_root->d_name);
+    printf("\n(%s)root@%s: ", 
+      strcmp(proc->fs->mnt_root->mnt_devname, "/dev/hda") == 0? "ext2" : proc->fs->mnt_root->mnt_devname, 
+      proc->fs->d_root->d_name
+    );
     
     get_cmd(cmd_buf, 98);
 
