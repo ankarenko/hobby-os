@@ -1,4 +1,5 @@
 #include "kernel/fs/vfs.h"
+#include "kernel/util/debug.h"
 
 #include "kernel/fs/devfs/devfs.h"
 
@@ -15,11 +16,17 @@ static int devfs_mknod(struct vfs_inode *dir, struct vfs_dentry *dentry, int mod
   return 0;
 }
 
-static struct vfs_inode *devfs_create_inode(struct vfs_inode *dir, struct vfs_dentry *dentry, mode_t mode) {
-  return devfs_get_inode(dir->i_sb, mode);
+struct vfs_inode* devfs_lookup_inode(struct vfs_inode *dir, char* name) {
+  assert_not_implemented();
 }
 
-struct vfs_inode_operations devfs_file_inode_operations = {};
+static struct vfs_inode *devfs_create_inode(struct vfs_dentry *dir, struct vfs_dentry *dentry, mode_t mode) {
+  return devfs_get_inode(dir->d_inode->i_sb, mode);
+}
+
+struct vfs_inode_operations devfs_file_inode_operations = {
+  .lookup = devfs_lookup_inode
+};
 
 struct vfs_inode_operations devfs_dir_inode_operations = {
   .create = devfs_create_inode,

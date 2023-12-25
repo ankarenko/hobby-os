@@ -50,29 +50,26 @@ int32_t vfs_ls(const char* path) {
 
   struct dirent* dirs = NULL;
 
-  if (!nd.dentry->d_inode->i_fop->readdir) {
-    assert_not_implemented();
-    return -EINVAL;
-  }
-
   uint32_t count = nd.dentry->d_inode->i_fop->readdir(file, &dirs);
 
-  struct vfs_inode* inode = nd.dentry->d_inode->i_sb->s_op->alloc_inode(nd.dentry->d_inode->i_sb);
+  struct vfs_inode inode;
 
   for (int i = 0; i < count; ++i) {
     lock_scheduler();
     char name[12] = "           ";
     struct dirent* iter = &dirs[i];
 
-    inode->i_ino = iter->d_ino;
-    if (nd.dentry->d_inode->i_sb->s_op->read_inode) {
-      nd.dentry->d_inode->i_sb->s_op->read_inode(inode);
+    inode.i_ino = iter->d_ino;
+    inode.i_sb = nd.dentry->d_inode->i_sb;
+
+    if (nd.dentry->d_inode->i_sb->s_op->read_inode && inode.i_ino != 0) {
+      nd.dentry->d_inode->i_sb->s_op->read_inode(&inode);
 
       memcpy(&name, iter->d_name, strlen(iter->d_name));
       if (!S_ISDIR(iter->d_type)) {
         terminal_set_color(VGA_COLOR_LIGHT_RED);
         printf("\n%s", name);
-        struct time* created = get_time(inode->i_ctime.tv_sec);
+        struct time* created = get_time(inode.i_ctime.tv_sec);
 
         printf("   %d %s %d%d:%d%d",
               created->day,
@@ -80,7 +77,7 @@ int32_t vfs_ls(const char* path) {
               created->hour / 10, created->hour % 10,
               created->minute / 10, created->minute % 10);
 
-        printf("   %u bytes", inode->i_size);
+        printf("   %u bytes", inode.i_size);
         kfree(created);
         terminal_reset_color();
       } else {
@@ -98,7 +95,6 @@ int32_t vfs_ls(const char* path) {
     }
     unlock_scheduler();
   }
-  kfree(inode);
   kfree(dirs);
   return count;
 }
@@ -195,11 +191,13 @@ int vfs_jmp(struct nameidata* nd, const char* path, int32_t flags, mode_t mode) 
   }
 
   int ret = 0;
-  int32_t length = strlen(path);
+  
 
   while (*cur) {
     char name[NAME_MAX + 1];
     int32_t i = 0;
+    int32_t length = strlen(cur);
+
     while (cur[i] != '\/' && cur[i] != '\0') {
       name[i] = cur[i];
       ++i;
@@ -211,22 +209,15 @@ int vfs_jmp(struct nameidata* nd, const char* path, int32_t flags, mode_t mode) 
       ++i;
     }
 
-    // look in subdirectories first
-    struct vfs_dentry* iter = NULL;
     struct vfs_dentry* d_child = NULL;
 
-    list_for_each_entry(iter, &nd->dentry->d_subdirs, d_sibling) {
-      if (!strcmp(name, iter->d_name)) {
-        d_child = iter;
-        break;
-      }
-    }
-
-    if (d_child) {
+    if ((d_child = vfs_search_virt_subdirs(nd->dentry, name)) != NULL) {
       nd->dentry = d_child;
 
-      if (i == length && flags & O_CREAT && flags & O_EXCL)
-        return -EEXIST;
+      if (i == length && flags & O_CREAT && flags & O_EXCL) {
+        ret = -EEXIST;
+        goto clean;
+      }
 
     } else {
       d_child = alloc_dentry(nd->dentry, name);
@@ -238,7 +229,7 @@ int vfs_jmp(struct nameidata* nd, const char* path, int32_t flags, mode_t mode) 
 
       if (inode == NULL) {
         if (i == length && flags & O_CREAT) {
-          inode = nd->dentry->d_inode->i_op->create(nd->dentry->d_inode, d_child, mode);
+          inode = nd->dentry->d_inode->i_op->create(nd->dentry, d_child, mode);
         } else {
           ret = -ENOENT;
           kfree(d_child);
@@ -253,6 +244,7 @@ int vfs_jmp(struct nameidata* nd, const char* path, int32_t flags, mode_t mode) 
       d_child->d_inode = inode;
       list_add_tail(&d_child->d_sibling, &nd->dentry->d_subdirs);
       nd->dentry = d_child;
+      vfs_cache(d_child);
     }
 
     cur = &cur[i];
@@ -274,11 +266,10 @@ void init_special_inode(struct vfs_inode* inode, mode_t mode, dev_t dev) {
   if (S_ISCHR(mode)) {
     inode->i_fop = &def_chr_fops;
     inode->i_rdev = dev;
-  } else {
-    assert_not_reached();
   }
 }
 
+// O_RDONLY means that it won't create all the folders that are missing 
 struct vfs_mount* do_mount(const char* fstype, int flags, const char* path) {
   char* dir = NULL;
   char* name = NULL;
@@ -291,9 +282,17 @@ struct vfs_mount* do_mount(const char* fstype, int flags, const char* path) {
   struct vfs_mount* mnt = fs->mount(fs, fstype, name);
   struct nameidata nd;
 
-  if (vfs_jmp(&nd, dir, O_RDONLY, S_IFDIR) < 0) {
+  if (vfs_jmp(&nd, dir, flags, S_IFDIR) < 0) {
     return NULL;
   }
+
+  /*
+  if (!nd.dentry->d_inode->i_op->mknod) {
+    assert_not_implemented();
+  }
+  */
+
+  //nd.dentry->d_inode->i_op->mknod(nd.dentry->d_inode, mnt->mnt_root, S_IFDIR, 0);
 
   struct vfs_dentry *iter, *next;
   list_for_each_entry_safe(iter, next, &nd.dentry->d_subdirs, d_sibling) {
@@ -333,7 +332,8 @@ int32_t vfs_mkdir(const char* path, mode_t mode) {
 
 void vfs_init(struct vfs_file_system_type* fs, char* dev_name) {
   INIT_LIST_HEAD(&vfsmntlist);
-
+  vfs_cache_init();
+  
   init_rootfs(fs, dev_name);
 
   init_devfs();

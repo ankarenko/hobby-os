@@ -40,6 +40,7 @@ struct vfs_dentry {
 	struct vfs_superblock* d_sb;
 	struct list_head d_subdirs;
 	struct list_head d_sibling;
+  struct list_head d_cache_sibling; 
 };
 
 struct vfs_super_operations {
@@ -143,7 +144,7 @@ struct vfs_file_system_type {
 };
 
 struct vfs_inode_operations {
-	struct vfs_inode *(*create)(struct vfs_inode *dir, struct vfs_dentry *dentry, mode_t mode);
+	struct vfs_inode *(*create)(struct vfs_dentry *dir, struct vfs_dentry *res, mode_t mode);
 	struct vfs_inode *(*lookup)(struct vfs_inode *dir, char* name);
 	//int (*mkdir)(struct vfs_inode *, char *, int);
 	//int (*rename)(struct vfs_inode *old_dir, struct vfs_dentry *old_dentry,
@@ -193,6 +194,8 @@ int32_t vfs_delete(const char* fname);
 struct vfs_dentry *alloc_dentry(struct vfs_dentry *parent, char *name);
 struct vfs_file *get_empty_file();
 int generic_memory_readdir(struct vfs_file *file, struct dirent **dirent);
+int vfs_mknod(const char *path, int mode, dev_t dev);
+struct vfs_dentry *vfs_search_virt_subdirs(struct vfs_dentry *dir, const char *name);
 
 // read_write.c
 int32_t vfs_fread(int32_t fd, char* buf, int32_t count);
@@ -203,5 +206,11 @@ off_t vfs_generic_llseek(struct vfs_file *file, off_t offset, int whence);
 
 // namei.c
 int vfs_unlink(const char *path, int flag);
+
+//cache.c
+int vfs_cache(struct vfs_dentry* dentry);
+int vfs_cache_remove(struct vfs_dentry* dentry);
+struct vfs_dentry* vfs_cache_get(struct vfs_dentry *parent, char *name);
+void vfs_cache_init();
 
 #endif

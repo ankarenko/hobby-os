@@ -114,7 +114,7 @@ bool run_cmd(char* cmd_buf) {
   }
   else if (strcmp(cmd_buf, "lst") == 0) {
     thread* th = NULL;
-    printf("\nthreads running: [ ");
+  printf("\nthreads running: [ ");
     list_for_each_entry(th, get_ready_threads(), sched_sibling) {
       printf("%d ", th->tid);
     }

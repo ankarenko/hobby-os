@@ -4,6 +4,7 @@
 #include "kernel/fs/vfs.h"
 #include "kernel/util/math.h"
 #include "kernel/util/debug.h"
+#include "kernel/util/string/string.h"
 #include "kernel/util/limits.h"
 #include "kernel/util/fcntl.h"
 
@@ -161,9 +162,43 @@ int ext2_readdir(struct vfs_file *file, struct dirent** dirent) {
 		idirent = (struct dirent *)((char *)idirent + idirent->d_reclen);
 	}
 
+  
   kfree(buf);
   KASSERT(size % sizeof(struct dirent) == 0);
-	return size / sizeof(struct dirent);
+  int ext2_size = size / sizeof(struct dirent);
+  return ext2_size;
+  /*
+  // check if it can be extended
+  struct dirent* virtual = 0;
+  int virtual_size = generic_memory_readdir(file, &virtual);
+  int final_size = virtual_size + ext2_size;
+
+  idirent = *dirent;
+  for (int i = 0; i < virtual_size; ++i) {
+    for (int j = 0; j < ext2_size; ++j) {
+      if (!strcmp(idirent[j].d_name, virtual[i].d_name) || !S_ISDIR(idirent[j].d_type)) {
+        virtual[i].d_reclen = 0; // ignore
+        --final_size;
+        break;
+      }
+    }
+  }
+
+  struct dirent* final = kcalloc(final_size, sizeof(struct dirent));
+  memcpy(final, *dirent, ext2_size * sizeof(struct dirent));
+  for (int i = ext2_size; i < final_size;) {
+    if (virtual[i - ext2_size].d_reclen != 0) {
+      memcpy(&final[i], &virtual[i - ext2_size], sizeof(struct dirent));
+      ++i;
+    }
+  }
+
+  kfree(*dirent);
+  kfree(virtual);
+  *dirent = final;
+
+	return final_size;
+  */
 }
 
 struct vfs_file_operations ext2_file_operations = {

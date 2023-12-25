@@ -1,6 +1,7 @@
 #include "kernel/fs/vfs.h"
 #include "kernel/memory/pmm.h"
 #include "kernel/util/debug.h"
+#include "kernel/util/fcntl.h"
 #include "kernel/util/string/string.h"
 
 #include "kernel/fs/devfs/devfs.h"
@@ -77,9 +78,17 @@ struct vfs_file_system_type devfs_fs_type = {
 
 void init_devfs() {
   register_filesystem(&devfs_fs_type);
-  do_mount("devfs", 0, "/dev");
-  vfs_mknod("/dev/input", S_IFDIR, 0);
-  vfs_mknod("/dev/pts", S_IFDIR, 0);
+  // if / path doesn't exists, it will return NULL
+  /*
+  if (!do_mount("devfs", O_RDONLY, "/dev")) {
+    assert_not_reached();
+  }
+  */
+  vfs_mkdir("/dev", 0);
+  vfs_mkdir("/dev/input", 0);
+  vfs_mkdir("/dev/pts", 0);
+  //vfs_mknod("/dev/input", S_IFDIR, 0);
+  //vfs_mknod("/dev/pts", S_IFDIR, 0);
 }
 
 void exit_devfs() {

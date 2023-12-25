@@ -242,7 +242,6 @@ void ext2_read_inode(struct vfs_inode* i) {
 	i->i_flags = raw_node->i_flags;
 	i->i_fs_info = raw_node;
 
-  
 	if (S_ISREG(i->i_mode)) {
 		i->i_op = &ext2_file_inode_operations;
 		i->i_fop = &ext2_file_operations;

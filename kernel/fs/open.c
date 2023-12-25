@@ -135,6 +135,7 @@ int generic_memory_readdir(struct vfs_file *file, struct dirent **dirent) {
     memcpy(idrent->d_name, iter->d_name, len);
     idrent->d_reclen = sizeof(struct dirent); // + len + 1;
     idrent->d_ino = iter->d_inode->i_ino;
+    idrent->d_type = iter->d_inode->i_mode;
     idrent = (struct dirent *)((char *)idrent + idrent->d_reclen);
   }
   return entries_size;
@@ -181,4 +182,17 @@ int32_t vfs_open(const char *path, int32_t flags, ...) {
   process *cur_proc = get_current_process();
   cur_proc->files->fd[fd] = file;
   return fd;
+}
+
+struct vfs_dentry *vfs_search_virt_subdirs(struct vfs_dentry *dir, const char *name) {
+  // look in subdirectories first
+  struct vfs_dentry* iter = NULL;
+  
+  list_for_each_entry(iter, &dir->d_subdirs, d_sibling) {
+    if (!strcmp(name, iter->d_name)) {
+      return iter;
+    }
+  }
+  
+  return NULL;
 }
