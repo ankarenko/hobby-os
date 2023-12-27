@@ -104,7 +104,8 @@ int vfs_fstat(int32_t fd, struct kstat *stat) {
 }
 
 int vfs_mknod(const char *path, int mode, dev_t dev) {
-  char *dir, *name;
+  char *dir = NULL;
+  char *name = NULL;
   strlsplat(path, strliof(path, "/"), &dir, &name);
 
   struct nameidata nd;

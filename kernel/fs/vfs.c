@@ -67,18 +67,23 @@ int32_t vfs_ls(const char* path) {
 
       memcpy(&name, iter->d_name, strlen(iter->d_name));
       if (!S_ISDIR(iter->d_type)) {
-        terminal_set_color(VGA_COLOR_LIGHT_RED);
+        bool is_char_dev = S_ISCHR(iter->d_type);
+        terminal_set_color(is_char_dev? VGA_COLOR_LIGHT_BLUE : VGA_COLOR_LIGHT_RED);
         printf("\n%s", name);
-        struct time* created = get_time(inode.i_ctime.tv_sec);
-
-        printf("   %d %s %d%d:%d%d",
+        if (!is_char_dev) {
+          struct time* created = get_time(inode.i_ctime.tv_sec);
+          
+          printf("   %d %s %d%d:%d%d",
               created->day,
               months[created->month - 1],
               created->hour / 10, created->hour % 10,
               created->minute / 10, created->minute % 10);
 
-        printf("   %u bytes", inode.i_size);
-        kfree(created);
+        
+          printf("   %u bytes", inode.i_size);
+        
+          kfree(created);
+        }
         terminal_reset_color();
       } else {
         printf("\n%s", name);
@@ -229,7 +234,7 @@ int vfs_jmp(struct nameidata* nd, const char* path, int32_t flags, mode_t mode) 
 
       if (inode == NULL) {
         if (i == length && flags & O_CREAT) {
-          inode = nd->dentry->d_inode->i_op->create(nd->dentry, d_child, mode);
+          inode = nd->dentry->d_inode->i_op->create(nd->dentry->d_inode, d_child, mode, 0);
         } else {
           ret = -ENOENT;
           kfree(d_child);

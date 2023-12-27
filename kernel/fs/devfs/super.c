@@ -84,11 +84,9 @@ void init_devfs() {
     assert_not_reached();
   }
   */
-  vfs_mkdir("/dev", 0);
-  vfs_mkdir("/dev/input", 0);
-  vfs_mkdir("/dev/pts", 0);
-  //vfs_mknod("/dev/input", S_IFDIR, 0);
-  //vfs_mknod("/dev/pts", S_IFDIR, 0);
+  vfs_mknod("/dev", S_IFDIR, 0);
+  
+  vfs_mknod("/dev/stdout", S_IFCHR, 1);
 }
 
 void exit_devfs() {

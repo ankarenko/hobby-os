@@ -38,12 +38,12 @@ then
   #$ENVIRONMENT ./clean.sh && \
   $ENVIRONMENT ./build.sh test && \
   $ENVIRONMENT ./make_iso.sh test && \
-  qemu-system-i386 -monitor unix:qemu-monitor-socket,server,nowait $MYOS_QEMU_PARAMS -kernel isodir/boot/test.bin
+  qemu-system-i386 -monitor unix:qemu-monitor-socket,server,nowait -chardev stdio,id=char0,logfile=uart1.log -serial chardev:char0 $MYOS_QEMU_PARAMS -kernel isodir/boot/test.bin
 elif [ "$1" = "run" ] 
 then
   $ENVIRONMENT ./build.sh install && \
   $ENVIRONMENT ./make_iso.sh myos && \
-  qemu-system-i386 -monitor unix:qemu-monitor-socket,server,nowait $MYOS_QEMU_PARAMS -kernel isodir/boot/myos.bin
+  qemu-system-i386 -monitor unix:qemu-monitor-socket,server,nowait -chardev stdio,id=char0,logfile=uart1.log -serial chardev:char0 $MYOS_QEMU_PARAMS -kernel isodir/boot/myos.bin
 else 
   echo "Unknown param: clean, build, run"
 fi

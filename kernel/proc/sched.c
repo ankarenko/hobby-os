@@ -13,7 +13,7 @@ struct list_head waiting_threads;
 struct list_head terminated_threads;
 
 // TODO: put it in th kernel stack, it's is more efficient
-thread* _current_thread;
+thread* _current_thread = NULL;
 
 extern void switch_to_thread(thread* next_task);
 extern void scheduler_tick();

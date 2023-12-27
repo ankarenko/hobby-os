@@ -158,7 +158,9 @@ static int ext2_add_entry(struct vfs_superblock *sb, uint32_t block, void *arg) 
 				entry->file_type = EXT2_FT_REG_FILE;
 			else if (S_ISDIR(dentry->d_inode->i_mode))
 				entry->file_type = EXT2_FT_DIR;
-			else
+      else if (S_ISCHR(dentry->d_inode->i_mode)) {
+        entry->file_type = EXT2_FT_CHRDEV;
+      } else
 				assert_not_implemented();
 
 			entry->name_len = filename_length;
@@ -233,8 +235,8 @@ static int find_unused_inode_number(struct vfs_superblock *sb) {
 	return -ENOSPC;
 }
 
-static struct vfs_inode *ext2_create_inode(struct vfs_dentry *dir, struct vfs_dentry *dentry, mode_t mode) {
-	struct vfs_superblock *sb = dir->d_inode->i_sb;
+static struct vfs_inode *ext2_create_inode(struct vfs_inode *dir, struct vfs_dentry *dentry, mode_t mode, dev_t dev) {
+	struct vfs_superblock *sb = dir->i_sb;
 	ext2_superblock *ext2_sb = EXT2_SB(sb);
 	uint32_t ino = find_unused_inode_number(sb);
 	ext2_group_desc *gdp = ext2_get_group_desc(sb, get_group_from_inode(ext2_sb, ino));
@@ -277,8 +279,11 @@ static struct vfs_inode *ext2_create_inode(struct vfs_dentry *dir, struct vfs_de
 	uint32_t block = ext2_create_block(inode->i_sb);
 	ei->i_block[0] = block;
 	inode->i_blocks += 1;
-	
-	if (S_ISREG(mode)) {
+  if (S_ISCHR(mode)) {
+    inode->i_rdev = dev;
+	  init_special_inode(inode, mode, dev);
+    ext2_write_inode(inode);
+  } else if (S_ISREG(mode)) {
 		inode->i_op = &ext2_file_inode_operations;
 		inode->i_fop = &ext2_file_operations;
     ext2_write_inode(inode);
@@ -299,7 +304,7 @@ static struct vfs_inode *ext2_create_inode(struct vfs_dentry *dir, struct vfs_de
 		c_entry->file_type = EXT2_FT_DIR;
     
 		ext2_dir_entry *p_entry = (ext2_dir_entry *)(block_buf + c_entry->rec_len);
-		p_entry->ino = dir->d_inode->i_ino;
+		p_entry->ino = dir->i_ino;
 		memcpy(p_entry->name, "..", 2);
 		p_entry->name_len = 2;
 		p_entry->rec_len = sb->s_blocksize - c_entry->rec_len;
@@ -313,7 +318,7 @@ static struct vfs_inode *ext2_create_inode(struct vfs_dentry *dir, struct vfs_de
 
 	dentry->d_inode = inode;
 
-	if (ext2_create_entry(sb, dir->d_inode, dentry) >= 0)
+	if (ext2_create_entry(sb, dir, dentry) >= 0)
 		return inode;
 	return NULL;
 }
@@ -321,12 +326,10 @@ static struct vfs_inode *ext2_create_inode(struct vfs_dentry *dir, struct vfs_de
 static int ext2_mknod(struct vfs_inode *dir, struct vfs_dentry *dentry, int mode, dev_t dev) {
 	struct vfs_inode *inode = ext2_lookup_inode(dir, dentry->d_name);
 	if (inode == NULL)
-		inode = ext2_create_inode(dir, dentry, mode);
-	inode->i_rdev = dev;
-	//init_special_inode(inode, mode, dev);
-	ext2_write_inode(inode);
-
+		inode = ext2_create_inode(dir, dentry, mode, dev);
+	
 	dentry->d_inode = inode;
+  
 	return 0;
 }
 

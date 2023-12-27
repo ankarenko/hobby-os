@@ -342,7 +342,8 @@ void main_thread() {
 
   vfs_init(&ext2_fs_type, "/dev/hda");
   chrdev_init();
-
+  
+  tty_init();
   cmd_init();
 }
 
@@ -350,12 +351,19 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   char** argv = 0;
   int argc = 0;
 
+  // setup serial port A for debug
+	debug_init();
+
+  //log("Log", 123);
+  //err("Error");
+  //warn("Warning");
+
   hal_initialize();
   terminal_initialize();
   kkybrd_install(IRQ1);
 
-  printf("Kernel size: %.3f mb.\nEnds in 0x%x (DIR: %d, INDEX: %d)  \n\n", 
-    (float)(KERNEL_END - KERNEL_START) / 1024 / 1024, 
+  log("Kernel size: %dKB", (int)(KERNEL_END - KERNEL_START) / 1024);
+  log("Ends in 0x%x (DIR: %d, INDEX: %d)", 
     KERNEL_END, 
     PAGE_DIRECTORY_INDEX(KERNEL_END), 
     PAGE_TABLE_INDEX(KERNEL_END)

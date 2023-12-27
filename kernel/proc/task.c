@@ -370,6 +370,8 @@ thread* get_current_thread() {
 }
 
 process* get_current_process() {
+  if (_current_thread == NULL)
+    return NULL;
   return _current_thread->parent;
 }
 

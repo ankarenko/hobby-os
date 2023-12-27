@@ -124,5 +124,10 @@ struct tty_operations {
 
 struct tty_driver *alloc_tty_driver(int32_t lines);
 int tty_register_driver(struct tty_driver *driver);
+void tty_init();
+
+// serial.c
+void serial_enable(int port);
+void serial_output(int port, char a);
 
 #endif

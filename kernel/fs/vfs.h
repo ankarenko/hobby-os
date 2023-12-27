@@ -144,7 +144,7 @@ struct vfs_file_system_type {
 };
 
 struct vfs_inode_operations {
-	struct vfs_inode *(*create)(struct vfs_dentry *dir, struct vfs_dentry *res, mode_t mode);
+	struct vfs_inode *(*create)(struct vfs_inode *dir, struct vfs_dentry *res, mode_t mode, dev_t dev);
 	struct vfs_inode *(*lookup)(struct vfs_inode *dir, char* name);
 	//int (*mkdir)(struct vfs_inode *, char *, int);
 	//int (*rename)(struct vfs_inode *old_dir, struct vfs_dentry *old_dentry,

@@ -250,10 +250,12 @@ void ext2_read_inode(struct vfs_inode* i) {
 		i->i_op = &ext2_dir_inode_operations;
 		i->i_fop = &ext2_dir_operations;
 	}
-	else {
+	else if (S_ISCHR(i->i_mode)) {
 		i->i_op = &ext2_special_inode_operations;
-		//init_special_inode(i, i->i_mode, raw_node->i_block[0]);
-	}
+		init_special_inode(i, i->i_mode, raw_node->i_block[0]);
+	} else {
+    assert_not_implemented();
+  }
 }
 
 struct vfs_mount* ext2_mount(struct vfs_file_system_type *fs_type, char *dev_name, char *dir_name) {

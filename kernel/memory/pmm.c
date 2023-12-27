@@ -1,9 +1,11 @@
 #include <stdbool.h>
+
+
+#include "kernel/memory/pmm.h"
 #include "kernel/util/string/string.h"
-
-#include "pmm.h"
-
 #include "kernel/util/math.h"
+#include "kernel/util/debug.h"
+
 #include "./kernel_info.h"
 
 #define INDEX_FROM_BIT(a) (a / (4 * PMM_FRAMES_PER_BYTE))
@@ -86,7 +88,7 @@ int32_t memory_bitmap_first_free_s(uint32_t size) {
 void pmm_init(multiboot_info_t* mbd) {
   /* Check bit 6 to see if we have a valid memory map */
   if (!(mbd->flags >> 6 & 0x1)) {
-    printf("invalid memory map given by GRUB bootloader");
+    err("invalid memory map given by GRUB bootloader");
     return;
   }
   
@@ -111,10 +113,10 @@ void pmm_init(multiboot_info_t* mbd) {
       physical_addr start_aligned = ALIGN_UP(mmmt->addr_low, PMM_FRAME_ALIGN);
       uint32_t len_aligned = ALIGN_DOWN(mmmt->len_low, PMM_FRAME_ALIGN);
 
-      float mb = (float)len_aligned / 1024 / 1024;
+      int kb = (int)len_aligned / 1024;
 
-      printf("Start Addr: %X | Length: %d bytes | Size: %.3f mb \n",
-            start_aligned, len_aligned, mb);
+      log("Start Addr: %X | Length: %d bytes | Size: %d KB",
+            start_aligned, len_aligned, kb);
 
       pmm_init_region(start_aligned, len_aligned);
     }

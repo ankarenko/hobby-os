@@ -10,7 +10,7 @@
 bool simplify_path(const char* path, const char** ret) {
   uint32_t len_path = strlen(path);
 
-  if (len_path == 0) {
+  if (path == NULL || len_path == 0) {
     *ret = kcalloc(1, sizeof(char));
     memset(*ret, '\0', 1);
     return true;
