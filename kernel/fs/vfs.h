@@ -172,6 +172,7 @@ struct vfs_file {
   struct vfs_mount *f_vfsmnt;
   struct vfs_dentry* f_dentry;
   struct vfs_file_operations *f_op;
+  void *private_data;
 };
 
 // vfs.c

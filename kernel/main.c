@@ -183,13 +183,13 @@ bool run_cmd(char* cmd_buf) {
       printf("\nunable to open file");
     }
 
-    //printf("\ntext: ");
-    //get_cmd(text, 100);
+    printf("\ntext: ");
+    get_cmd(text, 100);
 
     char* line = "#helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-hellowor#";
     
     //vfs_flseek(fd, 11, SEEK_SET);
-    if (vfs_fwrite(fd, "!", 1) < 0) {
+    if (vfs_fwrite(fd, text, strlen(text)) < 0) {
       printf("\nnot a file");
     } else {
       printf("\nfile updated");

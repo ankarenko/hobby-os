@@ -52,7 +52,7 @@ enum debug_level {
 									 ? (void)0 \
 									 : (void)({ __with_fmt(err, "expression " #expression " is falsy", ##__VA_ARGS__); __asm__ __volatile("int $0x01"); }))
 #define assert_not_reached(...) ({ __with_fmt(err, "should not be reached", ##__VA_ARGS__); __asm__ __volatile__("int $0x01"); })
-#define assert_not_implemented(...) __with_fmt(err, "is not implemented", ##__VA_ARGS__)
+#define assert_not_implemented(...) ({ __with_fmt(err, "is not implemented", ##__VA_ARGS__); __asm__ __volatile__("int $0x01"); })
 
 void debug_init();
 

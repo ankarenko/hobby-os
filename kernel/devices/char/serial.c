@@ -1,7 +1,7 @@
 #include "kernel/devices/char/tty.h"
 #include "kernel/cpu/hal.h"
 
-static int serports[] = {0x3f8, 0x2f8, 0x3e8, 0x2e8};
+static int serports[] = {0x3f8/*, 0x2f8, 0x3e8, 0x2e8*/};
 struct tty_driver *serial_driver;
 
 static int serial_transmit_empty(int port) {
@@ -51,7 +51,7 @@ static struct tty_operations serial_ops = {
 void serial_init() {
   serial_driver = alloc_tty_driver(sizeof(serports) / sizeof(int));
   serial_driver->driver_name = "serial";
-  serial_driver->name = "ttyS";
+  serial_driver->name = "tty";
   serial_driver->major = TTY_MAJOR;
   serial_driver->minor_start = SERIAL_MINOR_BASE;
   serial_driver->type = TTY_DRIVER_TYPE_SERIAL;

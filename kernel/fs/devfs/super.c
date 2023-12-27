@@ -86,7 +86,7 @@ void init_devfs() {
   */
   vfs_mknod("/dev", S_IFDIR, 0);
   
-  vfs_mknod("/dev/stdout", S_IFCHR, 1);
+  //vfs_mknod("/dev/stdout", S_IFCHR, 1);
 }
 
 void exit_devfs() {

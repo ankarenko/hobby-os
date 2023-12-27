@@ -49,8 +49,8 @@ static int chrdev_open(struct vfs_inode *inode, struct vfs_file *filp) {
   struct char_device *cdev = get_chrdev(inode->i_rdev);
   if (cdev == NULL)
     return -ENODEV;
-
-  if (cdev->f_ops->open)
+  
+  if (cdev->f_ops && cdev->f_ops->open)
     return cdev->f_ops->open(inode, filp);
 
   return -EINVAL;
