@@ -12,9 +12,9 @@ static void ext2_read_nth_block(
   struct vfs_superblock *sb, uint32_t block, char **iter_buf, 
   off_t ppos, uint32_t *p, size_t count, int level
 ) {
-	KASSERT(level <= EXT2_MAX_DATA_LEVEL);
+	assert(level <= EXT2_MAX_DATA_LEVEL);
   uint32_t blocksize = sb->s_blocksize;
-  KASSERT(blocksize % sizeof(uint32_t) == 0);
+  assert(blocksize % sizeof(uint32_t) == 0);
 
   if (level == 0) {
     char *block_buf = ext2_bread_block(sb, block);
@@ -62,7 +62,7 @@ ssize_t ext2_write_file(struct vfs_file *file, const char *buf, size_t count, of
 				sb->s_op->write_inode(inode);
 			}
 		} else {
-			PANIC("Only support direct blocks, fail writing at %d-nth block", relative_block);
+			assert_not_reached("Only support direct blocks, fail writing at %d-nth block", relative_block);
     }
 
 		char *block_buf = ext2_bread_block(sb, block);
@@ -150,7 +150,7 @@ int ext2_readdir(struct vfs_file *file, struct dirent** dirent) {
 
   struct dirent* idirent = *dirent;
   for (char *ibuf = buf; ibuf - buf < count;) {
-    //KASSERT(iter->rec_len % 4 == 0);
+    //assert(iter->rec_len % 4 == 0);
 		ext2_dir_entry *entry = (struct ext2_dir_entry *)ibuf;
 		idirent->d_ino = entry->ino;
 		idirent->d_off = 0;
@@ -164,7 +164,7 @@ int ext2_readdir(struct vfs_file *file, struct dirent** dirent) {
 
   
   kfree(buf);
-  KASSERT(size % sizeof(struct dirent) == 0);
+  assert(size % sizeof(struct dirent) == 0);
   int ext2_size = size / sizeof(struct dirent);
   return ext2_size;
   /*

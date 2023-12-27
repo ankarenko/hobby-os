@@ -66,7 +66,7 @@ bool simplify_path(const char* path, const char** ret) {
     } else if (cur[j] == '\/' && dot_count == 1) { // case /./
       dot_count = 0;
     } else if (cur[j] == '\/' && dot_count == 2) { // case /../
-      KASSERT(i > 0 && j >= 3);
+      assert(i > 0 && j >= 3);
       if (i == 1 || out[i - 2] == '.') { // nothing to reduce
         memcpy(&out[i], &cur[j - 2], 3);  // just copy '../' to output string
         i += 3;
@@ -74,7 +74,7 @@ bool simplify_path(const char* path, const char** ret) {
         --i;
         do { --i; } while(out[i] != '\/');
         ++i;
-        KASSERT(i > 0);
+        assert(i > 0);
       }
       dot_count = 0;
     } else {
@@ -84,7 +84,7 @@ bool simplify_path(const char* path, const char** ret) {
     }
     ++j;
   }
-  KASSERT(i < len_norm);
+  assert(i < len_norm);
   out[i] = '\0';
   *ret = out;
   kfree(normalized_path);

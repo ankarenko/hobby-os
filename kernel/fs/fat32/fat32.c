@@ -203,7 +203,7 @@ static bool is_equal_name(const char* dos_name, const char* fname) {
 
 static uint32_t pack_cluster(dir_item* p_dir) {
   uint32_t cluster = ((uint32_t)p_dir->first_cluster) | (((uint32_t)p_dir->first_cluster_hi_bytes) << 16);
-  KASSERT(cluster <= minfo.fat_entries_count);
+  assert(cluster <= minfo.fat_entries_count);
   return cluster;
 }
 
@@ -334,7 +334,7 @@ static bool jmp_dir(const char* path, sect_t* dir_sector) {
       vfs_file file;
       file.first_cluster = 0;
       if (!find_subdir(pathname, *dir_sector, &file)) {
-        // PANIC("Cannot find dir_item: %s", pathname);
+        // assert_not_reached("Cannot find dir_item: %s", pathname);
         return false;
       }
 
@@ -367,7 +367,7 @@ static bool path_deconstruct(
   char* simplified = NULL;
   
   if (!simplify_path(path, &simplified)) {
-    PANIC("Cannot simplify path: %s", path);
+    assert_not_reached("Cannot simplify path: %s", path);
   }
   uint32_t sim_len = strlen(simplified);
 
@@ -414,7 +414,7 @@ static bool init_dir(const char* dirname, dir_item* item, uint32_t cluster) {
   item->attrib = DIR_ATTR_ARCHIVE | DIR_ATTR_DIRECTORY;
 
   if (cluster == 0 && find_free_cluster(&cluster) < 0) {
-    PANIC("Unable to find free cluster in fat32, NO SPACE?", NULL);
+    assert_not_reached("Unable to find free cluster in fat32, NO SPACE?", NULL);
   }
 
   memcpy(item->filename, &dos_name, FAT_LEGACY_FILENAME_SIZE - 3);
@@ -459,7 +459,7 @@ static bool init_new_file(const char* filename, dir_item* item) {
     // find free cluster
   uint32_t cluster = 0;
   if (find_free_cluster(&cluster) < 0) {
-    PANIC("Unable to find free cluster in fat32, NO SPACE?", NULL);
+    assert_not_reached("Unable to find free cluster in fat32, NO SPACE?", NULL);
   }
 
   // set chunk to null
@@ -485,11 +485,11 @@ static bool fat_create(
 ) {
   dir_item item;
   if (!init_new_file(filename, &item)) {
-    PANIC("Unable to init file for dir item", NULL);
+    assert_not_reached("Unable to init file for dir item", NULL);
   }
 
   if (find_and_create_dir_entry(dir_sector, &item) == NULL) {
-    PANIC("Directory entry creation failed", NULL)
+    assert_not_reached("Directory entry creation failed", NULL)
   }
   return true;
 }
@@ -505,7 +505,7 @@ static vfs_file open_file(const char* name, sect_t dir_sector, uint32_t flags) {
       } else if (find_subdir(name, dir_sector, &file)) {
         return file;
       } else {
-        PANIC("Can't find a file after creation", NULL);
+        assert_not_reached("Can't find a file after creation", NULL);
       }
     } else {
       file.flags = FS_NOT_FOUND;
@@ -608,7 +608,7 @@ static int32_t delete_file(const char* name, sect_t dir_sector) {
   }
 
   if (!clear_dir_entry(name, dir_sector)) {
-    PANIC("Unable to delete file which is found", NULL);
+    assert_not_reached("Unable to delete file which is found", NULL);
   }
 
   return 1;
@@ -644,7 +644,7 @@ static int32_t fat_close(vfs_file* file) {
 bool fat_cd(const char* path) {
   char* simplified = NULL;
   if (!simplify_path(path, &simplified)) {
-    PANIC("Can't simplify path", NULL);
+    assert_not_reached("Can't simplify path", NULL);
   }
 
   sect_t dir_sector = cur_dir;
@@ -654,14 +654,14 @@ bool fat_cd(const char* path) {
 
   uint32_t cur_len = strlen(cur_path);
   uint32_t sim_len = strlen(simplified);
-  KASSERT(cur_len + sim_len < MAX_FILE_PATH - 1);
+  assert(cur_len + sim_len < MAX_FILE_PATH - 1);
   memcpy(&cur_path[cur_len], simplified, sim_len);
   cur_path[cur_len + sim_len] = '\0';
   cur_dir = dir_sector;
 
   char* tmp = NULL;
   if (!simplify_path(cur_path, &tmp)) {
-    PANIC("cannot simplify path: %s", cur_path);
+    assert_not_reached("cannot simplify path: %s", cur_path);
   }
   
   memcpy(&cur_path, tmp, strlen(tmp));
@@ -701,7 +701,7 @@ bool fat_ls(const char* path) {
     sect_t dir_sector = cur_dir;
     if (!jmp_dir(path, &dir_sector)) {
       return false;
-      // PANIC("Not found dir_item %s", path);
+      // assert_not_reached("Not found dir_item %s", path);
     }
 
     ls_dir(dir_sector);
@@ -791,11 +791,11 @@ int32_t fat_mkdir(const char* dir_path) {
   //init_dir();
 
   if (!init_dir(dirname, &dir, 0)) {
-    PANIC("Unable to init dir", NULL);
+    assert_not_reached("Unable to init dir", NULL);
   }
 
   if (!find_and_create_dir_entry(dir_sector, &dir)) {
-    PANIC("Unable to find a space for direntry", NULL);
+    assert_not_reached("Unable to find a space for direntry", NULL);
   }
   dir_item dir_current;
   dir_item dir_prev;
@@ -809,14 +809,14 @@ int32_t fat_mkdir(const char* dir_path) {
     !init_dir(".", &dir_current, cluster) || 
     !init_dir("..", &dir_prev, sector_to_cluster(dir_sector))
   ) {
-    PANIC("Unable to init dir", NULL);
+    assert_not_reached("Unable to init dir", NULL);
   }
 
   if (
     !find_and_create_dir_entry(next_dir_sector, &dir_current) || 
     !find_and_create_dir_entry(next_dir_sector, &dir_prev)
   ) {
-    PANIC("Unable to create reference directories (. and ..)", NULL);
+    assert_not_reached("Unable to create reference directories (. and ..)", NULL);
   }
   
   return 1;
@@ -826,7 +826,7 @@ void fat_mount() {
   p_bootsector bootsector = (p_bootsector)RDISK(0);
 
   if (!is_fat32(bootsector)) {
-    PANIC("The disk is not fat32 formatted", "");
+    assert_not_reached("The disk is not fat32 formatted", "");
   }
 
   minfo.fat_size_clusters = bootsector->bpb.number_of_fats;
@@ -841,7 +841,7 @@ void fat_mount() {
   minfo.sect_per_cluster = bootsector->bpb.sect_per_cluster;
   minfo.data_offset = bootsector->bpb.reserved_sectors + bootsector->bpb.number_of_fats * minfo.fat_size_sect;
   minfo.bytes_per_sect = bootsector->bpb.bytes_per_sector;
-  KASSERT(BYTES_PER_SECTOR == minfo.bytes_per_sect);
+  assert(BYTES_PER_SECTOR == minfo.bytes_per_sect);
   minfo.sector_entries_count = minfo.bytes_per_sect / sizeof(uint32_t);
   minfo.fat_entry_size = FAT_ENTRY_SIZE;
   uint32_t offset_in_data_cluster = (bootsector->bpb_ext.root_cluster - bootsector->bpb.number_of_fats) * bootsector->bpb.sect_per_cluster;
@@ -862,7 +862,7 @@ void fat_mount() {
   // read fat table
   //uint32_t* fat_ptr = (uint32_t*)RDISK(minfo.fat_offset);
   if (fat[1] != 0xfffffff) {
-    PANIC("Invalid fat table at sector: %d", minfo.fat_offset);
+    assert_not_reached("Invalid fat table at sector: %d", minfo.fat_offset);
   }
 
   cur_dir = minfo.root_offset;
@@ -891,14 +891,14 @@ ssize_t fat_write(vfs_file *file, const char *buf, size_t count, off_t ppos) {
   uint32_t file_border = ALIGN_UP(file->file_length, bytes_per_cluster);
   if (ppos > file_border) { // allocate more
     if (!extend_file(file, ppos - file_border)) {
-      PANIC("Unable to extend file: %s", file->name);
+      assert_not_reached("Unable to extend file: %s", file->name);
     }
     file_end = ALIGN_UP(ppos, bytes_per_cluster);
   }
 
   // allocate required space
   if (file_end < write_end && !extend_file(file, write_end - file_end)) { 
-    PANIC("Unable to extend file: %s", file->name);
+    assert_not_reached("Unable to extend file: %s", file->name);
   }
 
   size_t left = count;
@@ -923,12 +923,12 @@ ssize_t fat_write(vfs_file *file, const char *buf, size_t count, off_t ppos) {
       //kfree(data);
       cur_pos += to_write;
       left -= to_write;
-      KASSERT(left >= 0);
+      assert(left >= 0);
     }
     cur_cluster = fat[cur_cluster];
   } while (left != 0 || cur_cluster < FAT_ATTR_EOF);
   
-  KASSERT(left == 0);
+  assert(left == 0);
   // update file stats
   file->f_pos = cur_pos;
   file->file_length = max(file->f_pos, file->file_length);

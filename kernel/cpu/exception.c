@@ -18,7 +18,7 @@ void divide_by_zero_fault(interrupt_registers *registers) {
   }
   */
 
-  PANIC(
+  assert_not_reached(
       "Divide by 0 at physical address [0x%x:0x%x] EFLAGS [0x%x] other: 0x%x",
       registers->cs,
       registers->eip,
@@ -29,62 +29,64 @@ void divide_by_zero_fault(interrupt_registers *registers) {
 
 //! single step
 void single_step_trap(struct interrupt_registers *registers) {
-  PANIC("\nException!", NULL);
+  while (1)
+  {}
+  
 }
 
 //! non maskable trap
 void nmi_trap(struct interrupt_registers *registers) {
-  PANIC("NMI trap", NULL);
+  assert_not_reached("NMI trap", NULL);
 }
 
 //! breakpoint hit
 void breakpoint_trap(struct interrupt_registers *registers) {
-  PANIC("Breakpoint trap", NULL);
+  assert_not_reached("Breakpoint trap", NULL);
 }
 
 //! overflow
 void overflow_trap(struct interrupt_registers *registers) {
-  PANIC("Overflow trap", NULL);
+  assert_not_reached("Overflow trap", NULL);
 }
 
 //! bounds check
 void bounds_check_fault(struct interrupt_registers *registers) {
-  PANIC("Bounds check fault", NULL);
+  assert_not_reached("Bounds check fault", NULL);
 }
 
 //! invalid opcode / instruction
 void invalid_opcode_fault(struct interrupt_registers *registers) {
-  PANIC("Invalid opcode", NULL);
+  assert_not_reached("Invalid opcode", NULL);
 }
 
 //! device not available
 void no_device_fault(struct interrupt_registers *registers) {
-  PANIC("Device not found", NULL);
+  assert_not_reached("Device not found", NULL);
 }
 
 //! double fault
 void double_fault_abort(struct interrupt_registers *registers) {
-  PANIC("Double fault", NULL);
+  assert_not_reached("Double fault", NULL);
 }
 
 //! invalid Task State Segment (TSS)
 void invalid_tss_fault(struct interrupt_registers *registers) {
-  PANIC("Invalid TSS", NULL);
+  assert_not_reached("Invalid TSS", NULL);
 }
 
 //! segment not present
 void no_segment_fault(struct interrupt_registers *registers) {
-  PANIC("Invalid segment", NULL);
+  assert_not_reached("Invalid segment", NULL);
 }
 
 //! stack fault
 void stack_fault(struct interrupt_registers *registers) {
-  PANIC("Stack fault", NULL);
+  assert_not_reached("Stack fault", NULL);
 }
 
 //! general protection fault
 void general_protection_fault(struct interrupt_registers *registers) {
-  PANIC("General Protection Fault", NULL);
+  assert_not_reached("General Protection Fault", NULL);
 }
 
 //! page fault
@@ -98,7 +100,7 @@ void page_fault(interrupt_registers *registers) {
 	 										 "mov %%eax, %0			\n"
 	 										 : "=r"(faultAddr));
 
-  PANIC("\nLast tid: %d\nPage Fault at 0x%x\nReason: %s, %s, %s%s%s",
+  assert_not_reached("\nLast tid: %d\nPage Fault at 0x%x\nReason: %s, %s, %s%s%s",
     DEBUG_LAST_TID,
     faultAddr,
     error_code & 0b1 ? "protection violation" : "non-present page",
@@ -111,26 +113,26 @@ void page_fault(interrupt_registers *registers) {
 
 //! Floating Point Unit (FPU) error
 void fpu_fault(struct interrupt_registers *registers) {
-  PANIC("FPU Fault", NULL);
+  assert_not_reached("FPU Fault", NULL);
 }
 
 void i86_default_handler(interrupt_registers *registers) {
-  PANIC("*** [i86 Hal] i86_default_handler: Unhandled Exception", NULL);
+  assert_not_reached("*** [i86 Hal] i86_default_handler: Unhandled Exception", NULL);
 }
 
 //! alignment check
 void alignment_check_fault(struct interrupt_registers *registers) {
-  PANIC("Alignment Check", NULL);
+  assert_not_reached("Alignment Check", NULL);
 }
 
 //! machine check
 void machine_check_abort(struct interrupt_registers *registers) {
-  PANIC("Machine Check", NULL);
+  assert_not_reached("Machine Check", NULL);
 }
 
 //! Floating Point Unit (FPU) Single Instruction Multiple Data (SIMD) error
 void simd_fpu_fault(struct interrupt_registers *registers) {
-  PANIC("FPU SIMD fault", NULL);
+  assert_not_reached("FPU SIMD fault", NULL);
 }
 
 void exception_init() {

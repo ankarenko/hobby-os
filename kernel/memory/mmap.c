@@ -78,10 +78,10 @@ unit_static int expand_area(
     if (address <= next->vm_start)
       vma->vm_end = address;
     else { // if we overlay a different region 
-      LOG("Region overlay", NULL);
-      KASSERT(false);
+      log("Region overlay");
+      assert(false);
 
-      KASSERT(!fixed);
+      assert(!fixed);
       list_del(&vma->vm_sibling);
       // BAD CODE: first he adds element to the list and then deletes it 
       vm_area_struct *vma_expand = get_unmapped_area(
@@ -117,7 +117,7 @@ virtual_addr do_mmap(
     for now it only supports ZERRO addresses, which means
     kernel decides on his own where allocate address.
   */
-  //KASSERT(addr == 0 && flag != MMAP_FIXED);
+  //assert(addr == 0 && flag != MMAP_FIXED);
   
   // struct vfs_file *file = fd >= 0 ? current_process->files->fd[fd] : NULL;
   mm_struct_mos* mm = get_current_process()->mm_mos;
@@ -182,7 +182,7 @@ virtual_addr do_brk(virtual_addr addr, size_t len) {
     {
   */
   if (vma->vm_end < new_vma->vm_end) {
-    KASSERT((new_vma->vm_end - vma->vm_end) % PMM_FRAME_SIZE == 0);
+    assert((new_vma->vm_end - vma->vm_end) % PMM_FRAME_SIZE == 0);
 
     uint32_t nframes = (new_vma->vm_end - vma->vm_end) / PMM_FRAME_SIZE;
     physical_addr paddr = (physical_addr)pmm_alloc_frames(nframes);

@@ -42,7 +42,7 @@ The 0-bits provide holes for carries to fall into.  */
     himagic = ((himagic << 16) << 16) | himagic;
     lomagic = ((lomagic << 16) << 16) | lomagic;
   }
-  KASSERT(sizeof(longword) <= 8);
+  assert(sizeof(longword) <= 8);
 
   /* Instead of the traditional loop which tests each character,
 we will test a longword at a time.  The tricky part is testing

@@ -53,7 +53,7 @@ struct pdirectory* create_address_space() {
 	vmm_clone_kernel_space(space);
   physical_addr phys = vmm_get_physical_address(space, false);
   
-  KASSERT(phys % PAGE_SIZE == 0); // check alignment 
+  assert(phys % PAGE_SIZE == 0); // check alignment 
 
   // recursive trick
   space->m_entries[TABLES_PER_DIR - 1] = 
@@ -106,11 +106,11 @@ bool create_user_stack(
 	to reserve area in user space. Until then,
 	return error. */
   if (USER_STACK_SIZE % PMM_FRAME_SIZE != 0) {
-    PANIC("User stack size is not %d aligned", PMM_FRAME_SIZE);
+    assert_not_reached("User stack size is not %d aligned", PMM_FRAME_SIZE);
   }
 
   if (addr % PMM_FRAME_SIZE != 0) {
-    PANIC("User stack address is not %d aligned", PMM_FRAME_SIZE);
+    assert_not_reached("User stack address is not %d aligned", PMM_FRAME_SIZE);
   }
 
   uint32_t frames_count = USER_STACK_SIZE / PMM_FRAME_SIZE;
@@ -233,11 +233,11 @@ static void user_thread_elf_entry(thread *th) {
   // try to load image into our address space
   // TODO: mos make it differently check it out
   if (!elf_load_image(path, th, &entry)) {
-    PANIC("ELF is not loaded properly", NULL);
+    assert_not_reached("ELF is not loaded properly", NULL);
   }
 
   if (!empack_params(th)) {
-    PANIC("Cannot empack params", NULL);
+    assert_not_reached("Cannot empack params", NULL);
   }
 
   tss_set_stack(KERNEL_DATA, th->kernel_esp);
@@ -358,7 +358,7 @@ process* create_elf_process(process* parent, char* path) {
   thread* th = user_thread_create(proc);
 
   if (!th || !proc) {
-    PANIC("Thread or process were not created properly", NULL);
+    assert_not_reached("Thread or process were not created properly", NULL);
   }
 
   sched_push_queue(th, THREAD_READY);

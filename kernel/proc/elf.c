@@ -74,7 +74,7 @@ bool elf_load_image(
   process* parent = th->parent;
 
   if (!elf_file) {
-    PANIC("\nELF file not found", NULL);
+    assert_not_reached("\nELF file not found", NULL);
   }
 
   struct Elf32_Ehdr *elf_header = (struct Elf32_Ehdr *)elf_file;
@@ -104,8 +104,8 @@ bool elf_load_image(
   // *image_base = base; for absolute
   parent->image_base = USER_IMAGE_START; // for PIC (or malloc(image_size))
   
-  //KASSERT(parent->image_size % PMM_FRAME_SIZE == 0);
-  KASSERT(USER_HEAP_SIZE % PMM_FRAME_SIZE == 0);
+  //assert(parent->image_size % PMM_FRAME_SIZE == 0);
+  assert(USER_HEAP_SIZE % PMM_FRAME_SIZE == 0);
   
   
   mm_struct_mos* mm = parent->mm_mos;
@@ -141,7 +141,7 @@ bool elf_load_image(
 		}
 
     //virtual_addr actual_addr = do_mmap(vaddr, ph->p_memsz, 0, 0, -1);
-    //KASSERT(actual_addr == vaddr);
+    //assert(actual_addr == vaddr);
 
     // the ELF specification states that you should zero the BSS area. In bochs, everything's zeroed by default, 
     // but on real computers and virtual machines it isnt.
@@ -150,13 +150,13 @@ bool elf_load_image(
   }
   /*
   virtual_addr heap_start = do_mmap(0, 0, 0, 0, -1);
-  KASSERT(heap_start != 0);
+  assert(heap_start != 0);
 	mm->start_brk = heap_start;
 	mm->brk = heap_start;
 	mm->end_brk = heap_start + USER_HEAP_SIZE;
 
 	virtual_addr stack_bottom = do_mmap(0, USER_STACK_SIZE, 0, 0, -1);
-  KASSERT(stack_bottom != 0);
+  assert(stack_bottom != 0);
 	th->user_ss = USER_DATA;
   th->user_esp = stack_bottom + USER_STACK_SIZE;
   th->virt_ustack_bottom = stack_bottom;

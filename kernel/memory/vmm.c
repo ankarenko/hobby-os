@@ -168,7 +168,7 @@ void vmm_init() {
 void vmm_load_usertable(physical_addr p_dir) {
   struct pdirectory* va_dir = PAGE_DIRECTORY_BASE;
   pd_entry* entry = &va_dir->m_entries[TABLES_PER_DIR - 2];
-  KASSERT(p_dir % PAGE_SIZE == 0);
+  assert(p_dir % PAGE_SIZE == 0);
   pd_entry_set_frame(entry, p_dir);
   vmm_flush_tlb_entry(va_dir);
 }

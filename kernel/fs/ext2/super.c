@@ -149,25 +149,25 @@ void ext2_write_inode(struct vfs_inode* i) {
 }
 
 void assert_superblock(ext2_superblock* sb) {
-  KASSERT(sb != NULL);
-  KASSERT(sb->s_inodes_count <= sb->s_inodes_per_group * EXT2_MAX_BLOCK_GROUP_SIZE(sb));
-  KASSERT(sb->s_blocks_count <= sb->s_blocks_per_group * EXT2_MAX_BLOCK_GROUP_SIZE(sb));
-  KASSERT(sb->s_inodes_per_group % EXT2_INODES_PER_BLOCK(sb) == 0);
-  KASSERT(sb->s_magic == EXT2_SUPER_MAGIC);
-  KASSERT(sb->s_state == EXT2_VALID_FS);
+  assert(sb != NULL);
+  assert(sb->s_inodes_count <= sb->s_inodes_per_group * EXT2_MAX_BLOCK_GROUP_SIZE(sb));
+  assert(sb->s_blocks_count <= sb->s_blocks_per_group * EXT2_MAX_BLOCK_GROUP_SIZE(sb));
+  assert(sb->s_inodes_per_group % EXT2_INODES_PER_BLOCK(sb) == 0);
+  assert(sb->s_magic == EXT2_SUPER_MAGIC);
+  assert(sb->s_state == EXT2_VALID_FS);
 
-  KASSERT(!(sb->s_feature_incompat & EXT2_FEATURE_INCOMPAT_COMPRESSION));
-  KASSERT(sb->s_first_data_block == (EXT2_BLOCK_SIZE(sb) == EXT2_MIN_BLOCK_SIZE? 1 : 0));
+  assert(!(sb->s_feature_incompat & EXT2_FEATURE_INCOMPAT_COMPRESSION));
+  assert(sb->s_first_data_block == (EXT2_BLOCK_SIZE(sb) == EXT2_MIN_BLOCK_SIZE? 1 : 0));
 
   if (sb->s_rev_level == EXT2_GOOD_OLD_REV) {
-    KASSERT(sb->s_inode_size == 128);
+    assert(sb->s_inode_size == 128);
   } else {
-    KASSERT(sb->s_inode_size % 2 == 0);
-    KASSERT(sb->s_inode_size <= EXT2_BLOCK_SIZE(sb));
+    assert(sb->s_inode_size % 2 == 0);
+    assert(sb->s_inode_size <= EXT2_BLOCK_SIZE(sb));
   } 
 
   // optional
-  KASSERT(sb->s_creator_os == EXT2_OS_LINUX); 
+  assert(sb->s_creator_os == EXT2_OS_LINUX); 
 }
 
 struct vfs_inode* init_inode() {
@@ -193,11 +193,11 @@ void ext2_fill_super(struct vfs_superblock* vsb) {
   vsb->mnt_devname = strdup(vsb->mnt_devname);
   vsb->s_op = &ext2_super_operations;
 
-  KASSERT(sizeof(ext2_inode) == 128);
+  assert(sizeof(ext2_inode) == 128);
   sb->s_inode_size = sb->s_rev_level == EXT2_GOOD_OLD_REV? 128 : sb->s_inode_size;
   
   uint64_t bp_count = vsb->s_blocksize / sizeof(uint32_t);
-  KASSERT(bp_count <= (EXT2_MIN_BLOCK_SIZE << 2));
+  assert(bp_count <= (EXT2_MIN_BLOCK_SIZE << 2));
 
   ext2_fs_info* fs_info = kcalloc(1, sizeof(ext2_fs_info));
   // SA:6.11.2023 realistically we can't address more than 512 * 2^32 sectors (2 TB)
@@ -208,9 +208,9 @@ void ext2_fill_super(struct vfs_superblock* vsb) {
   fs_info->ino_upper_levels[3] = bp_count * bp_count * bp_count + fs_info->ino_upper_levels[2];
   fs_info->sb = sb;
 
-  KASSERT(vsb->s_blocksize <= PAGE_SIZE);
-  KASSERT(vsb->s_blocksize >= BYTES_PER_SECTOR);
-  KASSERT(vsb->s_blocksize % BYTES_PER_SECTOR == 0);
+  assert(vsb->s_blocksize <= PAGE_SIZE);
+  assert(vsb->s_blocksize >= BYTES_PER_SECTOR);
+  assert(vsb->s_blocksize % BYTES_PER_SECTOR == 0);
 
   if ((
     EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER | 
@@ -266,7 +266,7 @@ struct vfs_mount* ext2_mount(struct vfs_file_system_type *fs_type, char *dev_nam
   struct vfs_inode* i_root = ext2_alloc_inode(sb);
 	i_root->i_ino = EXT2_ROOT_INO;
 	ext2_read_inode(i_root);
-  KASSERT(S_ISDIR(i_root->i_mode)); // check if directory
+  assert(S_ISDIR(i_root->i_mode)); // check if directory
 
 	struct vfs_dentry* d_root = alloc_dentry(NULL, dir_name);
 	d_root->d_inode = i_root;

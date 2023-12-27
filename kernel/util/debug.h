@@ -15,10 +15,6 @@ enum debug_level {
 	DEBUG_FATAL = 4,
 };
 
-
-#define PANIC(fmt, args...) { printf(fmt, args); disable_interrupts(); for (;;); }
-#define LOG(fmt, args...) printf(fmt, args);
-
 #ifdef KERNEL_DEBUG
 #define log(...) __dbg(DEBUG_INFO, false, __FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #define err(...) __dbg(DEBUG_ERROR, false, __FILE__, __LINE__, __func__, ##__VA_ARGS__)
@@ -54,9 +50,9 @@ enum debug_level {
 #define __with_fmt(func, default_fmt, ...) (PP_NARG(__VA_ARGS__) == 0 ? func(default_fmt) : func(__VA_ARGS__))
 #define assert(expression, ...) ((expression)  \
 									 ? (void)0 \
-									 : (void)({ __with_fmt(log, "expression " #expression " is falsy", ##__VA_ARGS__); __asm__ __volatile("int $0x01"); }))
-#define assert_not_reached(...) ({ __with_fmt(log, "should not be reached", ##__VA_ARGS__); __asm__ __volatile__("int $0x01"); })
-#define assert_not_implemented(...) __with_fmt(log, "is not implemented", ##__VA_ARGS__)
+									 : (void)({ __with_fmt(err, "expression " #expression " is falsy", ##__VA_ARGS__); __asm__ __volatile("int $0x01"); }))
+#define assert_not_reached(...) ({ __with_fmt(err, "should not be reached", ##__VA_ARGS__); __asm__ __volatile__("int $0x01"); })
+#define assert_not_implemented(...) __with_fmt(err, "is not implemented", ##__VA_ARGS__)
 
 void debug_init();
 
