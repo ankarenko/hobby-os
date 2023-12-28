@@ -9,8 +9,8 @@
 /*
   UART driver (struct tty_driver) manages the physical transmission of bytes, including parity checks and flow control
   Line discipline (struct tty_lisc) is the software module sits in between and is incharge of handling special characters, echoing ...
-  TTY driver manages session with controling terminal
   TTY device has the corresponding character device file under /dev/ttyX
+  TTY driver manages session with controling terminal
 */
 
 #define PTY_MASTER_MAJOR 2
@@ -119,12 +119,14 @@ struct tty_operations {
 	void (*close)(struct tty_struct *tty, struct vfs_file *filp);
 	int (*write)(struct tty_struct *tty, const char *buf, int count);
 	void (*put_char)(struct tty_struct *tty, const char ch);
+  char (*read)(struct tty_struct *tty);
 	int (*write_room)(struct tty_struct *tty);
 };
 
 struct tty_driver *alloc_tty_driver(int32_t lines);
 int tty_register_driver(struct tty_driver *driver);
 void tty_init();
+char read_serial_test();
 
 // serial.c
 void serial_enable(int port);

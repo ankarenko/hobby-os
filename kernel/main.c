@@ -1,32 +1,31 @@
-#include "test/greatest.h"
-
-#include "kernel/util/errno.h"
-#include "kernel/util/fcntl.h"
-#include "kernel/util/ctype.h"
-#include "kernel/util/math.h"
-#include "kernel/util/debug.h"
-#include "kernel/devices/tty.h"
 #include "kernel/cpu/exception.h"
 #include "kernel/cpu/gdt.h"
 #include "kernel/cpu/hal.h"
 #include "kernel/cpu/idt.h"
 #include "kernel/cpu/tss.h"
 #include "kernel/devices/kybrd.h"
+#include "kernel/devices/pata.h"
+#include "kernel/devices/tty.h"
+#include "kernel/fs/char_dev.h"
+#include "kernel/fs/ext2/ext2.h"
+#include "kernel/fs/fat32/fat32.h"
 #include "kernel/fs/vfs.h"
 #include "kernel/memory/kernel_info.h"
 #include "kernel/memory/malloc.h"
 #include "kernel/memory/pmm.h"
 #include "kernel/memory/vmm.h"
 #include "kernel/proc/elf.h"
-#include "kernel/util/list.h"
 #include "kernel/proc/task.h"
-#include "kernel/system/time.h"
 #include "kernel/system/sysapi.h"
-#include "kernel/fs/fat32/fat32.h"
-#include "kernel/fs/ext2/ext2.h"
-#include "kernel/devices/pata.h"
-#include "kernel/fs/char_dev.h"
+#include "kernel/system/time.h"
+#include "kernel/util/ctype.h"
+#include "kernel/util/debug.h"
+#include "kernel/util/errno.h"
+#include "kernel/util/fcntl.h"
+#include "kernel/util/list.h"
+#include "kernel/util/math.h"
 #include "multiboot.h"
+#include "test/greatest.h"
 
 extern struct vfs_file_system_type ext2_fs_type;
 
@@ -68,8 +67,8 @@ void get_cmd(char* buf, int n) {
         break;
       case KEY_RETURN:
         buf[i] = '\0';
-        //terminal_clrline();
-        //terminal_newline();
+        // terminal_clrline();
+        // terminal_newline();
         return;
       case KEY_UNKNOWN:
         break;
@@ -87,13 +86,13 @@ void get_cmd(char* buf, int n) {
   }
 }
 
-void kthread () {
-	int col = 0;
-	bool dir = true;
-	while(1) {
+void kthread() {
+  int col = 0;
+  bool dir = true;
+  while (1) {
     printf("\nNew thread 10");
     thread_sleep(300);
-	}
+  }
 }
 
 //! our simple command parser
@@ -111,10 +110,9 @@ bool run_cmd(char* cmd_buf) {
       int32_t id_num = atoi(id);
       thread_kill(id_num);
     }
-  }
-  else if (strcmp(cmd_buf, "lst") == 0) {
+  } else if (strcmp(cmd_buf, "lst") == 0) {
     thread* th = NULL;
-  printf("\nthreads running: [ ");
+    printf("\nthreads running: [ ");
     list_for_each_entry(th, get_ready_threads(), sched_sibling) {
       printf("%d ", th->tid);
     }
@@ -124,7 +122,6 @@ bool run_cmd(char* cmd_buf) {
     process* proc = NULL;
     list_for_each_entry(proc, get_proc_list(), proc_sibling) {
       printf("%d (", proc->pid);
-      
 
       list_for_each_entry(th, &proc->threads, th_sibling) {
         printf(" %d", th->tid);
@@ -137,7 +134,7 @@ bool run_cmd(char* cmd_buf) {
     printf("Goodbuy!");
     return true;
   } else if (strcmp(cmd_buf, "time") == 0) {
-    struct time* t = get_time(0); //current time
+    struct time* t = get_time(0);  // current time
     printf("\nCurrent time (UTC): %d:%d:%d, %d.%d.%d", t->hour, t->minute, t->second, t->day, t->month, t->year);
   } else if (strcmp(cmd_buf, "layout") == 0) {
     printf("Kernel start: %X\n", KERNEL_START);
@@ -160,7 +157,7 @@ bool run_cmd(char* cmd_buf) {
 
     int ret = vfs_cd(filepath);
     if (ret < 0) {
-      printf(ret == -ENOTDIR? "\nnot a directory" : "\ndirectory not found");
+      printf(ret == -ENOTDIR ? "\nnot a directory" : "\ndirectory not found");
     }
   } else if (strcmp(cmd_buf, "mfile") == 0) {
     char filepath[100];
@@ -187,18 +184,18 @@ bool run_cmd(char* cmd_buf) {
     get_cmd(text, 100);
 
     char* line = "#helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-hellowor#";
-    
-    //vfs_flseek(fd, 11, SEEK_SET);
+
+    // vfs_flseek(fd, 11, SEEK_SET);
     if (vfs_fwrite(fd, text, strlen(text)) < 0) {
       printf("\nnot a file");
     } else {
       printf("\nfile updated");
     }
     vfs_close(fd);
-    //vfs_flseek(fd, 80, SEEK_SET);
-    //vfs_fwrite(fd, line, 100);
-    //vfs_fwrite(fd, "!", 1);
-    
+    // vfs_flseek(fd, 80, SEEK_SET);
+    // vfs_fwrite(fd, line, 100);
+    // vfs_fwrite(fd, "!", 1);
+
   } else if (strcmp(cmd_buf, "test") == 0) {
     printf("\nStart:");
     uint8_t* program = vfs_read("calc.exe");
@@ -234,9 +231,9 @@ bool run_cmd(char* cmd_buf) {
     get_cmd(filepath, 100);
 
     if (!vfs_ls(filepath)) {
-      printf("\ndirectory not found"); 
+      printf("\ndirectory not found");
     }
-    //ls(filepath);
+    // ls(filepath);
   } else if (strcmp(cmd_buf, "run") == 0) {
     char filepath[100];
     printf("\npath: ");
@@ -244,7 +241,6 @@ bool run_cmd(char* cmd_buf) {
     process* cur_proc = get_current_process();
     create_elf_process(cur_proc, filepath);
   } else if (strcmp(cmd_buf, "") == 0) {
-    
   } else {
     printf("\ninvalid command");
   }
@@ -259,7 +255,7 @@ void cmd_read_file() {
   get_cmd(filepath, 100);
 
   int32_t fd = vfs_open(filepath, O_RDONLY, S_IFREG);
-  
+
   if (fd == -ENOENT || fd < 0) {
     printf("\nfile not found");
     return;
@@ -273,7 +269,7 @@ void cmd_read_file() {
     printf(buf);
   };
   printf("\n____________________________________________");
-  
+
   vfs_close(fd);
   /*
   uint8_t* buf = vfs_read(filepath);
@@ -289,11 +285,10 @@ extern void cmd_init() {
 
   while (1) {
     process* proc = get_current_process();
-    printf("\n(%s)root@%s: ", 
-      strcmp(proc->fs->mnt_root->mnt_devname, "/dev/hda") == 0? "ext2" : proc->fs->mnt_root->mnt_devname, 
-      proc->fs->d_root->d_name
-    );
-    
+    printf("\n(%s)root@%s: ",
+           strcmp(proc->fs->mnt_root->mnt_devname, "/dev/hda") == 0 ? "ext2" : proc->fs->mnt_root->mnt_devname,
+           proc->fs->d_root->d_name);
+
     get_cmd(cmd_buf, 98);
 
     if (run_cmd(cmd_buf) == true)
@@ -342,7 +337,7 @@ void main_thread() {
 
   vfs_init(&ext2_fs_type, "/dev/hda");
   chrdev_init();
-  
+
   tty_init();
   cmd_init();
 }
@@ -352,38 +347,44 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   int argc = 0;
 
   // setup serial port A for debug
-	debug_init();
+  debug_init();
 
-  //log("Log", 123);
-  //err("Error");
-  //warn("Warning");
+  // log("Log", 123);
+  // err("Error");
+  // warn("Warning");
 
   hal_initialize();
   terminal_initialize();
   kkybrd_install(IRQ1);
 
   log("Kernel size: %dKB", (int)(KERNEL_END - KERNEL_START) / 1024);
-  log("Ends in 0x%x (DIR: %d, INDEX: %d)", 
-    KERNEL_END, 
-    PAGE_DIRECTORY_INDEX(KERNEL_END), 
-    PAGE_TABLE_INDEX(KERNEL_END)
-  );
+  log("Ends in 0x%x (DIR: %d, INDEX: %d)",
+      KERNEL_END,
+      PAGE_DIRECTORY_INDEX(KERNEL_END),
+      PAGE_TABLE_INDEX(KERNEL_END));
+
+  /*
+  while (true) {
+    char a = (char)read_serial_test();
+    if ((int)a == 13)
+      break;
+    printf("%c", a);
+  }
+  */
 
   pmm_init(mbd);
 
   vmm_init();
 
-  //pci_init();
-	pata_init();
+  // pci_init();
+  pata_init();
 
-  //flpydsk_set_working_drive(0);
-  //flpydsk_install(IRQ6);
+  // flpydsk_set_working_drive(0);
+  // flpydsk_install(IRQ6);
 
-  
-  //fat32_init();
-  
+  // fat32_init();
 
-  //fat12_initialize();
+  // fat12_initialize();
   syscall_init();
   install_tss(5, 0x10, 0);
 

@@ -88,6 +88,21 @@ static int tty_open(struct vfs_inode *inode, struct vfs_file *file) {
   return 0;
 }
 
+int32_t tty_read(struct vfs_file* file, uint8_t* buffer, uint32_t length, off_t ppos) {
+  struct tty_struct *tty = (struct tty_struct *)file->private_data;
+  struct tty_ldisc *ld = tty->ldisc;
+
+  if (!tty || !tty->driver->tops->write || !ld->write)
+    return -EIO;
+  
+  char c = tty->driver->tops->read(tty);
+  buffer[0] = c;  
+  // don't use ld, move directly to uart 
+
+  // check if it's a '\n'
+  return (int)c == 13? 0 : 1; // ld->write(tty, file, buf, count);
+}
+
 static ssize_t tty_write(struct vfs_file *file, const char *buf, size_t count, off_t ppos) {
   struct tty_struct *tty = (struct tty_struct *)file->private_data;
   struct tty_ldisc *ld = tty->ldisc;
@@ -101,7 +116,7 @@ static ssize_t tty_write(struct vfs_file *file, const char *buf, size_t count, o
 
 static struct vfs_file_operations tty_fops = {
   .open = tty_open,
-  //.read = tty_read,
+  .read = tty_read,
   .write = tty_write
 };
 

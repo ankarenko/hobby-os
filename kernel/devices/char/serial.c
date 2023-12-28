@@ -42,9 +42,22 @@ static int serial_write_room(struct tty_struct *tty) {
   return N_TTY_BUF_SIZE;
 }
 
+static int serial_received(int port) {
+  return inportb(port + 5) & 1;
+}
+ 
+static char serial_read(struct tty_struct *tty) {
+  int port = serports[tty->index];
+  
+  while (serial_received(port) == 0);
+  
+  return inportb(port);
+}
+
 static struct tty_operations serial_ops = {
   .open = serial_open,
   .write = serial_write,
+  .read = serial_read, 
   .write_room = serial_write_room,
 };
 
