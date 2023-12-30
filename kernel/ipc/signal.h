@@ -45,6 +45,7 @@
 #define siginmask(sig, mask) ((sig) > 0 && (sig) < SIGRTMIN && (sigmask(sig) & (mask)))
 
 #define SIG_KERNEL_ONLY_MASK (sigmask(SIGKILL) | sigmask(SIGSTOP))
+#define SIG_KERNEL_IGNORE_MASK ( sigmask(SIGCONT) | sigmask(SIGCHLD) | sigmask(SIGWINCH) | sigmask(SIGURG))
 
 typedef void (*__sighandler_t)(int);
 
@@ -53,6 +54,7 @@ typedef void (*__sighandler_t)(int);
 #define SIG_ERR ((__sighandler_t)-1) /* error return from signal */
 
 #define sig_kernel_only(sig) (((sig) < SIGRTMIN) && siginmask(sig, SIG_KERNEL_ONLY_MASK))
+#define sig_kernel_ignore(sig) (((sig) < SIGRTMIN) && siginmask(sig, SIG_KERNEL_IGNORE_MASK))
 
 static inline bool valid_signal(unsigned long sig) {
 	return sig <= NSIG;

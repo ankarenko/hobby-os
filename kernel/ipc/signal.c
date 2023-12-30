@@ -48,18 +48,21 @@ int do_sigaction(int signum, const struct sigaction *action, struct sigaction *o
 }
 
 void handle_signal(interrupt_registers *regs, sigset_t restored_sig) {
+  thread* current_thread = get_current_thread();
+  process* current_process = get_current_process();
   
   int signum = SIGTRAP;
-  int prev_signaling = 1;
-
+  current_thread->pending &= ~sigmask(signum); // unmask signal
+  
   bool from_syscall = false;
   if (regs->int_no == DISPATCHER_ISR) {
 		from_syscall = true;
-		//regs->eax = -EINTR;
 	}
 
-  thread* current_thread = get_current_thread();
-  process* current_process = get_current_process();
+  if (siginmask(signum, current_thread->blocked)) {
+    log("Signal %d is blocked for thread: %d", signum, current_thread->tid);
+    return;
+  }
 
   struct signal_frame *signal_frame = (char *)regs->useresp - sizeof(struct signal_frame);
   signal_frame->sigreturn = &sigreturn;
@@ -73,7 +76,6 @@ void handle_signal(interrupt_registers *regs, sigset_t restored_sig) {
   
   if (from_syscall) {
     tss_set_stack(KERNEL_DATA, current_thread->kernel_esp);
-    interruptdone(regs->int_no);
     enter_usermode(sigaction->sa_handler, signal_frame, NULL);
   }
 }
@@ -83,13 +85,16 @@ void sigreturn(interrupt_registers *regs) {
   thread* current_thread = get_current_thread();
   log("Signal: Return from signal handler %s(p%d)", current_process->path, current_process->pid);
   
-  current_thread->pending &= ~sigmask(SIGTRAP); // unmask signal
-
   struct signal_frame *signal_frame = (char *)regs->useresp - 4;
   if (signal_frame->uregs.int_no == DISPATCHER_ISR) {
     // 100% this code was invoked by page_fault
     signal_frame->uregs.int_no = 14; 
   }
+
+  int signum = signal_frame->signum;
+  struct sigaction *sigaction = &current_process->sighand[signum - 1];
+  current_thread->blocked &= ~(sigmask(signum) | sigaction->sa_mask); // unmask
+
   memcpy(
     (char*)current_thread->kernel_esp - sizeof(interrupt_registers), 
     &signal_frame->uregs, 

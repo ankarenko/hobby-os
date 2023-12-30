@@ -275,6 +275,9 @@ static process* create_process(process *parent, char* name, struct pdirectory* p
   proc->mm_mos = kcalloc(1, sizeof(mm_struct_mos));
   INIT_LIST_HEAD(&proc->mm_mos->mmap);
 
+  for (int i = 0; i < NSIG; ++i)
+	  proc->sighand[i].sa_handler = sig_kernel_ignore(i + 1) ? SIG_IGN : SIG_DFL;
+
   proc->image_base = NULL;
   proc->image_size = 0;
   proc->va_dir = pdir? pdir : create_address_space();

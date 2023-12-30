@@ -9,7 +9,10 @@
 FILE* stream;
 
 void custom_signal_handler(int signum) {
-  fputs("Hello from signal handler! \n!", stream);
+  fputs("signal handler: hello! \n!", stream);
+  fputs("signal handler: sleep 5 sec! \n!", stream);
+  sleep(5);
+  fputs("signal handler: woke up \n!", stream);
   fflush(stream);
 }
 
@@ -22,14 +25,11 @@ void main(int argc, char** argv) {
   new_action.sa_handler = custom_signal_handler;
   //sigemptyset(&new_action.sa_mask);
   //new_action.sa_flags = 0;
-
-  sigaction(SIGTRAP, &new_action, NULL);
-  /*
-  sigaction(SIGINT, NULL, &old_action);
+  
+  sigaction(SIGTRAP, NULL, &old_action);
   if (old_action.sa_handler != SIG_IGN) {
-    sigaction (SIGINT, &new_action, NULL);
+    sigaction(SIGTRAP, &new_action, NULL);
   }
-  */
 
   /*
   FILE* stream = fopen("dev/tty0", "ab+");
@@ -53,13 +53,8 @@ void main(int argc, char** argv) {
   */
 
   // test signals
-  int j = 0;
   char* buf[30];
   for (;;) {
-    for (int i = 0; i < 10000; ++i) {
-
-    }
-
     //vfprintf(stream, "Hello from loop %d \n!", j);
     //fflush(stream);
     //j++;
