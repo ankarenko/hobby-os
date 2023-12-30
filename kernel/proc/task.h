@@ -4,6 +4,8 @@
 
 #include <stdint.h>
 
+#include "kernel/util/types.h"
+#include "kernel/ipc/signal.h"
 #include "kernel/util/list.h"
 #include "kernel/memory/vmm.h"
 #include "kernel/fs/vfs.h"
@@ -95,6 +97,12 @@ typedef struct _thread {
   ktime_t sleep_time_delta;
   struct list_head sched_sibling;
   struct list_head th_sibling;
+
+  // used by UNIX signals
+  sigset_t pending;
+	sigset_t blocked;
+	bool signaling;
+
 } thread;
 
 typedef struct _files_struct {
@@ -129,6 +137,8 @@ typedef struct _process {
   struct list_head proc_sibling;
   files_struct* files; 
   fs_struct* fs;
+
+  struct sigaction sighand[NSIG];
 } process;
 
 thread* get_current_thread();
@@ -149,6 +159,7 @@ struct list_head* get_ready_threads();
 void sched_push_queue(thread* th, enum thread_state state);
 thread* pop_next_thread_to_terminate();
 bool thread_kill(uint32_t id);
+bool thread_signal(uint32_t tid);
 
 // exit.c
 void garbage_worker_task();

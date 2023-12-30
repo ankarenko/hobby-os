@@ -2,7 +2,11 @@
 
 #include "kernel/util/list.h"
 #include "kernel/cpu/hal.h"
+#include "kernel/cpu/tss.h"
+#include "kernel/cpu/gdt.h"
+#include "kernel/ipc/signal.h"
 #include "kernel/proc/task.h"
+#include "kernel/util/debug.h"
 
 struct list_head process_list;
 
@@ -123,6 +127,18 @@ void thread_wake() {
 	_current_thread->sleep_time_delta = 0;
 }
 
+bool thread_signal(uint32_t tid) {
+  thread* th = NULL;
+  list_for_each_entry(th, sched_get_list(THREAD_READY), sched_sibling) {
+    if (tid == th->tid) {
+      th->pending |= sigmask(1);
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 bool thread_kill(uint32_t tid) {
   thread* th = NULL;
   list_for_each_entry(th, sched_get_list(THREAD_READY), sched_sibling) {
@@ -159,15 +175,19 @@ next_thread:
 		goto next_thread;
 	}
 do_switch:
-  DEBUG_LAST_TID = th->tid;
-  if (DEBUG_LAST_TID == 5) {
-    uint32_t a = 1;
-  } 
+  // INFO: SA switch to trhead invokes tss_set_stack implicitly
+  // tss_set_stack(KERNEL_DATA, th->kernel_esp);
   switch_to_thread(th);
+  if (_current_thread->pending /*&& !(_current_thread->flags & TIF_SIGNAL_MANUAL)*/) {
+    //_current_thread->handles_signal = true;
+    // allocate space for signal handler trap  
+    // kernel_esp always points to the start of kernel stack for a thread
+		interrupt_registers *regs = (interrupt_registers *)(_current_thread->kernel_esp - sizeof(interrupt_registers));
+		handle_signal(regs, _current_thread->blocked);
+	}
 }
 
-void sched_init()
-{
+void sched_init() {
   INIT_LIST_HEAD(&waiting_threads);
   INIT_LIST_HEAD(&ready_threads);
   INIT_LIST_HEAD(&terminated_threads);

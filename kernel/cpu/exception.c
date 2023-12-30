@@ -4,6 +4,8 @@
 #include "kernel/cpu/exception.h"
 #include "kernel/cpu/hal.h"
 #include "kernel/cpu/idt.h"
+#include "kernel/cpu/gdt.h"
+#include "kernel/ipc/signal.h"
 #include "kernel/util/debug.h"
 
 extern uint32_t DEBUG_LAST_TID = 0;
@@ -135,6 +137,32 @@ void simd_fpu_fault(struct interrupt_registers *registers) {
   assert_not_reached("FPU SIMD fault", NULL);
 }
 
+int32_t thread_page_fault(interrupt_registers *regs) {
+	uint32_t faultAddr = 0;
+	__asm__ __volatile__("mov %%cr2, %%eax	\n"
+	 										 "mov %%eax, %0			\n"
+	 										 : "=r"(faultAddr));
+
+	if (regs->cs == USER_CODE && faultAddr == (uint32_t)sigreturn) {
+		log("Page Fault: From userspace at 0x%x", faultAddr);
+
+    /*
+    if (faultAddr == PROCESS_TRAPPED_PAGE_FAULT)
+			do_exit(regs->eax);
+		else
+    */ 
+
+		sigreturn(regs);
+    
+		return IRQ_HANDLER_STOP;
+	} else {
+    page_fault(regs);
+  }
+
+	assert_not_reached();
+	return IRQ_HANDLER_CONTINUE;
+}
+
 void exception_init() {
   for (uint32_t i = 0; i < I86_MAX_INTERRUPTS; ++i) {
     if (i == IRQ0) {  // ignore timer
@@ -156,7 +184,7 @@ void exception_init() {
   register_interrupt_handler(11, (I86_IRQ_HANDLER)no_segment_fault);
   register_interrupt_handler(12, (I86_IRQ_HANDLER)stack_fault);
   register_interrupt_handler(13, (I86_IRQ_HANDLER)general_protection_fault);
-  register_interrupt_handler(14, (I86_IRQ_HANDLER)page_fault);
+  register_interrupt_handler(14, (I86_IRQ_HANDLER)thread_page_fault/* page_fault*/);
   register_interrupt_handler(16, (I86_IRQ_HANDLER)fpu_fault);
   register_interrupt_handler(17, (I86_IRQ_HANDLER)alignment_check_fault);
   register_interrupt_handler(18, (I86_IRQ_HANDLER)machine_check_abort);

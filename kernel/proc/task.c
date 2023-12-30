@@ -231,13 +231,12 @@ static void user_thread_elf_entry(thread *th) {
   virtual_addr entry = NULL;
 
   // try to load image into our address space
-  // TODO: mos make it differently check it out
   if (!elf_load_image(path, th, &entry)) {
-    assert_not_reached("ELF is not loaded properly", NULL);
+    assert_not_reached("ELF is not loaded properly");
   }
 
   if (!empack_params(th)) {
-    assert_not_reached("Cannot empack params", NULL);
+    assert_not_reached("Cannot empack params");
   }
 
   tss_set_stack(KERNEL_DATA, th->kernel_esp);
@@ -387,6 +386,12 @@ bool initialise_multitasking(virtual_addr entry) {
 
   /* register isr */
   old_pic_isr = getvect(IRQ0);
+  /* 
+    TODO: SA: scheduler and other IRQ are hanled differently and differnt values 
+    could be put on stack it lead to a problem with imterpteting register values
+    so probably it's better to unify it
+
+   **/
   setvect(IRQ0, scheduler_isr, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32);
 
   start_kernel_task(_current_thread);

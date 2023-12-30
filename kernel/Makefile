@@ -8,6 +8,7 @@ PATHS= \
 	system/*.c \
 	memory/*.c \
 	fs/*.c fs/*/**.c \
+	ipc/*.c \
 	proc/*.c proc/*/**.c \
 	locking/*.c locking/*/**.c \
 	include/*.c \

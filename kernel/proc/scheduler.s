@@ -1,6 +1,10 @@
 .global scheduler_isr
 .type scheduler_isr, @function
 scheduler_isr:
+  # push error codes to comply with interrupt_registers* structe
+  push $0 // no error
+  push $128 // int_num
+
   pusha         
 
   # we are accesing 0 byte at address of current task, which is esp
@@ -39,10 +43,16 @@ interrupt_return:
   out %al, $0x20
 
   popa
+  add $0x8, %esp
+
   iret
 
 chain_interrupt:
+  
   popa
+  # remove error codes
+  add $0x8, %esp
+
   # simple jmp [old_pic_isr] did't work for me
   push [old_pic_isr]
   ret

@@ -24,6 +24,11 @@ void main(int argc, char** argv) {
     fclose(stream);
     free(buf);
   }
+
+  // test signals
+  for (;;) {
+
+  }
   
   /*
   int32_t id = -1;
