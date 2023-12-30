@@ -7,6 +7,7 @@ build
 fat32_floppy.img
 *.img
 *.mem
+install_program.sh
 qemu-monitor-socket
 run_qemu.sh
 hints2.txt

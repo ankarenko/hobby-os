@@ -140,7 +140,7 @@ bool run_cmd(char* cmd_buf) {
     get_cmd(id, 10);
     
     if (id && thread_signal(atoi(id))) {
-      printf("Signal sent to process: %s", id);
+      log("Signal: sent to process: %s", id);
     } else {
       printf("Unable to find process with id %s", id);
     }
@@ -322,7 +322,7 @@ void cmd_read_sect() {
 
   //! read sector from disk
   sector = flpydsk_read_sector(sectornum);
-
+  
   //! display sector
   if (sector != 0) {
     int i = 0;

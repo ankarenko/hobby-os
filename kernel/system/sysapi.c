@@ -8,6 +8,7 @@
 #include "kernel/system/sysapi.h"
 #include "kernel/system/time.h"
 #include "kernel/cpu/hal.h"
+#include "kernel/ipc/signal.h"
 
 #define __NR_exit 1
 #define __NR_fork 2
@@ -21,7 +22,12 @@
 #define __NR_lseek 19
 #define __NR_getpid 20
 #define __NR_kill 37
+#define __NR_signal 48
+#define __NR_sigaction 67
+#define __NR_sigsuspend 72
+#define __NR_sigreturn 103
 #define __NR_fstat 108
+#define __NR_sigprocmask 126
 #define __NR_nanosleep 162
 #define __NR_print 0
 
@@ -109,6 +115,10 @@ static int32_t sys_time(time_t *tloc) {
 	return t;
 }
 
+static int32_t sys_sigaction(int signum, const struct sigaction *act, struct sigaction *oldact) {
+  return do_sigaction(signum, act, oldact);
+}
+
 static void *syscalls[] = {
   [__NR_exit] = sys_exit,
   [__NR_nanosleep] = sys_nanosleep,
@@ -125,6 +135,7 @@ static void *syscalls[] = {
   [__NR_close] = sys_close,
   [__NR_getpid] = sys_getpid,
   [__NR_kill] = sys_kill,
+  [__NR_sigaction] = sys_sigaction,
   0
 };
 

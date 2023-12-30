@@ -1,11 +1,37 @@
 #include <stdint.h>
 #include <malloc.h>
+#include <signal.h>
 #include <string.h>
 #include <stdio.h>
 
 #include "../../../ports/newlib/myos/print.h"
 
+FILE* stream;
+
+void custom_signal_handler(int signum) {
+  fputs("Hello from signal handler! \n!", stream);
+  fflush(stream);
+}
+
 void main(int argc, char** argv) {
+  stream = fopen("dev/tty0", "ab+");
+  fputs("Hello user main! \n!", stream);
+
+  struct sigaction new_action, old_action;
+
+  new_action.sa_handler = custom_signal_handler;
+  //sigemptyset(&new_action.sa_mask);
+  //new_action.sa_flags = 0;
+
+  sigaction(SIGTRAP, &new_action, NULL);
+  /*
+  sigaction(SIGINT, NULL, &old_action);
+  if (old_action.sa_handler != SIG_IGN) {
+    sigaction (SIGINT, &new_action, NULL);
+  }
+  */
+
+  /*
   FILE* stream = fopen("dev/tty0", "ab+");
   
   if (fputs("Hello, world\n!", stream) == 0) {
@@ -24,11 +50,25 @@ void main(int argc, char** argv) {
     fclose(stream);
     free(buf);
   }
+  */
 
   // test signals
+  int j = 0;
+  char* buf[30];
   for (;;) {
+    for (int i = 0; i < 10000; ++i) {
 
+    }
+
+    //vfprintf(stream, "Hello from loop %d \n!", j);
+    //fflush(stream);
+    //j++;
+    //sprintf(buf, "Hello from loop %d \n!\0", j);
+    //fputs(buf, stream);
+    //sleep(5);
   }
+
+  
   
   /*
   int32_t id = -1;

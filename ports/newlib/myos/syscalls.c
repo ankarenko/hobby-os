@@ -4,6 +4,7 @@
 #include <sys/fcntl.h>
 #include <sys/times.h>
 #include <stdarg.h>
+#include <sys/signal.h>
 #include <stddef.h>
 #include <sys/errno.h>
 #include <sys/time.h>
@@ -141,6 +142,11 @@ _syscall3(write, int, const char *, size_t);
 int write(int fd, const char *buf, size_t size) {
   //kernel_print("\nwrite");
 	SYSCALL_RETURN_ORIGINAL(syscall_write(fd, buf, size));
+}
+
+_syscall3(sigaction, int, const struct sigaction *, struct sigaction *);
+int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact) {
+	SYSCALL_RETURN(syscall_sigaction(signum, act, oldact));
 }
 
 _syscall2(nanosleep, const struct timespec *, struct timespec *);

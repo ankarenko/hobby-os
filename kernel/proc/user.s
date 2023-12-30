@@ -18,6 +18,10 @@ enter_usermode:
 	or $0x200, %eax	        # enable IF in EFLAGS
 	push %eax
 
+  ## if old_scheduler_isr is null, send EOI and return.
+  mov $0x20, %al 
+  out %al, $0x20
+
   #mov 4(%esp), %eax
 	# set address in user stack which causes the page fault when finishing a user thread
 	#sub $4, %eax

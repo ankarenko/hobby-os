@@ -39,6 +39,7 @@ isr_common_stub:
     
   push %esp
   call isr_handler
+  #call signal_handler
   
   add $4, %esp    # cleans esp param from the stack
 
@@ -83,6 +84,7 @@ irq_common_stub:
   push %esp
   
   call irq_handler
+  #call signal_handler
   
   add $4, %esp    # cleans esp param from the stack
 

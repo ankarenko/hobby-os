@@ -131,7 +131,14 @@ bool thread_signal(uint32_t tid) {
   thread* th = NULL;
   list_for_each_entry(th, sched_get_list(THREAD_READY), sched_sibling) {
     if (tid == th->tid) {
-      th->pending |= sigmask(1);
+      th->pending |= sigmask(SIGTRAP);
+      return true;
+    }
+  }
+
+  list_for_each_entry(th, sched_get_list(THREAD_WAITING), sched_sibling) {
+    if (tid == th->tid) {
+      th->pending |= sigmask(SIGTRAP);
       return true;
     }
   }
@@ -153,8 +160,11 @@ bool thread_kill(uint32_t tid) {
 
 void make_schedule() {
 next_thread:
+  //log("Interrupt\n");
+  
   thread* th = pop_next_thread_to_run();
 
+  
   if (th->state == THREAD_TERMINATED) {
     // put it in a queue for a worker thread to purge
     sched_push_queue(th, THREAD_TERMINATED);

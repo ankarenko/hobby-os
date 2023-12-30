@@ -11,10 +11,16 @@
 #define __NR_close 6
 #define __NR_sbrk 10
 #define __NR_execve 11
+#define __NR_time 13
 #define __NR_lseek 19
 #define __NR_getpid 20
 #define __NR_kill 37
+#define __NR_signal 48
+#define __NR_sigaction 67
+#define __NR_sigsuspend 72
+#define __NR_sigreturn 103
 #define __NR_fstat 108
+#define __NR_sigprocmask 126
 #define __NR_nanosleep 162
 #define __NR_print 0
 

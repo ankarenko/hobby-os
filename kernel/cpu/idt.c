@@ -183,10 +183,6 @@ void register_interrupt_handler(uint8_t n, I86_IRQ_HANDLER handler) {
 
 // This gets called from our ASM interrupt handler stub.
 void irq_handler(interrupt_registers *regs) {
-  if (regs->int_no >= 40)
-    i86_pic_send_command(I86_PIC_OCW2_MASK_EOI, 1);
-  i86_pic_send_command(I86_PIC_OCW2_MASK_EOI, 0);
-
   handle_interrupt(regs);
   interruptdone(regs->int_no);
 }
