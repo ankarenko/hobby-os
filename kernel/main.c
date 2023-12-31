@@ -135,11 +135,15 @@ bool run_cmd(char* cmd_buf) {
     return true;
   } else if (strcmp(cmd_buf, "signal") == 0) {
     char id[10];
+    char signal[10];
 
     printf("\nid: ");
     get_cmd(id, 10);
+
+    printf("\nsignal: ");
+    get_cmd(signal, 10);
     
-    if (id && thread_signal(atoi(id))) {
+    if (id && signal && thread_signal(atoi(id), atoi(signal))) {
       log("Signal: sent to process: %s", id);
     } else {
       printf("Unable to find process with id %s", id);
@@ -322,7 +326,7 @@ void cmd_read_sect() {
 
   //! read sector from disk
   sector = flpydsk_read_sector(sectornum);
-  
+
   //! display sector
   if (sector != 0) {
     int i = 0;

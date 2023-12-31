@@ -8,11 +8,23 @@
 
 FILE* stream;
 
-void custom_signal_handler(int signum) {
-  fputs("signal handler: hello! \n!", stream);
-  fputs("signal handler: sleep 5 sec! \n!", stream);
+void custom_signal_handler_SIGTRAP(int signum) {
+  fputs("signal SIGTRAP handler: block SIGALRMP! \n!", stream);
+  sigset_t msk = 1 << (SIGALRM - 1);
+  sigprocmask(SIG_SETMASK, &msk, NULL); // block SIGALRMP interrupts
+
+  fputs("signal SIGTRAP handler: hello! \n!", stream);
+  fputs("signal SIGTRAP handler: sleep 5 sec! \n!", stream);
   sleep(5);
-  fputs("signal handler: woke up \n!", stream);
+  fputs("signal SIGTRAP handler: woke up \n!", stream);
+  fflush(stream);
+}
+
+void custom_signal_handler_SIGALRMP(int signum) {
+  fputs("signal SIGALRM handler: hello! \n!", stream);
+  fputs("signal SIGALRM handler: sleep 5 sec! \n!", stream);
+  sleep(5);
+  fputs("signal SIGALRM handler: woke up \n!", stream);
   fflush(stream);
 }
 
@@ -22,7 +34,7 @@ void main(int argc, char** argv) {
 
   struct sigaction new_action, old_action;
 
-  new_action.sa_handler = custom_signal_handler;
+  new_action.sa_handler = custom_signal_handler_SIGTRAP;
   //sigemptyset(&new_action.sa_mask);
   //new_action.sa_flags = 0;
   
@@ -30,6 +42,16 @@ void main(int argc, char** argv) {
   if (old_action.sa_handler != SIG_IGN) {
     sigaction(SIGTRAP, &new_action, NULL);
   }
+
+  new_action.sa_handler = custom_signal_handler_SIGALRMP;
+  sigaction(SIGALRM, NULL, &old_action);
+  if (old_action.sa_handler != SIG_IGN) {
+    sigaction(SIGALRM, &new_action, NULL);
+  }
+  
+
+
+
 
   /*
   FILE* stream = fopen("dev/tty0", "ab+");

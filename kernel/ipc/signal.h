@@ -41,6 +41,10 @@
 #define SIGUSR2	31	  // User-defined signal 2
 #define SIGRTMIN 32 
 
+#define SIG_BLOCK 0	  /* for blocking signals */
+#define SIG_UNBLOCK 1 /* for unblocking signals */
+#define SIG_SETMASK 2 /* for setting the signal mask */
+
 #define sigmask(sig) (1UL << ((sig)-1))
 #define siginmask(sig, mask) ((sig) > 0 && (sig) < SIGRTMIN && (sigmask(sig) & (mask)))
 
@@ -70,5 +74,6 @@ void signal_handler(interrupt_registers *regs);
 void handle_signal(interrupt_registers *regs, sigset_t restored_sig);
 void sigreturn(interrupt_registers *regs);
 int do_sigaction(int signum, const struct sigaction *action, struct sigaction *old_action);
+int do_sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
 
 #endif

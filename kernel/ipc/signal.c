@@ -18,7 +18,7 @@ extern void enter_usermode(
 struct signal_frame {
 	void (*sigreturn)(struct interrupt_registers *);
 	int32_t signum;
-	bool signaling;
+	//bool signaling;
 	sigset_t blocked;
 	interrupt_registers uregs;
 };
@@ -47,28 +47,72 @@ int do_sigaction(int signum, const struct sigaction *action, struct sigaction *o
 	return 0;
 }
 
+int do_sigprocmask(int how, const sigset_t *set, sigset_t *oldset) {
+	thread* current_thread = get_current_thread();
+
+  if (oldset)
+		*oldset = current_thread->blocked;
+
+	if (set) {
+		if (how == SIG_BLOCK)
+			current_thread->blocked |= *set;
+		else if (how == SIG_UNBLOCK)
+			current_thread->blocked &= ~*set;
+		else if (how == SIG_SETMASK)
+			current_thread->blocked = *set;
+		else
+			return -EINVAL;
+
+    // cannot block SIGKILL and SIGSTOP
+		current_thread->blocked &= ~SIG_KERNEL_ONLY_MASK;
+	}
+
+	return 0;
+}
+
+static int next_signal(sigset_t pending, sigset_t blocked) {
+	sigset_t mask = pending & ~blocked;
+	uint32_t signum = 0;
+
+  for (int i = 0; i < NSIG; ++i) {
+    if ((mask >> i) & sigmask(1)) {
+      return i + 1;
+    }
+  }
+  return 0;
+  
+  /*
+    in case i want to make priorities?
+    if (mask & SIG_KERNEL_COREDUMP_MASK)
+      signum = ffz(~(mask & SIG_KERNEL_COREDUMP_MASK)) + 1;
+    else if (mask & ~sigmask(SIGCONT))
+      signum = ffz(~(mask & ~sigmask(SIGCONT))) + 1;
+    else if (mask & sigmask(SIGCONT))
+      signum = SIGCONT;
+
+    return signum;
+  */
+}
+
 void handle_signal(interrupt_registers *regs, sigset_t restored_sig) {
   thread* current_thread = get_current_thread();
   process* current_process = get_current_process();
   
-  int signum = SIGTRAP;
-  current_thread->pending &= ~sigmask(signum); // unmask signal
+  int signum;
+  if ((signum = next_signal(current_thread->pending, current_thread->blocked)) == 0) {
+    log("Signal is blocked for thread: %d", signum, current_thread->tid);
+    return;
+  }
   
   bool from_syscall = false;
   if (regs->int_no == DISPATCHER_ISR) {
 		from_syscall = true;
 	}
 
-  if (siginmask(signum, current_thread->blocked)) {
-    log("Signal %d is blocked for thread: %d", signum, current_thread->tid);
-    return;
-  }
-
   struct signal_frame *signal_frame = (char *)regs->useresp - sizeof(struct signal_frame);
   signal_frame->sigreturn = &sigreturn;
   signal_frame->signum = signum;
-  //frame->signaling = prev_signaling;
-  //frame->blocked = restored_sig;
+  signal_frame->blocked = current_thread->blocked;
   signal_frame->uregs = *regs;
 
   struct sigaction *sigaction = &current_process->sighand[signum - 1];
@@ -81,6 +125,19 @@ void handle_signal(interrupt_registers *regs, sigset_t restored_sig) {
 }
 
 void sigreturn(interrupt_registers *regs) {
+  // NOTE: MQ 2020-08-26
+	/*
+    |_________________________| <- original esp
+    | thread->uregs           |
+    |-------------------------|
+    | thread->blocked         | - is important in case of a signal being invoked while invoking invoking another signal
+    |-------------------------|
+    | signum                  |
+    |-------------------------| <- after exiting from user defined signal handler
+    | sigreturn               | 
+    |-------------------------| <- trap frame esp
+    */
+
   process* current_process = get_current_process();
   thread* current_thread = get_current_thread();
   log("Signal: Return from signal handler %s(p%d)", current_process->path, current_process->pid);
@@ -93,7 +150,8 @@ void sigreturn(interrupt_registers *regs) {
 
   int signum = signal_frame->signum;
   struct sigaction *sigaction = &current_process->sighand[signum - 1];
-  current_thread->blocked &= ~(sigmask(signum) | sigaction->sa_mask); // unmask
+  current_thread->blocked = signal_frame->blocked;
+  current_thread->pending &= ~sigmask(signum); // unmask signal
 
   memcpy(
     (char*)current_thread->kernel_esp - sizeof(interrupt_registers), 

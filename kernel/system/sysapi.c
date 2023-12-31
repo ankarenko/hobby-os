@@ -119,6 +119,10 @@ static int32_t sys_sigaction(int signum, const struct sigaction *act, struct sig
   return do_sigaction(signum, act, oldact);
 }
 
+static int32_t sys_sigprocmask(int how, const sigset_t *set, sigset_t *oldset) {
+  return do_sigprocmask(how, set, oldset);
+}
+
 static void *syscalls[] = {
   [__NR_exit] = sys_exit,
   [__NR_nanosleep] = sys_nanosleep,
@@ -136,6 +140,7 @@ static void *syscalls[] = {
   [__NR_getpid] = sys_getpid,
   [__NR_kill] = sys_kill,
   [__NR_sigaction] = sys_sigaction,
+  [__NR_sigprocmask] = sys_sigprocmask,
   0
 };
 

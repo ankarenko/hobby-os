@@ -159,7 +159,7 @@ struct list_head* get_ready_threads();
 void sched_push_queue(thread* th, enum thread_state state);
 thread* pop_next_thread_to_terminate();
 bool thread_kill(uint32_t id);
-bool thread_signal(uint32_t tid);
+bool thread_signal(uint32_t tid, int32_t signal);
 
 // exit.c
 void garbage_worker_task();

@@ -127,18 +127,18 @@ void thread_wake() {
 	_current_thread->sleep_time_delta = 0;
 }
 
-bool thread_signal(uint32_t tid) {
+bool thread_signal(uint32_t tid, int32_t signum) {
   thread* th = NULL;
   list_for_each_entry(th, sched_get_list(THREAD_READY), sched_sibling) {
     if (tid == th->tid) {
-      th->pending |= sigmask(SIGTRAP);
+      th->pending |= sigmask(signum);
       return true;
     }
   }
 
   list_for_each_entry(th, sched_get_list(THREAD_WAITING), sched_sibling) {
     if (tid == th->tid) {
-      th->pending |= sigmask(SIGTRAP);
+      th->pending |= sigmask(signum);
       return true;
     }
   }

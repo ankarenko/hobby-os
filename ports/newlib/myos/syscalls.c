@@ -149,6 +149,11 @@ int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
 	SYSCALL_RETURN(syscall_sigaction(signum, act, oldact));
 }
 
+_syscall3(sigprocmask, int, const sigset_t *, sigset_t *);
+int sigprocmask(int how, const sigset_t *set, sigset_t *oldset) {
+	SYSCALL_RETURN(syscall_sigprocmask(how, set, oldset));
+}
+
 _syscall2(nanosleep, const struct timespec *, struct timespec *);
 int nanosleep(const struct timespec *req, struct timespec *rem) {
   //kernel_print("\nananosleep");
