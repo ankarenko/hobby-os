@@ -7,7 +7,9 @@
 #include "kernel/util/types.h"
 #include "kernel/ipc/signal.h"
 #include "kernel/util/list.h"
+#include "kernel/devices/char/tty.h"
 #include "kernel/memory/vmm.h"
+#include "kernel/system/timer.h"
 #include "kernel/fs/vfs.h"
 
 /*
@@ -102,7 +104,8 @@ typedef struct _thread {
   sigset_t pending;
 	sigset_t blocked;
 	bool signaling;
-
+  
+  struct sleep_timer s_timer;
 } thread;
 
 typedef struct _files_struct {
@@ -137,6 +140,7 @@ typedef struct _process {
   struct list_head proc_sibling;
   files_struct* files; 
   fs_struct* fs;
+  struct tty_struct *tty;
 
   struct sigaction sighand[NSIG];
 } process;
@@ -156,10 +160,11 @@ void unlock_scheduler();
 void make_schedule();
 void sched_init();
 struct list_head* get_ready_threads();
-void sched_push_queue(thread* th, enum thread_state state);
+void sched_push_queue(thread* th);
 thread* pop_next_thread_to_terminate();
 bool thread_kill(uint32_t id);
 bool thread_signal(uint32_t tid, int32_t signal);
+void thread_update(thread *t, enum thread_state state);
 
 // exit.c
 void garbage_worker_task();

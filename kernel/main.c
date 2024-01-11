@@ -23,7 +23,9 @@
 #include "kernel/util/errno.h"
 #include "kernel/util/fcntl.h"
 #include "kernel/util/list.h"
+#include "kernel/system/timer.h"
 #include "kernel/util/math.h"
+
 #include "multiboot.h"
 #include "test/greatest.h"
 
@@ -365,42 +367,28 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   // setup serial port A for debug
   debug_init();
 
-  // log("Log", 123);
-  // err("Error");
-  // warn("Warning");
-
-  hal_initialize();
+  disable_interrupts();
+  i86_gdt_initialize();
+  i86_idt_initialize(0x8);
+  install_tss(5, 0x10, 0);
+  enable_interrupts();
+  
   terminal_initialize();
   kkybrd_install(IRQ1);
 
   log("Kernel size: %dKB", (int)(KERNEL_END - KERNEL_START) / 1024);
   log("Ends in 0x%x (DIR: %d, INDEX: %d)", KERNEL_END, PAGE_DIRECTORY_INDEX(KERNEL_END), PAGE_TABLE_INDEX(KERNEL_END));
-  
-  /*
-  while (true) {
-    char a = (char)read_serial_test();
-    if ((int)a == 13)
-      break;
-    printf("%c", a);
-  }
-  */
 
   pmm_init(mbd);
-
   vmm_init();
 
-  // pci_init();
+  exception_init();
+  hal_initialize();
+  
   pata_init();
-
-  // flpydsk_set_working_drive(0);
-  // flpydsk_install(IRQ6);
-
-  // fat32_init();
-
-  // fat12_initialize();
   syscall_init();
-  install_tss(5, 0x10, 0);
 
+  timer_init();
   initialise_multitasking(&main_thread);
 
   return 0;

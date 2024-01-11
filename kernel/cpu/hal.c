@@ -49,19 +49,10 @@ int32_t hal_shutdown () {
 }
 
 uint32_t hal_initialize() {
-  //! disable hardware interrupts
-  disable_interrupts();
-
-  i86_gdt_initialize();
-  i86_idt_initialize(_sel);
-  i86_pic_initialize(0x20, 0x28);
   rtc_init();
-  i86_pit_initialize();
-  
-  i86_pit_start_counter(100, I86_PIT_OCW_COUNTER_0, I86_PIT_OCW_MODE_SQUAREWAVEGEN);
 
-  //! enable interrupts
-  enable_interrupts();
+  i86_pit_initialize();
+  i86_pit_start_counter(100, I86_PIT_OCW_COUNTER_0, I86_PIT_OCW_MODE_SQUAREWAVEGEN);
 
   return 0;
 }

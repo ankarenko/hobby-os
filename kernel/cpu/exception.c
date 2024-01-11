@@ -160,17 +160,9 @@ int32_t thread_page_fault(interrupt_registers *regs) {
   }
 
 	assert_not_reached();
-	return IRQ_HANDLER_CONTINUE;
 }
 
 void exception_init() {
-  for (uint32_t i = 0; i < I86_MAX_INTERRUPTS; ++i) {
-    if (i == IRQ0) {  // ignore timer
-      continue;
-    }
-    register_interrupt_handler(i, i86_default_handler);
-  }
-
   register_interrupt_handler(0, (I86_IRQ_HANDLER)divide_by_zero_fault);
   register_interrupt_handler(1, (I86_IRQ_HANDLER)single_step_trap);
   register_interrupt_handler(2, (I86_IRQ_HANDLER)nmi_trap);

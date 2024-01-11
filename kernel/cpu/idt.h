@@ -44,7 +44,7 @@ typedef struct
 #define IRQ14 46
 #define IRQ15 47
 
-typedef void (*I86_IRQ_HANDLER)(struct interrupt_registers *registers);
+typedef int32_t (*I86_IRQ_HANDLER)(interrupt_registers *registers);
 
 // A struct describing an interrupt gate.
 struct idt_entry_struct {

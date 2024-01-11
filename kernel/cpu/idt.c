@@ -1,11 +1,18 @@
 #include <stdint.h>
 
 #include "kernel/util/stdio.h"
+#include "kernel/util/list.h"
+#include "kernel/util/debug.h"
 #include "../devices/tty.h"
 #include "hal.h"
 #include "pic.h"
 #include "idt.h"
 #include "exception.h"
+
+struct interrupt_handler {
+	I86_IRQ_HANDLER handler;
+	struct list_head sibling;
+};
 
 #define ISR(index) extern void isr##index()
 #define IRQ(index) extern void irq##index()
@@ -68,9 +75,19 @@ extern void idt_flush(uint32_t);
 
 __attribute__((aligned(0x10)));
 static idt_entry_t _idt_entries[I86_MAX_INTERRUPTS];
-static I86_IRQ_HANDLER _interrupt_handlers[I86_MAX_INTERRUPTS];
+static struct list_head interrupt_handlers[I86_MAX_INTERRUPTS];
+//static I86_IRQ_HANDLER _interrupt_handlers[I86_MAX_INTERRUPTS];
 static idt_ptr_t _idt_ptr;
 
+static void idt_default_handler(interrupt_registers *regs) {
+	disable_interrupts();
+
+	uint8_t int_no = regs->int_no & 0xff;
+
+	//err("IDT: unhandled exception %d", int_no);
+
+	halt();
+}
 
 uint32_t i86_idt_initialize(uint16_t sel) {
   _idt_ptr.limit = sizeof(idt_entry_t) * I86_MAX_INTERRUPTS - 1;
@@ -78,6 +95,15 @@ uint32_t i86_idt_initialize(uint16_t sel) {
 
   memset(&_idt_entries, 0, sizeof(idt_entry_t) * I86_MAX_INTERRUPTS);
   
+  //log("IDT: Install x86 default handler for 256 idt vectors");
+  for (int i = 0; i < I86_MAX_INTERRUPTS; ++i) {
+    i86_install_ir(i, idt_default_handler, sel, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32);
+		struct list_head * head = &interrupt_handlers[i];
+    INIT_LIST_HEAD(head);
+	}
+  
+  // install isr
+  log("IDT: install isr");
   IDT_INIT_ISR(0, sel);
   IDT_INIT_ISR(1, sel);
   IDT_INIT_ISR(2, sel);
@@ -111,11 +137,12 @@ uint32_t i86_idt_initialize(uint16_t sel) {
   IDT_INIT_ISR(30, sel);
   IDT_INIT_ISR(31, sel);
 
-  //pic_remap();
 
+  // install irq
+  log("IDT: install irq");
   IDT_INIT_IRQ(0, sel);
   // setting up scheduler
-
+  
   IDT_INIT_IRQ(1, sel);
   IDT_INIT_IRQ(2, sel);
   IDT_INIT_IRQ(3, sel);
@@ -135,9 +162,9 @@ uint32_t i86_idt_initialize(uint16_t sel) {
   // regitering 0x80 int handler for sys calls
   IDT_INIT_SYSCALL(128, sel);
 
-  exception_init();
   idt_flush((uint32_t)&_idt_ptr);
-
+  //pic_remap();
+  i86_pic_initialize(0x20, 0x28);
   return 0;
 }
 
@@ -165,11 +192,19 @@ int32_t i86_install_ir(uint8_t i, uint32_t base, uint16_t sel, uint8_t flags) {
   return 0;
 }
 
-void handle_interrupt(interrupt_registers *regs) {
-  if (_interrupt_handlers[regs->int_no] != 0) {
-    I86_IRQ_HANDLER handler = _interrupt_handlers[regs->int_no];
-    handler(regs);
-  }
+static void handle_interrupt(interrupt_registers *regs) {
+	uint32_t int_no = regs->int_no & 0xff;
+	struct list_head *ihlist = &interrupt_handlers[int_no];
+
+	if (!list_empty(ihlist)) {
+		struct interrupt_handler *ih = NULL;
+		list_for_each_entry(ih, ihlist, sibling) {
+			if (ih->handler(regs) == IRQ_HANDLER_STOP)
+				return;
+		}
+	} else {
+		err("IDT: unhandled interrupt %d", int_no);
+	}
 }
 
 // This gets called from our ASM interrupt handler stub.
@@ -178,7 +213,9 @@ void isr_handler(interrupt_registers *regs) {
 }
 
 void register_interrupt_handler(uint8_t n, I86_IRQ_HANDLER handler) {
-  _interrupt_handlers[n] = handler;
+  struct interrupt_handler *ih = kcalloc(1, sizeof(struct interrupt_handler));
+	ih->handler = handler;
+	list_add_tail(&ih->sibling, &interrupt_handlers[n]);
 }
 
 // This gets called from our ASM interrupt handler stub.

@@ -12,7 +12,8 @@
   TTY device has the corresponding character device file under /dev/ttyX
   TTY driver manages session with controling terminal
 */
-
+// https://www.kernel.org/doc/Documentation/admin-guide/devices.txt
+// major and minor numbers define type of a character device
 #define PTY_MASTER_MAJOR 2
 #define PTY_SLAVE_MAJOR 3
 #define TTY_MAJOR 4
@@ -135,5 +136,10 @@ extern struct tty_driver *serial_driver;
 
 // n_tty.c
 extern struct tty_ldisc tty_ldisc_N_TTY;
+
+// pty.c
+extern struct tty_driver *ptm_driver, *pts_driver;
+void pty_init();
+int get_next_pty_number();
 
 #endif

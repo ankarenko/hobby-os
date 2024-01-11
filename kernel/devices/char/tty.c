@@ -53,6 +53,29 @@ static struct tty_struct *create_tty_struct(struct tty_driver *driver, int idx) 
   return tty;
 }
 
+static int ptmx_open(struct vfs_inode *inode, struct vfs_file *file) {
+	int index = get_next_pty_number();
+  // master
+	struct tty_struct *ttym = create_tty_struct(ptm_driver, index);
+	file->private_data = ttym;
+	ttym->driver->tops->open(ttym, file);
+  // Make the given terminal the controlling terminal of the
+  // calling process.  The calling process must be a session
+  // https://man7.org/linux/man-pages/man2/ioctl_tty.2.html
+	// tiocsctty(ttym, 0);
+
+  // slave
+	struct tty_struct *ttys = create_tty_struct(pts_driver, index);
+	ttym->link = ttys;
+	ttys->link = ttym;
+
+	char path[sizeof(PATH_DEV) + SPECNAMELEN] = {0};
+	sprintf(path, "/dev/%s", ttys->name);
+	vfs_mknod(path, S_IFCHR, MKDEV(UNIX98_PTY_SLAVE_MAJOR, index));
+
+	return 0;
+}
+
 static int tty_open(struct vfs_inode *inode, struct vfs_file *file) {
   struct tty_struct *tty = NULL;
   dev_t dev = inode->i_rdev;
@@ -61,10 +84,14 @@ static int tty_open(struct vfs_inode *inode, struct vfs_file *file) {
   if (!tty)
     tty = create_tty_struct(serial_driver, MINOR(dev) - SERIAL_MINOR_BASE);
 
+  /*
+    TODO: keep counter of open and closed?? 
+  */
   if (tty && tty->driver->tops->open)
     tty->driver->tops->open(tty, file);
 
   file->private_data = tty;
+
   /*
   struct tty_struct *tty = NULL;
   dev_t dev = inode->i_rdev;
@@ -77,7 +104,7 @@ static int tty_open(struct vfs_inode *inode, struct vfs_file *file) {
     tty = find_tty_from_driver(serial_driver, MINOR(dev));
     if (!tty)
       tty = create_tty_struct(serial_driver, MINOR(dev) - SERIAL_MINOR_BASE);
-  }
+  } 
 
   if (tty && tty->driver->tops->open)
     tty->driver->tops->open(tty, file);
@@ -105,17 +132,24 @@ int32_t tty_read(struct vfs_file* file, uint8_t* buffer, uint32_t length, off_t 
 
 static ssize_t tty_write(struct vfs_file *file, const char *buf, size_t count, off_t ppos) {
   struct tty_struct *tty = (struct tty_struct *)file->private_data;
+
+  if (!tty || !tty->driver->tops->write || !tty->ldisc->write)
+    return -EIO;
+
   struct tty_ldisc *ld = tty->ldisc;
 
-  if (!tty || !tty->driver->tops->write || !ld->write)
-    return -EIO;
-  
   // don't use ld, move directly to uart 
   return tty->driver->tops->write(tty, buf, count); // ld->write(tty, file, buf, count);
 }
 
 static struct vfs_file_operations tty_fops = {
   .open = tty_open,
+  .read = tty_read,
+  .write = tty_write
+};
+
+static struct vfs_file_operations ptmx_fops = {
+  .open = ptmx_open,
   .read = tty_read,
   .write = tty_write
 };
@@ -136,30 +170,27 @@ int tty_register_driver(struct tty_driver *driver) {
   }
   if (!driver->tops->put_char)
     driver->tops->put_char = tty_default_put_char;
-  list_add_tail(&driver->sibling, &tty_drivers);
 
+  list_add_tail(&driver->sibling, &tty_drivers);
   return 0;
 }
 
 void tty_init() {
   INIT_LIST_HEAD(&tty_drivers);
-  /*
-    log("TTY: Mount ptmx");
-    struct char_device *ptmx_cdev = alloc_chrdev("ptmx", TTYAUX_MAJOR, 2, 1, &ptmx_fops);
-    register_chrdev(ptmx_cdev);
-    vfs_mknod("/dev/ptmx", S_IFCHR, ptmx_cdev->dev);
+  
+  log("TTY: Mount ptmx");
+  struct char_device *ptmx_cdev = alloc_chrdev("ptmx", TTYAUX_MAJOR, 2, 1, &ptmx_fops);
+  register_chrdev(ptmx_cdev);
+  vfs_mknod("/dev/ptmx", S_IFCHR, ptmx_cdev->dev);
 
-    log("TTY: Mount tty");
-    struct char_device *tty_cdev = alloc_chrdev("tty", TTYAUX_MAJOR, 0, 1, &tty_fops);
-    register_chrdev(tty_cdev);
-    vfs_mknod("/dev/tty", S_IFCHR, tty_cdev->dev);
+  log("TTY: Mount tty");
+  struct char_device *tty_cdev = alloc_chrdev("tty", TTYAUX_MAJOR, 0, 1, &tty_fops);
+  register_chrdev(tty_cdev);
+  vfs_mknod("/dev/tty", S_IFCHR, tty_cdev->dev);
 
-    log("TTY: Init pty");
-    pty_init();
+  log("TTY: Init pty");
+  pty_init();
 
-    log("TTY: Init serial");
-  */
-  // vfs_mkdir(PATH_DEV);
-
+  log("TTY: Init serial");
   serial_init();
 }

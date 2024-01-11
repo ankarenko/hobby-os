@@ -5,6 +5,7 @@
 #include "kernel/cpu/tss.h"
 #include "kernel/cpu/gdt.h"
 #include "kernel/ipc/signal.h"
+#include "kernel/system/timer.h"
 #include "kernel/proc/task.h"
 #include "kernel/util/debug.h"
 
@@ -57,14 +58,14 @@ static struct thread* get_next_thread_from_list(enum thread_state state) {
 	return list_entry(list->next, thread, sched_sibling);
 }
 
-void sched_push_queue(thread *th, enum thread_state state) {
-  struct list_head *h = sched_get_list(state);
+void sched_push_queue(thread *th) {
+  struct list_head *h = sched_get_list(th->state);
 
 	if (h)
 		list_add_tail(&th->sched_sibling, h);
 }
 
-void sched_remove_queue(thread* th, enum thread_state state) {
+void sched_remove_queue(thread* th) {
   struct list_head *h = &ready_threads;
 
 	if (h)
@@ -115,17 +116,33 @@ void thread_set_state(thread* t, enum thread_state state) {
 	t->state = state;
 }
 
-void thread_sleep(uint32_t ms) {
-	thread_set_state(_current_thread, THREAD_WAITING);
-	_current_thread->sleep_time_delta = ms;
-	schedule();
+void thread_update(thread *t, enum thread_state state) {
+  if (t->state == state)
+		return;
+
+	lock_scheduler();
+  
+  sched_remove_queue(t);
+  t->state = state;
+  sched_push_queue(t);
+
+  unlock_scheduler();
 }
 
+void thread_sleep(uint32_t ms) {
+	uint32_t exp = get_seconds(NULL) * 1000 + ms;
+  mod_timer(&_current_thread->s_timer, exp);
+	thread_set_state(_current_thread, THREAD_WAITING);
+  schedule();
+}
+
+/*
 void thread_wake() {
   thread_set_state(_current_thread, THREAD_READY);
 	//thread_remove_state(_current_thread, THREAD_WAITING);
 	_current_thread->sleep_time_delta = 0;
 }
+*/
 
 bool thread_signal(uint32_t tid, int32_t signum) {
   thread* th = NULL;
@@ -164,26 +181,30 @@ next_thread:
   
   thread* th = pop_next_thread_to_run();
 
-  
   if (th->state == THREAD_TERMINATED) {
     // put it in a queue for a worker thread to purge
-    sched_push_queue(th, THREAD_TERMINATED);
+    sched_push_queue(th);
     goto next_thread;
   }
 
-  sched_push_queue(th, THREAD_READY);
-  
+  sched_push_queue(th);
+
+  /*
 	if (th->state == THREAD_WAITING) {
 		if (th->sleep_time_delta > 0)
 			th->sleep_time_delta--;
 
 		if (th->sleep_time_delta == 0) {
 			thread_wake();
-			goto do_switch;
+      sched_push_queue(th);
+      goto do_switch;
 		}
 
+    sched_push_queue(th);
 		goto next_thread;
 	}
+  */
+
 do_switch:
   // INFO: SA switch to trhead invokes tss_set_stack implicitly
   // tss_set_stack(KERNEL_DATA, th->kernel_esp);

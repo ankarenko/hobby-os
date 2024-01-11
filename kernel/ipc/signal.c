@@ -136,7 +136,7 @@ void sigreturn(interrupt_registers *regs) {
     |-------------------------| <- after exiting from user defined signal handler
     | sigreturn               | 
     |-------------------------| <- trap frame esp
-    */
+  */
 
   process* current_process = get_current_process();
   thread* current_thread = get_current_thread();

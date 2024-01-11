@@ -1,15 +1,15 @@
 #include "kernel/util/string/string.h"
-
 #include "kernel/util/math.h"
 #include "kernel/util/list.h"
-#include "task.h"
 #include "kernel/memory/vmm.h"
 #include "kernel/cpu/hal.h"
 #include "kernel/cpu/tss.h"
 #include "kernel/memory/malloc.h"
 #include "kernel/cpu/gdt.h"
-#include "elf.h"
+#include "kernel/proc/elf.h"
 #include "kernel/util/debug.h"
+
+#include "kernel/proc/task.h"
 
 extern void enter_usermode(
   virtual_addr entry,
@@ -140,7 +140,11 @@ void kernel_thread_entry(thread *th, void *flow()) {
   schedule();
 }
 
-extern uint32_t DEBUG_LAST_TID;
+static void thread_wakeup_timer(struct sleep_timer *timer) {
+	thread *th = from_timer(th, timer, s_timer);
+	list_del(&timer->sibling);
+  thread_update(th, THREAD_READY);
+}
 
 static thread* thread_create(
   process* parent, 
@@ -167,6 +171,8 @@ static thread* thread_create(
   th->user_ss = USER_DATA;
   INIT_LIST_HEAD(&th->sched_sibling);
   INIT_LIST_HEAD(&th->th_sibling);
+
+  th->s_timer = (struct sleep_timer)TIMER_INITIALIZER(thread_wakeup_timer, UINT32_MAX);
 
   /* adjust stack. We are about to push data on it. */
   th->esp = th->kernel_esp - sizeof(trap_frame); // ????ALIGN_UP(sizeof(trap_frame), 16);
@@ -351,7 +357,7 @@ process* create_system_process(virtual_addr entry) {
     return false;
   }
 
-  sched_push_queue(th, THREAD_READY);
+  sched_push_queue(th);
   return proc;
 }
 
@@ -363,7 +369,7 @@ process* create_elf_process(process* parent, char* path) {
     assert_not_reached("Thread or process were not created properly", NULL);
   }
 
-  sched_push_queue(th, THREAD_READY);
+  sched_push_queue(th);
   return proc;
 }
 
@@ -382,10 +388,10 @@ bool initialise_multitasking(virtual_addr entry) {
 
   process* parent = create_process(NULL, "",  vmm_get_directory());
   _current_thread = kernel_thread_create(parent, entry);
-  sched_push_queue(_current_thread, THREAD_READY);
+  sched_push_queue(_current_thread);
   
   thread* garbage_worker = kernel_thread_create(parent, garbage_worker_task);
-  sched_push_queue(garbage_worker, THREAD_READY);
+  sched_push_queue(garbage_worker);
 
   /* register isr */
   old_pic_isr = getvect(IRQ0);
