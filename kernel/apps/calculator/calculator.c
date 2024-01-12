@@ -14,16 +14,16 @@ void custom_signal_handler_SIGTRAP(int signum) {
   sigprocmask(SIG_SETMASK, &msk, NULL); // block SIGALRMP interrupts
 
   fputs("signal SIGTRAP handler: hello! \n!", stream);
-  fputs("signal SIGTRAP handler: sleep 5 sec! \n!", stream);
-  sleep(5);
+  fputs("signal SIGTRAP handler: sleep 10 sec! \n!", stream);
+  sleep(10);
   fputs("signal SIGTRAP handler: woke up \n!", stream);
   fflush(stream);
 }
 
 void custom_signal_handler_SIGALRMP(int signum) {
   fputs("signal SIGALRM handler: hello! \n!", stream);
-  fputs("signal SIGALRM handler: sleep 5 sec! \n!", stream);
-  sleep(5);
+  fputs("signal SIGALRM handler: sleep 10 sec! \n!", stream);
+  sleep(10);
   fputs("signal SIGALRM handler: woke up \n!", stream);
   fflush(stream);
 }

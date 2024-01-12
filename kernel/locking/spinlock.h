@@ -1,0 +1,6 @@
+#ifndef LOCKING_SPINLOCK_H
+#define LOCKING_SPINLOCK_H
+
+
+
+#endif

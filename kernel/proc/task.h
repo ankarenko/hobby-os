@@ -159,6 +159,7 @@ void lock_scheduler();
 void unlock_scheduler();
 void make_schedule();
 void sched_init();
+void schedule();
 struct list_head* get_ready_threads();
 void sched_push_queue(thread* th);
 thread* pop_next_thread_to_terminate();
