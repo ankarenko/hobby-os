@@ -10,14 +10,16 @@ struct semaphore {
   // uint32_t lock; for multiprocess
 };
 
-#define __SEMAPHORE_INITIALIZER(name, n)         \
-{                                                \
+#define __SEMAPHORE_INITIALIZER(name, n) {       \
   .count = n,                                    \
   .capacity = n,                                 \
   .wait_list = LIST_HEAD_INIT((name).wait_list), \
 }
 
-#define DEFINE_SEMAPHORE(name) \
+#define INIT_SEMAPHORE(name, n) \
+	struct semaphore name = __SEMAPHORE_INITIALIZER(name, n)
+
+#define INIT_MUTEX(name) \
 	struct semaphore name = __SEMAPHORE_INITIALIZER(name, 1)
 
 void semaphore_up(struct semaphore *sem);

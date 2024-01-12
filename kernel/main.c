@@ -8,6 +8,7 @@
 #include "kernel/devices/tty.h"
 #include "kernel/fs/char_dev.h"
 #include "kernel/fs/ext2/ext2.h"
+#include "kernel/locking/semaphore.h"
 #include "kernel/fs/fat32/fat32.h"
 #include "kernel/fs/vfs.h"
 #include "kernel/memory/kernel_info.h"
@@ -35,11 +36,13 @@ void cmd_init();
 void idle_task();
 
 //! sleeps a little bit. This uses the HALs get_tick_count() which in turn uses the PIT
+/*
 void sleep(uint32_t ms) {
   int32_t ticks = ms + get_tick_count();
   while (ticks > get_tick_count())
     ;
 }
+*/
 
 static struct vfs_file* _cur_dir = NULL;
 
@@ -88,6 +91,63 @@ void get_cmd(char* buf, int n) {
   }
 }
 
+#define N 100
+static int buffer[N];
+static int i = -1;
+
+static INIT_MUTEX(mutex);
+static INIT_SEMAPHORE(left, N);
+static INIT_SEMAPHORE(reserved, N);
+
+void init_consumer_producer() {
+  left.count = N;
+  reserved.count = 0;
+  for (int i = 0; i < N; ++i) {
+    buffer[i] = 0;
+  } 
+}
+
+void consumer() {
+  while (1) {
+    log("Consumer: start");
+
+    semaphore_down(&reserved);
+    semaphore_down(&mutex);
+    log("Consumer: enter CS");
+
+    buffer[i] = 0;
+    log("Consumed %d", i);
+    i--;
+    
+
+    semaphore_up(&mutex);
+    log("Consumer: leave CS");
+    semaphore_up(&left);
+
+    thread_sleep(300);
+  }
+}
+
+void producer() {
+  while (1) {
+    log("Producer: start");
+
+    semaphore_down(&left);
+    semaphore_down(&mutex);
+    log("Producer: enter CS");
+    
+    ++i;
+    buffer[i] = 1;
+    log("Produced %d", i);
+
+    semaphore_up(&mutex);
+    log("Producer: leave CS");
+    semaphore_up(&reserved);
+
+    thread_sleep(300);
+  }
+}
+
 void kthread() {
   int col = 0;
   bool dir = true;
@@ -102,6 +162,10 @@ bool run_cmd(char* cmd_buf) {
   if (strcmp(cmd_buf, "create") == 0) {
     printf("\nnew thread: ");
     create_system_process(&kthread);
+  } if (strcmp(cmd_buf, "play") == 0) {
+    init_consumer_producer();
+    create_system_process(&producer);
+    create_system_process(&consumer);
   } else if (strcmp(cmd_buf, "kill") == 0) {
     char id[10];
 
