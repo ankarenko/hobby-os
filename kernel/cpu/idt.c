@@ -215,7 +215,7 @@ void isr_handler(interrupt_registers *regs) {
 void register_interrupt_handler(uint8_t n, I86_IRQ_HANDLER handler) {
   struct interrupt_handler *ih = kcalloc(1, sizeof(struct interrupt_handler));
 	ih->handler = handler;
-	list_add_tail(&ih->sibling, &interrupt_handlers[n]);
+	list_add(&ih->sibling, &interrupt_handlers[n]);
 }
 
 // This gets called from our ASM interrupt handler stub.

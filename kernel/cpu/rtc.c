@@ -1,5 +1,6 @@
 #include "kernel/cpu/rtc.h"
 #include "kernel/util/math.h"
+#include "kernel/util/debug.h"
 #include "kernel/system/time.h"
 
 #include "kernel/cpu/hal.h"
@@ -87,6 +88,11 @@ static void rtc_irq_handler(struct interrupt_registers *regs) {
 
     rtc_get_datetime(&year, &month, &day, &hour, &minute, &second);
     set_current_time(year, month, day, hour, minute, second);
+  }
+
+  if (current_ticks % RTC_TICKS_PER_SECOND == 0) {
+    //struct time* t = get_time(0);  // current time
+    //log("\nCurrent time (UTC): %d:%d:%d, %d.%d.%d", t->hour, t->minute, t->second, t->day, t->month, t->year);
   }
 
   outportb(CMOS_ADDRESS, 0x0C);  // select register C
