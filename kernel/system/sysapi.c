@@ -92,7 +92,7 @@ static pid_t sys_fork() {
 }
  
 static int32_t sys_nanosleep(const struct timespec *req, struct timespec *rem) {
-	thread_sleep(req->tv_nsec / 10000);
+	thread_sleep(req->tv_nsec / 1000);
 	return 0;
 }
 

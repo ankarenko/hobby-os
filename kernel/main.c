@@ -93,7 +93,7 @@ void kthread() {
   bool dir = true;
   while (1) {
     printf("\nNew thread 10");
-    thread_sleep(300);
+    thread_sleep(3000);
   }
 }
 

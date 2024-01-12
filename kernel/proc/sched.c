@@ -132,7 +132,7 @@ void thread_update(thread *t, enum thread_state state) {
 void thread_sleep(uint32_t ms) {
 	uint32_t exp = get_seconds(NULL) * 1000 + ms;
   mod_timer(&_current_thread->s_timer, exp);
-	thread_set_state(_current_thread, THREAD_WAITING);
+  thread_update(_current_thread, THREAD_WAITING);
   schedule();
 }
 
@@ -167,7 +167,14 @@ bool thread_kill(uint32_t tid) {
   thread* th = NULL;
   list_for_each_entry(th, sched_get_list(THREAD_READY), sched_sibling) {
     if (tid == th->tid) {
-      thread_set_state(th, THREAD_TERMINATED);
+      thread_update(th, THREAD_TERMINATED);
+      return true;
+    }
+  }
+
+  list_for_each_entry(th, sched_get_list(THREAD_WAITING), sched_sibling) {
+    if (tid == th->tid) {
+      thread_update(th, THREAD_TERMINATED);
       return true;
     }
   }

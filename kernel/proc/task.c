@@ -143,7 +143,9 @@ void kernel_thread_entry(thread *th, void *flow()) {
 static void thread_wakeup_timer(struct sleep_timer *timer) {
 	thread *th = from_timer(th, timer, s_timer);
 	list_del(&timer->sibling);
-  thread_update(th, THREAD_READY);
+  if (th->state == THREAD_WAITING) {
+    thread_update(th, THREAD_READY);
+  }
 }
 
 static thread* thread_create(

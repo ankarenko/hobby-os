@@ -50,9 +50,11 @@ bool is_actived_timer(struct sleep_timer *timer) {
 static int32_t timer_schedule_handler(interrupt_registers *regs) {
   struct sleep_timer *iter, *next;
 	uint64_t cms = get_seconds(NULL) * 1000;
-	
-  list_for_each_entry(iter, &list_of_timer, sibling) {
+  
+  // should be safe because callback most probably will remove timer from the list
+  list_for_each_entry_safe(iter, next, &list_of_timer, sibling) {
 		assert_timer_valid(iter);
+    
 		if (iter->expires <= cms)
 			iter->callback(iter);
 	}
