@@ -165,6 +165,8 @@ bool run_cmd(char* cmd_buf) {
   } if (strcmp(cmd_buf, "play") == 0) {
     init_consumer_producer();
     create_system_process(&producer);
+    create_system_process(&producer);
+    create_system_process(&consumer);
     create_system_process(&consumer);
   } else if (strcmp(cmd_buf, "kill") == 0) {
     char id[10];

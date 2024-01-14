@@ -1,7 +1,10 @@
 #include "kernel/util/ctype.h"
 #include "kernel/cpu/hal.h"
+#include "kernel/fs/char_dev.h"
 #include "kernel/cpu/idt.h"
+#include "kernel/util/fcntl.h"
 #include "kybrd.h"
+#include "kernel/fs/vfs.h"
 
 // keyboard encoder ------------------------------------------
 enum KYBRD_ENCODER_IO {
@@ -556,10 +559,52 @@ bool kkybrd_self_test() {
   return (kybrd_enc_read_buf() == 0x55) ? true : false;
 }
 
+struct kybrd_inode {
+	bool ready;
+	//struct key_event packets[KYBRD_PACKET_QUEUE_LEN];  // only store 16 latest mouse motions
+	uint8_t head, tail;
+	struct list_head sibling;
+	struct vfs_file *file;
+};
+
+static int kybrd_open(struct vfs_inode *inode, struct vfs_file *file) {
+	struct kybrd_inode *mi = kcalloc(sizeof(struct kybrd_inode), 1);
+	mi->file = file;
+	file->private_data = mi;
+	list_add_tail(&mi->sibling, &nodelist);
+
+	return 0;
+}
+
+static ssize_t kybrd_read(struct vfs_file *file, char *buf, size_t count, off_t ppos) {
+	struct kybrd_inode *mi = (struct kybrd_inode *)file->private_data;
+	wait_event(&hwait, mi->ready);
+
+	memcpy(buf, &mi->packets[mi->head], sizeof(struct key_event));
+
+	if (mi->tail != mi->head)
+		mi->head = (mi->head + 1) % MOUSE_PACKET_QUEUE_LEN;
+	else
+		mi->ready = false;
+
+	return 0;
+}
+
+struct vfs_file_operations kybrd_fops = {
+  .open = kybrd_open,
+	.read = kybrd_read,
+};
+
+static struct char_device cdev_kybrd = (struct char_device)DECLARE_CHRDEV("kybrd", KYBRD_MAJOR, 1, 1, &kybrd_fops);
+
 //! prepares driver for use
 void kkybrd_install(int irq) {
   //! Install our interrupt handler (irq 1 uses interrupt 33)
   register_interrupt_handler(irq, i86_kybrd_irq);
+
+  log("Keyboard: init");
+  register_chrdev(&cdev_kybrd);
+  vfs_mknod("/dev/input/keyboard", S_IFCHR, 0);
 
   //! assume BAT test is good. If there is a problem, the IRQ handler where catch the error
   _kkybrd_bat_res = true;

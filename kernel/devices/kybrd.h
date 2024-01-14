@@ -5,6 +5,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/* https://www.kernel.org/doc/Documentation/admin-guide/devices.txt */
+#define KYBRD_MAJOR 11
+
 enum KEYCODE {
   KEY_SPACE = ' ',
   KEY_0 = '0',

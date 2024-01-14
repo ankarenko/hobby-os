@@ -42,8 +42,7 @@ int32_t vfs_close(int32_t fd) {
   process *cur_proc = get_current_process();
   struct vfs_file *file = cur_proc->files->fd[fd];
 
-  // TODO: AS 2023-11-19 - add synchronization
-  // acquire_semaphore(&files->lock);
+  semaphore_down(&cur_proc->files->lock);
 
   int ret = 0;
   if (file) {
@@ -53,6 +52,8 @@ int32_t vfs_close(int32_t fd) {
   } else {
     ret = -EBADF;
   }
+
+  semaphore_up(&cur_proc->files->lock);
 
   return ret;
 }

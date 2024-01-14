@@ -28,6 +28,16 @@ struct char_device {
 	struct vfs_file_operations *f_ops;
 };
 
+#define DECLARE_CHRDEV(_name, _major, _baseminor, _minorct, _ops) \
+{                                                           \
+  .name = _name,                                            \
+  .major = _major,                                          \
+  .baseminor = _baseminor,                                  \
+  .minorct = _minorct,                                      \
+  .dev = MKDEV(_major, _baseminor),                         \
+  .f_ops = _ops,                                            \
+}
+
 struct char_device *alloc_chrdev(const char *name, uint32_t major, uint32_t minor, int32_t minorct, struct vfs_file_operations *ops);
 int register_chrdev(struct char_device *cdev);
 int unregister_chrdev(dev_t dev);

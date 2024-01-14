@@ -6,6 +6,7 @@
 
 #include "kernel/util/types.h"
 #include "kernel/ipc/signal.h"
+#include "kernel/locking/semaphore.h"
 #include "kernel/util/list.h"
 #include "kernel/devices/char/tty.h"
 #include "kernel/memory/vmm.h"
@@ -109,7 +110,8 @@ typedef struct _thread {
 } thread;
 
 typedef struct _files_struct {
-	//struct semaphore lock;
+  // TODO: what to do if two threads from different processes try to access a file
+	struct semaphore lock;   // used to synchronized threads and childs of a given process
 	struct vfs_file *fd[MAX_FD];
 } files_struct;
 

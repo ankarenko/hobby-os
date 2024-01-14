@@ -3,7 +3,7 @@
 #include "kernel/proc/task.h"
 #include "kernel/util/debug.h"
 
-#include "./vfs.h"
+#include "kernel/fs/vfs.h"
 
 char *vfs_read(const char *path) {
   int32_t fd = vfs_open(path, O_RDWR);
@@ -28,20 +28,23 @@ int32_t vfs_fread(int32_t fd, char *buf, int32_t count) {
   process* cur_proc = get_current_process();
 	struct vfs_file* file = cur_proc->files->fd[fd];
 
+  int ret = 0;
   if (S_ISDIR(file->f_dentry->d_inode->i_mode)) {
-    return -EISDIR;
+    ret = -EISDIR;
+  } else if (fd < 0 || !file)
+		ret = -EBADF;
+	else if (file /*&& file->f_mode & FMODE_CAN_READ*/)
+		ret = file->f_op->read(file, buf, count, file->f_pos);
+  else {
+    ret = -EINVAL;
   }
 
-	if (fd < 0 || !file)
-		return -EBADF;
-
-	if (file /*&& file->f_mode & FMODE_CAN_READ*/)
-		return file->f_op->read(file, buf, count, file->f_pos);
-
-	return -EINVAL;
+	return ret;
 }
 
 off_t vfs_generic_llseek(struct vfs_file *file, off_t offset, int whence) {
+  process* cur_proc = get_current_process();
+  semaphore_down(&cur_proc->files->lock);
 	struct vfs_inode *inode = file->f_dentry->d_inode;
 	off_t foffset;
 
@@ -51,47 +54,61 @@ off_t vfs_generic_llseek(struct vfs_file *file, off_t offset, int whence) {
 		foffset = file->f_pos + offset;
 	else if (whence == SEEK_END)
 		foffset = inode->i_size + offset;
-	else
+	else {
+    semaphore_up(&cur_proc->files->lock);
 		return -EINVAL;
+  }
 
 	file->f_pos = foffset;
+
+  semaphore_up(&cur_proc->files->lock);
 	return foffset;
 }
 
 off_t vfs_flseek(int32_t fd, off_t offset, int whence) {
   process* proc = get_current_process();
+  semaphore_down(&proc->files->lock);
   struct vfs_file* file = proc->files->fd[fd];
+  int ret = 0;
 
-	if (fd < 0 || !file)
-		return -EBADF;
+  if (fd < 0 || !file)
+		ret = -EBADF;
+	else if (file && file->f_op && file->f_op->llseek)
+		ret = file->f_op->llseek(file, offset, whence);
+  else 
+    ret = -EINVAL;
 
-	if (file && file->f_op && file->f_op->llseek)
-		return file->f_op->llseek(file, offset, whence);
-
-	return -EINVAL;
+  semaphore_up(&proc->files->lock);
+	return ret;
 }
 
 ssize_t vfs_fwrite(int32_t fd, char* buf, int32_t count) {
   process* cur_proc = get_current_process();
+  semaphore_down(&cur_proc->files->lock);
   struct vfs_file *file = cur_proc->files->fd[fd];
 
+  int ret = 0;
+
   if (S_ISDIR(file->f_dentry->d_inode->i_mode)) {
-    return -EISDIR;
+    ret = -EISDIR;
+    goto exit;
+  } else if (fd < 0 || !file) {
+		ret = -EBADF;
+    goto exit;
   }
-  
-	if (fd < 0 || !file)
-		return -EBADF;
 
 	off_t ppos = file->f_pos;
   
 	if (file->f_flags & O_APPEND)
 		ppos = file->f_dentry->d_inode->i_size;
   
-  return file->f_op->write(file, buf, count, ppos);
+  ret = file->f_op->write(file, buf, count, ppos);
   
   /*
 	if (file->f_mode & FMODE_CAN_WRITE)
 		return file->f_op->write(file, buf, count, ppos);
   */
-	return -EINVAL;
+exit:
+  semaphore_up(&cur_proc->files->lock);
+	return ret;
 }
