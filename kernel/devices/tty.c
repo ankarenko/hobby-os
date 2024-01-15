@@ -150,7 +150,6 @@ void terminal_clrscr() {
   clrscr();
 }
 
-
 void terminal_putchar(char c) {
   const bool is_special = c == '\n';
 

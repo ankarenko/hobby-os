@@ -1,6 +1,7 @@
 #include "kernel/devices/char/tty.h"
 
 #include "kernel/fs/char_dev.h"
+#include "kernel/proc/task.h"
 #include "kernel/memory/malloc.h"
 #include "kernel/util/debug.h"
 #include "kernel/util/errno.h"
@@ -79,22 +80,7 @@ static int ptmx_open(struct vfs_inode *inode, struct vfs_file *file) {
 static int tty_open(struct vfs_inode *inode, struct vfs_file *file) {
   struct tty_struct *tty = NULL;
   dev_t dev = inode->i_rdev;
-  tty = find_tty_from_driver(serial_driver, MINOR(dev));
-
-  if (!tty)
-    tty = create_tty_struct(serial_driver, MINOR(dev) - SERIAL_MINOR_BASE);
-
-  /*
-    TODO: keep counter of open and closed?? 
-  */
-  if (tty && tty->driver->tops->open)
-    tty->driver->tops->open(tty, file);
-
-  file->private_data = tty;
-
-  /*
-  struct tty_struct *tty = NULL;
-  dev_t dev = inode->i_rdev;
+  process *current_process = get_current_process();
 
   if (MAJOR(dev) == UNIX98_PTY_SLAVE_MAJOR)
     tty = find_tty_from_driver(pts_driver, MINOR(dev));
@@ -110,8 +96,8 @@ static int tty_open(struct vfs_inode *inode, struct vfs_file *file) {
     tty->driver->tops->open(tty, file);
 
   file->private_data = tty;
-  tiocsctty(tty, 0);
-  */
+  //tiocsctty(tty, 0);
+  
   return 0;
 }
 
@@ -150,8 +136,8 @@ static struct vfs_file_operations tty_fops = {
 
 static struct vfs_file_operations ptmx_fops = {
   .open = ptmx_open,
-  .read = tty_read,
-  .write = tty_write
+  //.read = tty_read,
+  //.write = tty_write
 };
 
 int tty_register_driver(struct tty_driver *driver) {
@@ -186,7 +172,8 @@ void tty_init() {
   log("TTY: Mount tty");
   struct char_device *tty_cdev = alloc_chrdev("tty", TTYAUX_MAJOR, 0, 1, &tty_fops);
   register_chrdev(tty_cdev);
-  vfs_mknod("/dev/tty", S_IFCHR, tty_cdev->dev);
+  // i don't see any sense 
+  // vfs_mknod("/dev/tty", S_IFCHR, tty_cdev->dev);
 
   log("TTY: Init pty");
   pty_init();
