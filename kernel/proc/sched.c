@@ -136,13 +136,9 @@ void thread_sleep(uint32_t ms) {
   schedule();
 }
 
-/*
-void thread_wake() {
-  thread_set_state(_current_thread, THREAD_READY);
-	//thread_remove_state(_current_thread, THREAD_WAITING);
-	_current_thread->sleep_time_delta = 0;
+void thread_wake(thread *th) {
+  thread_update(th, THREAD_READY);
 }
-*/
 
 bool thread_signal(uint32_t tid, int32_t signum) {
   thread* th = NULL;

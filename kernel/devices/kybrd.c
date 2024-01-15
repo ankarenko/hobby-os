@@ -2,14 +2,27 @@
 #include "kernel/cpu/hal.h"
 #include "kernel/fs/char_dev.h"
 #include "kernel/cpu/idt.h"
+#include "kernel/util/debug.h"
+#include "kernel/proc/wait.h"
 #include "kernel/util/fcntl.h"
 #include "kybrd.h"
 #include "kernel/fs/vfs.h"
+
+static struct list_head nodelist;
+static struct wait_queue_head hwait;
 
 // keyboard encoder ------------------------------------------
 enum KYBRD_ENCODER_IO {
   KYBRD_ENC_INPUT_BUF = 0x60,
   KYBRD_ENC_CMD_REG = 0x60
+};
+
+struct kybrd_inode {
+	bool ready;
+	struct key_event packets[KYBRD_PACKET_QUEUE_LEN];
+	uint8_t head, tail;
+	struct list_head sibling;
+	struct vfs_file *file;
 };
 
 enum KYBRD_ENC_CMDS {
@@ -52,6 +65,10 @@ enum KYBRD_CTRL_STATS_MASK {
   KYBRD_CTRL_STATS_MASK_TIMEOUT = 0x40,  // 01000000
   KYBRD_CTRL_STATS_MASK_PARITY = 0x80    // 10000000
 };
+
+static inline uint8_t kybrd_next_packet(uint8_t v) {
+  return (v + 1) % KYBRD_PACKET_QUEUE_LEN;
+}
 
 enum KYBRD_CTRL_CMDS {
 
@@ -238,6 +255,53 @@ void kybrd_enc_send_cmd(uint8_t cmd) {
   outportb(KYBRD_ENC_CMD_REG, cmd);
 }
 
+static struct key_event current_kybrd_event;
+
+void kybrd_set_event_state() {
+  if (_numlock) {
+    KYBRD_SET(current_kybrd_event.state, KYBRD_NUMLOCK);
+  }
+
+  if (_scrolllock) {
+    KYBRD_SET(current_kybrd_event.state, KYBRD_SCROLLLOCK);
+  }
+
+  if (_capslock) {
+    KYBRD_SET(current_kybrd_event.state, KYBRD_CAPSLOCK);
+  }
+
+  if (_shift) {
+    KYBRD_SET(current_kybrd_event.state, KYBRD_SHIFT);
+  }
+
+  if (_alt) {
+    KYBRD_SET(current_kybrd_event.state, KYBRD_ALT);
+  }
+
+  if (_ctrl) {
+    KYBRD_SET(current_kybrd_event.state, KYBRD_CTRL);
+  }
+}
+
+void kybrd_notify_readers(struct key_event *ev) {
+  struct kybrd_inode *iter;
+  list_for_each_entry(iter, &nodelist, sibling) {
+    if (iter->ready == true) {
+      iter->tail = kybrd_next_packet(iter->tail);
+      if (iter->tail == iter->head) {
+        iter->head = kybrd_next_packet(iter->head);
+      }
+    } else {
+      iter->head = 0;
+      iter->tail = iter->head;
+    }
+
+    iter->ready = true;
+    iter->packets[iter->tail] = *ev;
+  }
+  wake_up(&hwait);
+}
+
 //!	keyboard interrupt handler
 void i86_kybrd_irq() {
   static bool _extended = false;
@@ -282,6 +346,9 @@ void i86_kybrd_irq() {
             _alt = false;
             break;
         }
+
+        current_kybrd_event.type = KEY_RELEASE;
+        current_kybrd_event.key = key;
       } else {
         //! this is a make code - set the scan code
         _scancode = code;
@@ -321,7 +388,14 @@ void i86_kybrd_irq() {
             kkybrd_set_leds(_numlock, _capslock, _scrolllock);
             break;
         }
+
+        current_kybrd_event.type = KEY_PRRESS;
+        current_kybrd_event.key = key;
       }
+
+      
+      kybrd_set_event_state();
+      kybrd_notify_readers(&current_kybrd_event);
     }
 
     //! watch for errors
@@ -411,14 +485,18 @@ void kkybrd_set_leds(bool num, bool caps, bool scroll) {
 }
 
 //! get last key stroke
+/*
 enum KEYCODE kkybrd_get_last_key() {
   return (_scancode != INVALID_SCANCODE) ? ((enum KEYCODE)_kkybrd_scancode_std[_scancode]) : (KEY_UNKNOWN);
 }
+*/
 
 //! discards last scan
+/*
 void kkybrd_discard_last_key() {
   _scancode = INVALID_SCANCODE;
 }
+*/
 
 //! convert key to an ascii character
 char kkybrd_key_to_ascii(enum KEYCODE code) {
@@ -559,14 +637,6 @@ bool kkybrd_self_test() {
   return (kybrd_enc_read_buf() == 0x55) ? true : false;
 }
 
-struct kybrd_inode {
-	bool ready;
-	//struct key_event packets[KYBRD_PACKET_QUEUE_LEN];  // only store 16 latest mouse motions
-	uint8_t head, tail;
-	struct list_head sibling;
-	struct vfs_file *file;
-};
-
 static int kybrd_open(struct vfs_inode *inode, struct vfs_file *file) {
 	struct kybrd_inode *mi = kcalloc(sizeof(struct kybrd_inode), 1);
 	mi->file = file;
@@ -579,11 +649,13 @@ static int kybrd_open(struct vfs_inode *inode, struct vfs_file *file) {
 static ssize_t kybrd_read(struct vfs_file *file, char *buf, size_t count, off_t ppos) {
 	struct kybrd_inode *mi = (struct kybrd_inode *)file->private_data;
 	wait_event(&hwait, mi->ready);
+  
+  uint32_t size = sizeof(struct key_event);
 
 	memcpy(buf, &mi->packets[mi->head], sizeof(struct key_event));
 
 	if (mi->tail != mi->head)
-		mi->head = (mi->head + 1) % MOUSE_PACKET_QUEUE_LEN;
+		mi->head = kybrd_next_packet(mi->head);
 	else
 		mi->ready = false;
 
@@ -599,12 +671,16 @@ static struct char_device cdev_kybrd = (struct char_device)DECLARE_CHRDEV("kybrd
 
 //! prepares driver for use
 void kkybrd_install(int irq) {
+  INIT_LIST_HEAD(&nodelist);
+  INIT_LIST_HEAD(&hwait.list);
+
   //! Install our interrupt handler (irq 1 uses interrupt 33)
   register_interrupt_handler(irq, i86_kybrd_irq);
 
   log("Keyboard: init");
   register_chrdev(&cdev_kybrd);
-  vfs_mknod("/dev/input/keyboard", S_IFCHR, 0);
+  vfs_mkdir("/dev/input", 0);
+  vfs_mknod("/dev/input/kybrd", S_IFCHR, cdev_kybrd.dev);
 
   //! assume BAT test is good. If there is a problem, the IRQ handler where catch the error
   _kkybrd_bat_res = true;

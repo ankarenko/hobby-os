@@ -45,25 +45,18 @@ void sleep(uint32_t ms) {
 */
 
 static struct vfs_file* _cur_dir = NULL;
-
-//! wait for key stroke
-enum KEYCODE getch() {
-  enum KEYCODE key = KEY_UNKNOWN;
-
-  //! wait for a keypress
-  while (key == KEY_UNKNOWN)
-    key = kkybrd_get_last_key();
-
-  //! discard last keypress (we handled it) and return
-  kkybrd_discard_last_key();
-  return key;
-}
+static struct int32 *kybrd_fd = -1;
 
 //! gets next command
 void get_cmd(char* buf, int n) {
   int32_t i = 0;
+  struct key_event ev;
   while (i < n) {
-    enum KEYCODE key = getch();
+    vfs_fread(kybrd_fd, &ev, sizeof(ev));
+    if (ev.type == KEY_RELEASE) {
+      continue;
+    }
+    enum KEYCODE key = ev.key;
 
     switch (key) {
       case KEY_BACKSPACE:
@@ -79,7 +72,6 @@ void get_cmd(char* buf, int n) {
         break;
       default:
         char c = kkybrd_key_to_ascii(key);
-
         if (isascii(c)) {
           terminal_write(&c, 1);
         }
@@ -308,6 +300,8 @@ bool run_cmd(char* cmd_buf) {
     cmd_read_sect();
   } else if (strcmp(cmd_buf, "cat") == 0) {
     cmd_read_file();
+  } else if (strcmp(cmd_buf, "dcat") == 0) {
+    cmd_read_kybrd();
   } else if (strcmp(cmd_buf, "ls") == 0) {
     char filepath[100];
 
@@ -332,13 +326,46 @@ bool run_cmd(char* cmd_buf) {
   return false;
 }
 
+void cmd_read_kybrd() {
+  char filepath[100];
+
+  printf("\npath: ");
+  get_cmd(filepath, 100);
+
+  int32_t fd = vfs_open(filepath, O_RDONLY, 0);
+
+  if (fd == -ENOENT || fd < 0) {
+    printf("\nfile not found");
+    return;
+  }
+
+  uint32_t size = sizeof(struct key_event);
+  uint8_t* buf = kcalloc(1, size);
+  printf("\n_____________________________________________\n");
+  while (vfs_fread(fd, buf, size) >= 0) {
+    struct key_event *ev = buf;
+    char c = kkybrd_key_to_ascii(ev->key);
+    printf("%c", c);
+  };
+  printf("\n____________________________________________");
+  kfree(buf);
+  vfs_close(fd);
+  /*
+  uint8_t* buf = vfs_read(filepath);
+  printf("\n_____________________________________________\n");
+  printf(buf);
+  printf("____________________________________________");
+  kfree(buf);
+  */
+}
+
 void cmd_read_file() {
   char filepath[100];
 
   printf("\npath: ");
   get_cmd(filepath, 100);
 
-  int32_t fd = vfs_open(filepath, O_RDONLY, S_IFREG);
+  int32_t fd = vfs_open(filepath, O_RDONLY, 0);
 
   if (fd == -ENOENT || fd < 0) {
     printf("\nfile not found");
@@ -365,6 +392,10 @@ void cmd_read_file() {
 }
 
 extern void cmd_init() {
+  if ((kybrd_fd = vfs_open("/dev/input/kybrd", O_RDONLY)) < 0) {
+    err("Cannot open keyboard");
+  }
+
   char cmd_buf[100];
 
   while (1) {
@@ -404,7 +435,7 @@ void cmd_read_sect() {
       i += 128;
 
       printf("\nPress any key to continue\n");
-      getch();
+      //getch();
     }
   } else
     printf("\n*** Error reading sector from disk\n");
@@ -421,6 +452,8 @@ void main_thread() {
 
   vfs_init(&ext2_fs_type, "/dev/hda");
   chrdev_init();
+
+  kkybrd_install(IRQ1);
 
   tty_init();
   cmd_init();
@@ -440,8 +473,7 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   enable_interrupts();
   
   terminal_initialize();
-  kkybrd_install(IRQ1);
-
+  
   log("Kernel size: %dKB", (int)(KERNEL_END - KERNEL_START) / 1024);
   log("Ends in 0x%x (DIR: %d, INDEX: %d)", KERNEL_END, PAGE_DIRECTORY_INDEX(KERNEL_END), PAGE_TABLE_INDEX(KERNEL_END));
 

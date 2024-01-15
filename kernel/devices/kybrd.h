@@ -159,6 +159,30 @@ enum KEYCODE {
   KEY_NUMKEYCODES
 };
 
+#define KYBRD_PACKET_QUEUE_LEN 5
+
+#define KYBRD_NUMLOCK 0
+#define KYBRD_CAPSLOCK 1
+#define KYBRD_SCROLLLOCK 2
+#define KYBRD_SHIFT 3
+#define KYBRD_ALT 4
+#define KYBRD_CTRL 5
+
+#define KYBRD_SET(v, bit) (v | (1 << bit))
+#define KYBRD_IS_SET(v, bit) ((v & (1 << bit)) != 0)
+
+enum key_event_type {
+	KEY_PRRESS,
+	KEY_RELEASE,
+};
+
+struct key_event {
+	enum key_event_type type;
+	unsigned int key;
+	unsigned int state;
+};
+
+
 //! returns status of lock keys
 bool kkybrd_get_scroll_lock();
 bool kkybrd_get_numlock();
@@ -179,9 +203,6 @@ bool kkybrd_get_bat_res();
 bool kkybrd_self_test();
 
 //! returns last scan code, last keystroke
-uint8_t kkybrd_get_last_scan();
-enum KEYCODE kkybrd_get_last_key();
-void kkybrd_discard_last_key();
 
 void kkybrd_set_leds(bool num, bool caps, bool scroll);
 

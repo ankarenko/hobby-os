@@ -229,6 +229,7 @@ void ext2_read_inode(struct vfs_inode* i) {
 	i->i_mode = raw_node->i_mode;
 	i->i_gid = raw_node->i_gid;
 	i->i_uid = raw_node->i_uid;
+  
 
 	i->i_nlink = raw_node->i_links_count;
 	i->i_size = raw_node->i_size;

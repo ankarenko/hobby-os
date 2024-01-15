@@ -166,6 +166,7 @@ struct list_head* get_ready_threads();
 void sched_push_queue(thread* th);
 thread* pop_next_thread_to_terminate();
 bool thread_kill(uint32_t id);
+void thread_wake(thread *th);
 bool thread_signal(uint32_t tid, int32_t signal);
 void thread_update(thread *t, enum thread_state state);
 
