@@ -1,5 +1,5 @@
-#ifndef _TTY_H
-#define _TTY_H
+#ifndef _KERNEL_TERMINAL_H
+#define _KERNEL_TERMINAL_H
 
 #include <stddef.h>
 
@@ -14,5 +14,6 @@ void terminal_clrscr();
 void terminal_clrline();
 void terminal_set_color(enum vga_color color);
 void terminal_reset_color();
+void terminal_run();
 
 #endif

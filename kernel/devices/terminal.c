@@ -4,9 +4,16 @@
 #include "kernel/util/string/string.h"
 
 #include "kernel/util/ctype.h"
+#include "kernel/util/vsprintf.h"
+#include "kernel/fs/vfs.h"
+#include "kernel/util/debug.h"
+#include "kernel/devices/kybrd.h"
+#include "kernel/proc/task.h"
+#include "kernel/util/math.h"
+#include "kernel/util/fcntl.h"
 #include "kernel/cpu/hal.h"
 #include "kernel/memory/kernel_info.h"
-#include "kernel/devices/tty.h"
+#include "kernel/devices/terminal.h"
 
 static const size_t VGA_WIDTH = 80;
 static const size_t VGA_HEIGHT = 25;
@@ -186,4 +193,54 @@ void terminal_write(const char* data, size_t size) {
 
 void terminal_writestring(const char* data) {
   terminal_write(data, strlen(data));
+}
+
+void terminal_run() {
+  terminal_initialize();
+
+  int kybrd_fd;
+  if ((kybrd_fd = vfs_open("/dev/input/kybrd", O_RDONLY)) < 0) {
+    err("Cannot open keyboard");
+  }
+
+  struct key_event ev;
+  process* proc = get_current_process();
+
+  char buf[128];
+
+  while (true) {
+    
+newline:
+    sprintf(&buf, "\n(%s)root@%s: ", 
+      strcmp(proc->fs->mnt_root->mnt_devname, "/dev/hda") == 0 ? "ext2" : proc->fs->mnt_root->mnt_devname,
+      proc->fs->d_root->d_name
+    );
+
+    terminal_write(&buf, strlen(&buf));
+
+    while (true) {
+      vfs_fread(kybrd_fd, &ev, sizeof(ev));
+      if (ev.type == KEY_RELEASE) {
+        continue;
+      }
+      enum KEYCODE key = ev.key;
+
+      switch (key) {
+        case KEY_BACKSPACE:
+          terminal_popchar();
+          break;
+        
+        case KEY_RETURN:
+          goto newline;
+        case KEY_UNKNOWN:
+          break;
+        default:
+          char c = kkybrd_key_to_ascii(key);
+          if (isascii(c)) {
+            terminal_write(&c, 1);
+          }
+          break;
+      }
+    }
+  }
 }

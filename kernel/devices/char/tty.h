@@ -21,7 +21,7 @@
 #define UNIX98_PTY_MASTER_MAJOR 128
 #define UNIX98_PTY_MAJOR_COUNT 8
 #define UNIX98_PTY_SLAVE_MAJOR (UNIX98_PTY_MASTER_MAJOR + UNIX98_PTY_MAJOR_COUNT)
-#define N_TTY_BUF_SIZE 4096
+#define N_TTY_BUF_SIZE 64
 #define N_TTY_BUF_ALIGN(v) ((v) & (N_TTY_BUF_SIZE - 1))
 #define NCCS 19
 #define __DISABLED_CHAR '\0'
@@ -104,16 +104,13 @@ struct tty_struct {
 	//pid_t pgrp;
 	//pid_t session;
 
-	//struct wait_queue_head write_wait;
-	//struct wait_queue_head read_wait;
-  struct semaphore *free;
-  struct semaphore *reserved;
+  struct semaphore *to_read;
   struct semaphore *mutex;
   
-	char buf[N_TTY_BUF_SIZE];
-  uint8_t buf_tail;
-  uint8_t buf_head;
-
+	char buffer[N_TTY_BUF_SIZE];
+  uint8_t read_tail;
+  uint8_t read_head;
+  
   struct list_head sibling;
 };
 

@@ -43,10 +43,8 @@ static struct tty_struct *create_tty_struct(struct tty_driver *driver, int idx) 
   
   // init semaphores
   sema_init(tty->mutex, 1);
-  sema_init(tty->free, N_TTY_BUF_SIZE);
-  tty->free->count = N_TTY_BUF_SIZE;
-  sema_init(tty->reserved, N_TTY_BUF_SIZE);
-
+  sema_init(tty->to_read, N_TTY_BUF_SIZE);
+  
   //tty->termios = &driver->init_termios;
   //tty->winsize.ws_col = 80;
   //tty->winsize.ws_row = 40;

@@ -20,13 +20,16 @@ static int pty_write(struct tty_struct *tty, const char *buf, int count) {
   if (!to)
     return 0;
 
+  /*
   int c = to->ldisc->receive_room(to);
 
   if (c > count)
     c = count;
-
-  to->ldisc->receive_buf(to, buf, c);
-  return c;
+  */
+  
+  to->ldisc->receive_buf(to, buf, count);
+  
+  return count;
 }
 
 static int pty_write_room(struct tty_struct *tty) {

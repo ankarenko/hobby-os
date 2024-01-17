@@ -2,7 +2,7 @@
 
 #include "kernel/util/ctype.h"
 #include "kernel/util/math.h"
-#include "kernel/devices/tty.h"
+#include "kernel/devices/terminal.h"
 #include "kernel/cpu/exception.h"
 #include "kernel/cpu/gdt.h"
 #include "kernel/cpu/hal.h"

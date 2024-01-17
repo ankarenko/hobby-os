@@ -5,7 +5,7 @@
 #include "kernel/cpu/tss.h"
 #include "kernel/devices/kybrd.h"
 #include "kernel/devices/pata.h"
-#include "kernel/devices/tty.h"
+#include "kernel/devices/terminal.h"
 #include "kernel/fs/char_dev.h"
 #include "kernel/fs/ext2/ext2.h"
 #include "kernel/locking/semaphore.h"
@@ -53,14 +53,15 @@ void get_cmd(char* buf, int n) {
   struct key_event ev;
   while (i < n) {
     vfs_fread(kybrd_fd, &ev, sizeof(ev));
+    
     if (ev.type == KEY_RELEASE) {
       continue;
     }
+
     enum KEYCODE key = ev.key;
 
     switch (key) {
       case KEY_BACKSPACE:
-        terminal_popchar();
         i = max(i - 1, 0);
         break;
       case KEY_RETURN:
@@ -72,10 +73,6 @@ void get_cmd(char* buf, int n) {
         break;
       default:
         char c = kkybrd_key_to_ascii(key);
-        if (isascii(c)) {
-          terminal_write(&c, 1);
-        }
-
         buf[i] = c;
         i++;
         break;
@@ -392,10 +389,20 @@ void cmd_read_file() {
 }
 
 extern void cmd_init() {
+  
   if ((kybrd_fd = vfs_open("/dev/input/kybrd", O_RDONLY)) < 0) {
     err("Cannot open keyboard");
   }
+  
+  char cmd_buf[100];
+  
+  while (1) {
+    get_cmd(cmd_buf, 98);
 
+    if (run_cmd(cmd_buf) == true)
+      break;
+  }
+  /*
   char cmd_buf[100];
 
   while (1) {
@@ -409,6 +416,7 @@ extern void cmd_init() {
     if (run_cmd(cmd_buf) == true)
       break;
   }
+  */
 }
 
 //! read sector command
@@ -456,9 +464,10 @@ void kybrd_manager() {
   struct key_event ev;
 
   while (true) {
+    //log("kybrd_manager");
     vfs_fread(kybrd_fd, &ev, sizeof(ev));
     char c = kkybrd_key_to_ascii(ev.key);
-    log("%c", c);
+    //log("%c", c);
 
     if (pts_driver) {
       struct tty_struct *pts = list_first_entry(&pts_driver->ttys, struct tty_struct, sibling);
@@ -489,6 +498,7 @@ void main_thread() {
   }
 
   create_system_process(&kybrd_manager);
+  create_system_process(&terminal_run);
   cmd_init();
 }
 
@@ -505,7 +515,7 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   install_tss(5, 0x10, 0);
   enable_interrupts();
   
-  terminal_initialize();
+  //terminal_initialize();
   
   log("Kernel size: %dKB", (int)(KERNEL_END - KERNEL_START) / 1024);
   log("Ends in 0x%x (DIR: %d, INDEX: %d)", KERNEL_END, PAGE_DIRECTORY_INDEX(KERNEL_END), PAGE_TABLE_INDEX(KERNEL_END));

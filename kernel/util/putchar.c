@@ -1,4 +1,4 @@
-#include "kernel/devices/tty.h"
+#include "kernel/devices/terminal.h"
 
 int popchar() {
   terminal_popchar();

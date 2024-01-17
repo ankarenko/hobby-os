@@ -41,6 +41,8 @@
     "string_view": "c",
     "initializer_list": "c",
     "utility": "c",
-    "algorithm": "c"
+    "algorithm": "c",
+    "terminal.h": "c",
+    "cstdio": "c"
   }
 }

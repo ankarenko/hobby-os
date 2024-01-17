@@ -3,7 +3,7 @@
 #include "kernel/util/stdio.h"
 #include "kernel/util/list.h"
 #include "kernel/util/debug.h"
-#include "../devices/tty.h"
+#include "../devices/terminal.h"
 #include "hal.h"
 #include "pic.h"
 #include "idt.h"

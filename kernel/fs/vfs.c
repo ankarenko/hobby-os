@@ -1,6 +1,6 @@
 #include "kernel/fs/vfs.h"
 
-#include "kernel/devices/tty.h"
+#include "kernel/devices/terminal.h"
 #include "kernel/devices/vga.h"
 #include "kernel/fs/char_dev.h"
 #include "kernel/fs/ext2/ext2.h"

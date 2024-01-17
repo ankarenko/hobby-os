@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 #if defined(__is_libk)
-#include <kernel/devices/tty.h>
+#include <kernel/devices/terminal.h>
 #endif
 
 int popchar() {
