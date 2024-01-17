@@ -111,7 +111,7 @@ void consumer() {
     log("Consumed %d", i);
     i--;
     
-
+    
     semaphore_up(&mutex);
     log("Consumer: leave CS");
     semaphore_up(&left);
@@ -445,6 +445,32 @@ void cmd_read_sect() {
 
 GREATEST_MAIN_DEFS();
 
+static int fd_ptmx = -1;
+
+void kybrd_manager() {
+  int kybrd_fd = 0;
+  if ((kybrd_fd = vfs_open("/dev/input/kybrd", O_RDONLY)) < 0) {
+    err("Cannot open keyboard");
+  }
+
+  struct key_event ev;
+
+  while (true) {
+    vfs_fread(kybrd_fd, &ev, sizeof(ev));
+    char c = kkybrd_key_to_ascii(ev.key);
+    log("%c", c);
+
+    if (pts_driver) {
+      struct tty_struct *pts = list_first_entry(&pts_driver->ttys, struct tty_struct, sibling);
+      if (pts != NULL) {
+        struct tty_struct *ptm = pts->link;
+        ptm->ldisc->write(ptm, NULL, &c, 1);
+      }
+    }
+        
+  }
+}
+
 void main_thread() {
   thread* th = NULL;
 
@@ -454,8 +480,15 @@ void main_thread() {
   chrdev_init();
 
   kkybrd_install(IRQ1);
-
+  
   tty_init();
+  fd_ptmx = 0;
+  // returns fd of a master terminal
+  if ((fd_ptmx = vfs_open("/dev/ptmx", O_RDONLY)) < 0) {
+    err("Unable to open ptmx");
+  }
+
+  create_system_process(&kybrd_manager);
   cmd_init();
 }
 

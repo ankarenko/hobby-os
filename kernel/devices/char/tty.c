@@ -5,6 +5,7 @@
 #include "kernel/memory/malloc.h"
 #include "kernel/util/debug.h"
 #include "kernel/util/errno.h"
+#include "kernel/locking/semaphore.h"
 #include "kernel/util/fcntl.h"
 #include "kernel/util/string/string.h"
 #include "kernel/util/vsprintf.h"
@@ -39,6 +40,13 @@ static struct tty_struct *create_tty_struct(struct tty_driver *driver, int idx) 
   tty->index = idx;
   tty->driver = driver;
   tty->ldisc = &tty_ldisc_N_TTY;
+  
+  // init semaphores
+  sema_init(tty->mutex, 1);
+  sema_init(tty->free, N_TTY_BUF_SIZE);
+  tty->free->count = N_TTY_BUF_SIZE;
+  sema_init(tty->reserved, N_TTY_BUF_SIZE);
+
   //tty->termios = &driver->init_termios;
   //tty->winsize.ws_col = 80;
   //tty->winsize.ws_row = 40;
@@ -72,14 +80,15 @@ static int ptmx_open(struct vfs_inode *inode, struct vfs_file *file) {
 
 	char path[sizeof(PATH_DEV) + SPECNAMELEN] = {0};
 	sprintf(path, "/dev/%s", ttys->name);
-	vfs_mknod(path, S_IFCHR, MKDEV(UNIX98_PTY_SLAVE_MAJOR, index));
+  int dev = MKDEV(UNIX98_PTY_SLAVE_MAJOR, index);
+	vfs_mknod(path, S_IFCHR, dev);
 
 	return 0;
 }
 
 static int tty_open(struct vfs_inode *inode, struct vfs_file *file) {
   struct tty_struct *tty = NULL;
-  dev_t dev = inode->i_rdev;
+  int32_t dev = inode->i_rdev;
   process *current_process = get_current_process();
 
   if (MAJOR(dev) == UNIX98_PTY_SLAVE_MAJOR)
@@ -163,7 +172,9 @@ int tty_register_driver(struct tty_driver *driver) {
 
 void tty_init() {
   INIT_LIST_HEAD(&tty_drivers);
-  
+
+  vfs_mknod("/dev/pts", S_IFDIR, O_CREAT);
+
   log("TTY: Mount ptmx");
   struct char_device *ptmx_cdev = alloc_chrdev("ptmx", TTYAUX_MAJOR, 2, 1, &ptmx_fops);
   register_chrdev(ptmx_cdev);

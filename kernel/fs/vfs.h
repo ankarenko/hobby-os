@@ -51,13 +51,13 @@ struct vfs_super_operations {
 };
 
 struct kstat {
-	dev_t st_dev;		  /* ID of device containing file */
+	int32_t st_dev;		  /* ID of device containing file */
 	ino_t st_ino;		  /* Inode number */
 	mode_t st_mode;		  /* File type and mode */
 	nlink_t st_nlink;	  /* Number of hard links */
 	uid_t st_uid;		  /* User ID of owner */
 	gid_t st_gid;		  /* Group ID of owner */
-	dev_t st_rdev;		  /* Device ID (if special file) */
+	int32_t st_rdev;		  /* Device ID (if special file) */
 	off_t st_size;		  /* Total size, in bytes */
 	blksize_t st_blksize; /* Block size for filesystem I/O */
 	blkcnt_t st_blocks;	  /* Number of 512B blocks allocated */
@@ -70,7 +70,7 @@ struct kstat {
 // SA TODO: 2023-12-21 s_dirt flag will be useful
 struct vfs_superblock {
 	unsigned long s_blocksize;
-	//dev_t s_dev;
+	//int32_t s_dev;
 	struct vfs_file_system_type* s_type;
 	struct vfs_super_operations* s_op;
 	unsigned long s_magic;
@@ -105,7 +105,7 @@ struct vfs_inode {
 	unsigned int i_nlink;
 	uid_t i_uid;
 	gid_t i_gid;
-	dev_t i_rdev;
+	int32_t i_rdev;
 	//atomic_t i_count;
 	struct timespec i_atime;
 	struct timespec i_mtime;
@@ -144,13 +144,13 @@ struct vfs_file_system_type {
 };
 
 struct vfs_inode_operations {
-	struct vfs_inode *(*create)(struct vfs_inode *dir, struct vfs_dentry *res, mode_t mode, dev_t dev);
+	struct vfs_inode *(*create)(struct vfs_inode *dir, struct vfs_dentry *res, mode_t mode, int32_t dev);
 	struct vfs_inode *(*lookup)(struct vfs_inode *dir, char* name);
 	//int (*mkdir)(struct vfs_inode *, char *, int);
 	//int (*rename)(struct vfs_inode *old_dir, struct vfs_dentry *old_dentry,
 	//			  struct vfs_inode *new_dir, struct vfs_dentry *new_dentry);
 	int (*unlink)(struct vfs_inode *dir, char* path);
-	int (*mknod)(struct vfs_inode *, struct vfs_dentry *, int, dev_t);
+	int (*mknod)(struct vfs_inode *, struct vfs_dentry *, int, int32_t);
 	//void (*truncate)(struct vfs_inode *);
 	//int (*setattr)(struct vfs_dentry *, struct iattr *);
 	//int (*getattr)(struct vfs_mount *mnt, struct vfs_dentry *, struct kstat *);
@@ -178,7 +178,7 @@ struct vfs_file {
 // vfs.c
 struct vfs_mount* do_mount(const char* fstype, int flags, const char* path);
 void vfs_init(struct vfs_file_system_type* fs, char* dev_name);
-void init_special_inode(struct vfs_inode* inode, mode_t mode, dev_t dev);
+void init_special_inode(struct vfs_inode* inode, mode_t mode, int32_t dev);
 struct vfs_inode *init_inode();
 int32_t vfs_mkdir(const char *path, mode_t mode);
 int32_t vfs_ls(const char* path);
@@ -195,7 +195,7 @@ int32_t vfs_delete(const char* fname);
 struct vfs_dentry *alloc_dentry(struct vfs_dentry *parent, char *name);
 struct vfs_file *get_empty_file();
 int generic_memory_readdir(struct vfs_file *file, struct dirent **dirent);
-int vfs_mknod(const char *path, int mode, dev_t dev);
+int vfs_mknod(const char *path, int mode, int32_t dev);
 struct vfs_dentry *vfs_search_virt_subdirs(struct vfs_dentry *dir, const char *name);
 
 // read_write.c

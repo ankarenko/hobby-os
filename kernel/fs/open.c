@@ -104,7 +104,7 @@ int vfs_fstat(int32_t fd, struct kstat *stat) {
   return do_getattr(/*file->f_vfsmnt,*/ file->f_dentry, stat);
 }
 
-int vfs_mknod(const char *path, int mode, dev_t dev) {
+int vfs_mknod(const char *path, int mode, int32_t dev) {
   char *dir = NULL;
   char *name = NULL;
   strlsplat(path, strliof(path, "/"), &dir, &name);

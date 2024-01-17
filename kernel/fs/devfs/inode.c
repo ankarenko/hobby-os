@@ -3,7 +3,7 @@
 
 #include "kernel/fs/devfs/devfs.h"
 
-static int devfs_mknod(struct vfs_inode *dir, struct vfs_dentry *dentry, int mode, dev_t dev) {
+static int devfs_mknod(struct vfs_inode *dir, struct vfs_dentry *dentry, int mode, int32_t dev) {
   struct vfs_inode *i = devfs_get_inode(dir->i_sb, mode);
   uint32_t current_seconds = get_seconds(NULL);
   i->i_ctime.tv_sec = current_seconds;

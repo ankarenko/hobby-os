@@ -353,7 +353,7 @@ void terminate_process() {
 }
 
 process* create_system_process(virtual_addr entry) {
-  process* proc = create_process(NULL, "system", vmm_get_directory());
+  process* proc = create_process(get_current_process(), "system", vmm_get_directory());
   thread* th = kernel_thread_create(proc, entry);
   
   if (!th) {

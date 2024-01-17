@@ -12,12 +12,12 @@ struct sem_waiter {
 
 // disabling interrupts are sufficient for one core systems
 // othewise spin locks needs to be used
-void semaphore_down(struct semaphore *sem) {
+void semaphore_down_val(struct semaphore *sem, int val) {
   disable_interrupts();
   thread *cur_thread = get_current_thread();
 
   if (sem->count > 0) {
-    sem->count--;
+    sem->count = max(0, sem->count - val) ;
     enable_interrupts();
   } else {
     struct sem_waiter *sw = kcalloc(1, sizeof(struct sem_waiter));
@@ -29,14 +29,12 @@ void semaphore_down(struct semaphore *sem) {
   }
 }
 
-void semaphore_up(struct semaphore *sem) {
+void semaphore_up_val(struct semaphore *sem, int val) {
   disable_interrupts();
   thread *cur_thread = get_current_thread();
 
-  if (list_empty(&sem->wait_list)) {
-    if (sem->count < sem->capacity) {
-      sem->count++;
-    }
+  if (list_empty(&sem->wait_list)) {\
+    sem->count = min(sem->capacity, sem->count + val);
   } else {
     struct sem_waiter *next = list_first_entry(
       &sem->wait_list, struct sem_waiter, sibling
@@ -48,4 +46,12 @@ void semaphore_up(struct semaphore *sem) {
   }
 
   enable_interrupts();
+}
+
+void semaphore_down(struct semaphore *sem) {
+  return semaphore_down_val(sem, 1);
+}
+
+void semaphore_up(struct semaphore *sem) {
+  return semaphore_up_val(sem, 1);
 }

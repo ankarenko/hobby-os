@@ -57,7 +57,7 @@
 #define TTY_MAGIC 0x5401
 #define TTY_DRIVER_MAGIC 0x5402
 #define TTY_LDISC_MAGIC 0x5403
-#define N_TTY_BUF_SIZE 4096
+#define N_TTY_BUF_SIZE 32
 
 struct tty_ldisc {
 	int magic;
@@ -106,13 +106,15 @@ struct tty_struct {
 
 	//struct wait_queue_head write_wait;
 	//struct wait_queue_head read_wait;
-	int column;
-	int read_head;
-	int read_tail;
-	int read_count;
-	char *read_buf;
-	char *write_buf;
-	struct list_head sibling;
+  struct semaphore *free;
+  struct semaphore *reserved;
+  struct semaphore *mutex;
+  
+	char buf[N_TTY_BUF_SIZE];
+  uint8_t buf_tail;
+  uint8_t buf_head;
+
+  struct list_head sibling;
 };
 
 struct tty_operations {

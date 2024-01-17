@@ -266,7 +266,7 @@ clean:
   return ret;
 }
 
-void init_special_inode(struct vfs_inode* inode, mode_t mode, dev_t dev) {
+void init_special_inode(struct vfs_inode* inode, mode_t mode, int32_t dev) {
   inode->i_mode = mode;
   if (S_ISCHR(mode)) {
     inode->i_fop = &def_chr_fops;

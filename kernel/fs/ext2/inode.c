@@ -235,7 +235,7 @@ static int find_unused_inode_number(struct vfs_superblock *sb) {
 	return -ENOSPC;
 }
 
-static struct vfs_inode *ext2_create_inode(struct vfs_inode *dir, struct vfs_dentry *dentry, mode_t mode, dev_t dev) {
+static struct vfs_inode *ext2_create_inode(struct vfs_inode *dir, struct vfs_dentry *dentry, mode_t mode, int32_t dev) {
 	struct vfs_superblock *sb = dir->i_sb;
 	ext2_superblock *ext2_sb = EXT2_SB(sb);
 	uint32_t ino = find_unused_inode_number(sb);
@@ -323,7 +323,7 @@ static struct vfs_inode *ext2_create_inode(struct vfs_inode *dir, struct vfs_den
 	return NULL;
 }
 
-static int ext2_mknod(struct vfs_inode *dir, struct vfs_dentry *dentry, int mode, dev_t dev) {
+static int ext2_mknod(struct vfs_inode *dir, struct vfs_dentry *dentry, int mode, int32_t dev) {
 	struct vfs_inode *inode = ext2_lookup_inode(dir, dentry->d_name);
 	if (inode == NULL)
 		inode = ext2_create_inode(dir, dentry, mode, dev);
