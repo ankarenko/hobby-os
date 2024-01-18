@@ -266,7 +266,8 @@ static files_struct* create_files_descriptors() {
   for (int i = 0; i < MAX_FD; ++i) {
     files->fd[i] = NULL;
   }
-  sema_init(&files->lock, 1); // mutex
+  
+  sema_init(&files->lock, 1);
   return files;
 }
 

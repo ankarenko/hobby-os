@@ -16,7 +16,8 @@ void semaphore_down_val(struct semaphore *sem, int val) {
   disable_interrupts();
   thread *cur_thread = get_current_thread();
 
-  if (sem->count - val >= 0) {
+  if (sem->count >= val) {
+    sem->count -= val;
     enable_interrupts();
   } else {
     struct sem_waiter *sw = kcalloc(1, sizeof(struct sem_waiter));
@@ -35,6 +36,7 @@ int semaphore_free(struct semaphore *sem) {
     kfree(iter);
     ++freed;
   }
+  kfree((void *)sem);
   return freed;
 }
 
@@ -62,6 +64,14 @@ void semaphore_up_val(struct semaphore *sem, int val) {
 
 void semaphore_down(struct semaphore *sem) {
   return semaphore_down_val(sem, 1);
+}
+
+struct semaphore* semaphore_alloc(int val) {
+	struct semaphore *sem = (struct semaphore *)kcalloc(1, sizeof(struct semaphore)); 
+  sem->capacity = val;
+  sem->count = val;
+  INIT_LIST_HEAD(&sem->wait_list);
+  return sem;
 }
 
 void semaphore_up(struct semaphore *sem) {

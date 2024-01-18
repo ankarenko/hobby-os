@@ -26,6 +26,8 @@ static inline void sema_init(struct semaphore *sem, int val) {
 	*sem = (struct semaphore)__SEMAPHORE_INITIALIZER(*sem, val);
 }
 
+struct semaphore* semaphore_alloc(int val);
+
 void semaphore_up(struct semaphore *sem);
 int semaphore_free(struct semaphore *sem);
 void semaphore_down(struct semaphore *sem);

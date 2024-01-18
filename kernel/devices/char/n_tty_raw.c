@@ -8,11 +8,11 @@
 static int ntty_open(struct tty_struct *tty) {
   tty->buffer = kcalloc(1, N_TTY_BUF_SIZE);
 
-  sema_init(tty->mutex, 1);
-  sema_init(tty->to_read, N_TTY_BUF_SIZE);
-  sema_init(tty->to_write, N_TTY_BUF_SIZE);
+  tty->mutex = semaphore_alloc(1);
+  tty->to_read = semaphore_alloc(N_TTY_BUF_SIZE);
+  tty->to_write = semaphore_alloc(N_TTY_BUF_SIZE);
 
-  semaphore_up_val(tty->to_write, N_TTY_BUF_SIZE);
+  semaphore_down_val(tty->to_read, N_TTY_BUF_SIZE);
 
   return 0;
 }

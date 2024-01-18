@@ -114,7 +114,7 @@ int32_t tty_read(struct vfs_file* file, uint8_t* buffer, uint32_t length, off_t 
   struct tty_struct *tty = (struct tty_struct *)file->private_data;
   struct tty_ldisc *ld = tty->ldisc;
 
-  if (!tty || !tty->driver->tops->read || !ld->read)
+  if (!tty || !ld->read)
     return -EIO;
 
   return ld->read(tty, file, buffer, length);

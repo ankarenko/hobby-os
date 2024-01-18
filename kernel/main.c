@@ -45,10 +45,14 @@ void sleep(uint32_t ms) {
 */
 
 static struct vfs_file* _cur_dir = NULL;
-static struct int32 *kybrd_fd = -1;
 
 //! gets next command
 void get_cmd(char* buf, int n) {
+  int kybrd_fd = 0;
+  if ((kybrd_fd = vfs_open("/dev/input/kybrd", O_RDONLY)) < 0) {
+    err("Cannot open keyboard");
+  }
+
   int32_t i = 0;
   struct key_event ev;
   while (i < n) {
@@ -385,7 +389,7 @@ void cmd_read_file() {
 }
 
 extern void cmd_init() {
-  
+  int kybrd_fd;
   if ((kybrd_fd = vfs_open("/dev/input/kybrd", O_RDONLY)) < 0) {
     err("Cannot open keyboard");
   }
@@ -451,6 +455,25 @@ GREATEST_MAIN_DEFS();
 
 static int fd_ptmx = -1;
 
+
+void shell() {
+  int kybrd_fd;
+  if ((kybrd_fd = vfs_open("/dev/pts/0", O_RDONLY)) < 0) {
+    err("Unable to open");
+  }
+  int size = 10;
+  char buf[size];
+
+  while (true) {
+    if (vfs_fread(kybrd_fd, &buf, size) < 0) {
+      err("Error occured");
+    }
+    log("shell: %s", buf);
+    log("!!");
+  }
+  
+}
+
 void kybrd_manager() {
   int kybrd_fd = 0;
   if ((kybrd_fd = vfs_open("/dev/input/kybrd", O_RDONLY)) < 0) {
@@ -462,18 +485,21 @@ void kybrd_manager() {
   while (true) {
     //log("kybrd_manager");
     vfs_fread(kybrd_fd, &ev, sizeof(ev));
+    log("notified ch=%c, state = %d", ev.key, ev.type);
+    
+    if (ev.type == KEY_RELEASE) {
+      continue;
+    }
     
     char c = kkybrd_key_to_ascii(ev.key);
     //log("%c", c);
-
+    
     if (pts_driver) {
       struct tty_struct *pts = list_first_entry(&pts_driver->ttys, struct tty_struct, sibling);
       if (pts != NULL) {
         pts->ldisc->receive_buf(pts, &c, 1);
       }
-    }
-
-        
+    } 
   }
 }
 
@@ -496,6 +522,7 @@ void main_thread() {
 
   create_system_process(&kybrd_manager, "keyboard_manager");
   create_system_process(&terminal_run, "terminal");
+  create_system_process(&shell, "shell");
   cmd_init();
 }
 

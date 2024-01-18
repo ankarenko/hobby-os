@@ -174,7 +174,7 @@ struct vfs_inode* init_inode() {
 	struct vfs_inode *i = kcalloc(1, sizeof(struct vfs_inode));
 	i->i_blocks = 0;
 	i->i_size = 0;
-	//sema_init(&i->i_sem, 1);
+	//semaphore_alloc(&i->i_sem, 1);
 	return i;
 }
 

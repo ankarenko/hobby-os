@@ -8,11 +8,11 @@
 static int ntty_open(struct tty_struct *tty) {
   tty->buffer = kcalloc(1, N_TTY_BUF_SIZE);
 
-  sema_init(tty->mutex, 1);
-  sema_init(tty->to_read, 1);
-  sema_init(tty->to_write, 1);
+  tty->mutex = semaphore_alloc(1);
+  tty->to_read = semaphore_alloc(1);
+  tty->to_write = semaphore_alloc(1);
 
-  semaphore_up(tty->to_write);
+  semaphore_down(tty->to_read);
   return 0;
 }
 
@@ -31,22 +31,27 @@ static void ntty_close(struct tty_struct *tty) {
 }
 
 static ssize_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *buf, size_t nr) {
-  semaphore_down_val(tty->to_read, nr);
+  semaphore_down(tty->to_read);
   semaphore_down(tty->mutex);
 
+  log("canon read");
+
   bool read_all = false;
-  for (int i = 0; i < nr; ++i) {
+  int i = 0;
+  for (i = 0; i < nr; ++i) {
     buf[i] = tty->buffer[tty->read_head];
     tty->read_head = N_TTY_BUF_ALIGN(tty->read_head + 1);
 
     if (tty->read_head == tty->read_tail) {
       read_all = true;
+      buf[i] = __DISABLED_CHAR;
+      break;
     }
   }
 
   semaphore_up(tty->mutex);
-  semaphore_up_val(tty->to_write, nr);
-  return nr;
+  semaphore_up(read_all? tty->to_write : tty->to_read);
+  return i;
 }
 
 static ssize_t echo_buf(struct tty_struct *tty, const char *buf, ssize_t nr) {
@@ -78,14 +83,19 @@ static ssize_t push_buf(struct tty_struct *tty, char c) {
   semaphore_down(tty->to_write);
   semaphore_down(tty->mutex);
 
+  log("canon write ch=%c", c);
+
   tty->buffer[tty->read_tail] = c;
   tty->read_tail = N_TTY_BUF_ALIGN(tty->read_tail + 1);
+  log("tail=%d", tty->read_tail);
+
   if (tty->read_head == tty->read_tail) {
+    assert(false);
     tty->read_head = N_TTY_BUF_ALIGN(tty->read_head + 1);
   }
 
   semaphore_up(tty->mutex);
-  semaphore_up(LINE_SEPARATOR(tty, c) ? tty->read_lock : tty->to_write);
+  semaphore_up(LINE_SEPARATOR(tty, c) ? tty->to_read : tty->to_write);
 }
 
 static void eraser(struct tty_struct *tty, char ch) {
@@ -130,7 +140,7 @@ static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
       ch = __DISABLED_CHAR;
     }
 
-    push_buf(tty, &(const char){ch});
+    push_buf(tty, ch);
 
     if (L_ECHO(tty))
       echo_buf(tty, &(const char){ch}, 1);
