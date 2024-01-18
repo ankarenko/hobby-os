@@ -152,7 +152,7 @@ process* get_current_process();
 void thread_sleep(uint32_t ms);
 bool initialise_multitasking(virtual_addr entry);
 thread* kernel_thread_create(process* parent, virtual_addr eip);
-process* create_system_process(virtual_addr entry);
+process* create_system_process(virtual_addr entry, char* name);
 struct list_head* get_proc_list();
 process* create_elf_process(process* parent, char* path);
 

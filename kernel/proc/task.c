@@ -352,8 +352,8 @@ void terminate_process() {
   */
 }
 
-process* create_system_process(virtual_addr entry) {
-  process* proc = create_process(get_current_process(), "system", vmm_get_directory());
+process* create_system_process(virtual_addr entry, char* name) {
+  process* proc = create_process(get_current_process(), name == NULL? "system" : name, vmm_get_directory());
   thread* th = kernel_thread_create(proc, entry);
   
   if (!th) {
@@ -389,7 +389,7 @@ process* get_current_process() {
 bool initialise_multitasking(virtual_addr entry) {
   sched_init();
 
-  process* parent = create_process(NULL, "",  vmm_get_directory());
+  process* parent = create_process(NULL, "root",  vmm_get_directory());
   _current_thread = kernel_thread_create(parent, entry);
   sched_push_queue(_current_thread);
   

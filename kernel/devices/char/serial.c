@@ -51,7 +51,7 @@ static char serial_read(struct tty_struct *tty) {
   
   while (serial_received(port) == 0);
   
-  return inportb(port);
+  char c = inportb(port);
 }
 
 static struct tty_operations serial_ops = {
@@ -69,7 +69,7 @@ void serial_init() {
   serial_driver->minor_start = SERIAL_MINOR_BASE;
   serial_driver->type = TTY_DRIVER_TYPE_SERIAL;
   serial_driver->subtype = SERIAL_TYPE_NORMAL;
-  // serial_driver->init_termios = tty_std_termios;
+  serial_driver->init_termios = tty_std_termios;
   serial_driver->flags = TTY_DRIVER_RESET_TERMIOS | TTY_DRIVER_REAL_RAW | TTY_DRIVER_DEVPTS_MEM;
   serial_driver->tops = &serial_ops;
   INIT_LIST_HEAD(&serial_driver->ttys);

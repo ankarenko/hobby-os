@@ -9,8 +9,16 @@
 #include "kernel/util/fcntl.h"
 #include "kernel/util/string/string.h"
 #include "kernel/util/vsprintf.h"
+#include "kernel/devices/char/termios.h"
 
 static struct list_head tty_drivers;
+struct termios tty_std_termios = {
+  .c_iflag = ICRNL | IXON,
+  .c_oflag = OPOST | ONLCR,
+  .c_cflag = B38400 | CS8 | CREAD | HUPCL,
+  .c_lflag = ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHOCTL | ECHOKE | IEXTEN,
+  .c_cc = INIT_C_CC
+};
 
 struct tty_driver *alloc_tty_driver(int32_t lines) {
   struct tty_driver *driver = kcalloc(1, sizeof(struct tty_driver));
@@ -39,23 +47,17 @@ static struct tty_struct *create_tty_struct(struct tty_driver *driver, int idx) 
   tty->magic = TTY_MAGIC;
   tty->index = idx;
   tty->driver = driver;
-  tty->ldisc = &tty_ldisc_N_TTY;
+  tty->termios = &driver->init_termios;
+  // TODO: not the best design, but lets leave it like this
+  // when ICANON is changed it needs to be closed and opened again
+  tty->ldisc = L_ICANON(tty)? &tty_ldisc_N_TTY_canon : &tty_ldisc_N_TTY_raw;
   
-  // init semaphores
-  sema_init(tty->mutex, 1);
-  sema_init(tty->to_read, N_TTY_BUF_SIZE);
-  
-  //tty->termios = &driver->init_termios;
-  //tty->winsize.ws_col = 80;
-  //tty->winsize.ws_row = 40;
-  sprintf(tty->name, "%s/%d", driver->name, idx);
+  //sprintf(tty->name, "%s/%d", driver->name, idx);
 
-  //INIT_LIST_HEAD(&tty->read_wait.list);
-  //INIT_LIST_HEAD(&tty->write_wait.list);
   list_add_tail(&tty->sibling, &driver->ttys);
 
-  //if (tty->ldisc->open)
-  //  tty->ldisc->open(tty);
+  if (tty->ldisc->open)
+    tty->ldisc->open(tty);
 
   return tty;
 }
@@ -112,15 +114,10 @@ int32_t tty_read(struct vfs_file* file, uint8_t* buffer, uint32_t length, off_t 
   struct tty_struct *tty = (struct tty_struct *)file->private_data;
   struct tty_ldisc *ld = tty->ldisc;
 
-  if (!tty || !tty->driver->tops->write || !ld->write)
+  if (!tty || !tty->driver->tops->read || !ld->read)
     return -EIO;
-  
-  char c = tty->driver->tops->read(tty);
-  buffer[0] = c;  
-  // don't use ld, move directly to uart 
 
-  // check if it's a '\n'
-  return (int)c == 13? 0 : 1; // ld->write(tty, file, buf, count);
+  return ld->read(tty, file, buffer, length);
 }
 
 static ssize_t tty_write(struct vfs_file *file, const char *buf, size_t count, off_t ppos) {
@@ -131,8 +128,7 @@ static ssize_t tty_write(struct vfs_file *file, const char *buf, size_t count, o
 
   struct tty_ldisc *ld = tty->ldisc;
 
-  // don't use ld, move directly to uart 
-  return tty->driver->tops->write(tty, buf, count); // ld->write(tty, file, buf, count);
+  return ld->write(tty, file, buf, count);
 }
 
 static struct vfs_file_operations tty_fops = {

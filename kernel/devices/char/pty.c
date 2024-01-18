@@ -26,7 +26,7 @@ static int pty_write(struct tty_struct *tty, const char *buf, int count) {
   if (c > count)
     c = count;
   */
-  
+
   to->ldisc->receive_buf(to, buf, count);
   
   return count;
@@ -48,20 +48,20 @@ static struct tty_operations pty_ops = {
 };
 
 void pty_init() {
-  	ptm_driver = alloc_tty_driver(NR_PTY_MAX);
+  ptm_driver = alloc_tty_driver(NR_PTY_MAX);
 	ptm_driver->driver_name = "pty_master";
 	ptm_driver->name = "ptm";
 	ptm_driver->major = UNIX98_PTY_MASTER_MAJOR;
 	ptm_driver->minor_start = 0;
 	ptm_driver->type = TTY_DRIVER_TYPE_PTY;
 	ptm_driver->subtype = PTY_TYPE_MASTER;
-  /*
+  
 	ptm_driver->init_termios = tty_std_termios;
 	ptm_driver->init_termios.c_iflag = 0;
 	ptm_driver->init_termios.c_oflag = 0;
 	ptm_driver->init_termios.c_cflag = B38400 | CS8 | CREAD;
 	ptm_driver->init_termios.c_lflag = 0;
-  */
+  
 	ptm_driver->flags = TTY_DRIVER_RESET_TERMIOS | TTY_DRIVER_REAL_RAW |
 						TTY_DRIVER_NO_DEVFS | TTY_DRIVER_DEVPTS_MEM;
 	
@@ -77,10 +77,10 @@ void pty_init() {
 	pts_driver->minor_start = 0;
 	pts_driver->type = TTY_DRIVER_TYPE_PTY;
 	pts_driver->subtype = PTY_TYPE_SLAVE;
-  /*
+  
 	pts_driver->init_termios = tty_std_termios;
 	pts_driver->init_termios.c_cflag = B38400 | CS8 | CREAD;
-  */
+  
 	pts_driver->flags = TTY_DRIVER_RESET_TERMIOS | TTY_DRIVER_REAL_RAW |
 						TTY_DRIVER_NO_DEVFS | TTY_DRIVER_DEVPTS_MEM;
 	pts_driver->tops = &pty_ops;

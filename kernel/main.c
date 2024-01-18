@@ -150,13 +150,11 @@ void kthread() {
 bool run_cmd(char* cmd_buf) {
   if (strcmp(cmd_buf, "create") == 0) {
     printf("\nnew thread: ");
-    create_system_process(&kthread);
+    create_system_process(&kthread, "ktread");
   } if (strcmp(cmd_buf, "play") == 0) {
     init_consumer_producer();
-    create_system_process(&producer);
-    create_system_process(&producer);
-    create_system_process(&consumer);
-    create_system_process(&consumer);
+    create_system_process(&producer, "producer");
+    create_system_process(&consumer, "consumer");
   } else if (strcmp(cmd_buf, "kill") == 0) {
     char id[10];
 
@@ -175,17 +173,15 @@ bool run_cmd(char* cmd_buf) {
     }
     printf("]");
 
-    printf("\nprocesses running: [ ");
+    printf("\nprocesses:");
     process* proc = NULL;
     list_for_each_entry(proc, get_proc_list(), proc_sibling) {
-      printf("%d (", proc->pid);
+      printf("\n%d: %s : ", proc->pid, proc->path);
 
       list_for_each_entry(th, &proc->threads, th_sibling) {
         printf(" %d", th->tid);
       }
-      printf(") ");
     }
-    printf("]");
 
   } else if (strcmp(cmd_buf, "exit") == 0) {
     printf("Goodbuy!");
@@ -466,16 +462,17 @@ void kybrd_manager() {
   while (true) {
     //log("kybrd_manager");
     vfs_fread(kybrd_fd, &ev, sizeof(ev));
+    
     char c = kkybrd_key_to_ascii(ev.key);
     //log("%c", c);
 
     if (pts_driver) {
       struct tty_struct *pts = list_first_entry(&pts_driver->ttys, struct tty_struct, sibling);
       if (pts != NULL) {
-        struct tty_struct *ptm = pts->link;
-        ptm->ldisc->write(ptm, NULL, &c, 1);
+        pts->ldisc->receive_buf(pts, &c, 1);
       }
     }
+
         
   }
 }
@@ -483,7 +480,7 @@ void kybrd_manager() {
 void main_thread() {
   thread* th = NULL;
 
-  create_system_process(&idle_task);
+  create_system_process(&idle_task, "idle");
 
   vfs_init(&ext2_fs_type, "/dev/hda");
   chrdev_init();
@@ -497,8 +494,8 @@ void main_thread() {
     err("Unable to open ptmx");
   }
 
-  create_system_process(&kybrd_manager);
-  create_system_process(&terminal_run);
+  create_system_process(&kybrd_manager, "keyboard_manager");
+  create_system_process(&terminal_run, "terminal");
   cmd_init();
 }
 
