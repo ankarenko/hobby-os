@@ -141,9 +141,12 @@ static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
     }
 
     push_buf(tty, ch);
-
-    if (L_ECHO(tty))
+    
+    if (L_ECHO(tty)) {
+      log("ECHO START");
       echo_buf(tty, &(const char){ch}, 1);
+      log("ECHO END");
+    }
   }
 }
 

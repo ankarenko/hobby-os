@@ -483,7 +483,7 @@ void kybrd_manager() {
   struct key_event ev;
 
   while (true) {
-    //log("kybrd_manager");
+    log("kybrd_manager");
     vfs_fread(kybrd_fd, &ev, sizeof(ev));
     log("notified ch=%c, state = %d", ev.key, ev.type);
     

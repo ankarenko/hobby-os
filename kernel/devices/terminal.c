@@ -202,7 +202,15 @@ void terminal_run() {
   if ((kybrd_fd = vfs_open("/dev/input/kybrd", O_RDONLY)) < 0) {
     err("Cannot open keyboard");
   }
+  /*
+  struct tty_struct *ptm = NULL;
+  if (pts_driver) {
+    struct tty_struct *pts = list_first_entry(&pts_driver->ttys, struct tty_struct, sibling);
+    struct tty_struct *ptm = pts->link;
+  }
 
+  assert(ptm != NULL);
+  */
   struct key_event ev;
   process* proc = get_current_process();
 
@@ -218,13 +226,19 @@ newline:
 
     terminal_write(&buf, strlen(&buf));
 
+    char key;
     while (true) {
+      
+      //ptm->ldisc->read(ptm, NULL, &key, 1);
+
       vfs_fread(kybrd_fd, &ev, sizeof(ev));
+      
       if (ev.type == KEY_RELEASE) {
         continue;
       }
-      enum KEYCODE key = ev.key;
 
+      enum KEYCODE key = ev.key;
+      
       switch (key) {
         case KEY_BACKSPACE:
           terminal_popchar();

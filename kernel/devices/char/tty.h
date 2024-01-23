@@ -106,7 +106,7 @@
 #define UNIX98_PTY_MASTER_MAJOR 128
 #define UNIX98_PTY_MAJOR_COUNT 8
 #define UNIX98_PTY_SLAVE_MAJOR (UNIX98_PTY_MASTER_MAJOR + UNIX98_PTY_MAJOR_COUNT)
-#define N_TTY_BUF_SIZE 64
+#define N_TTY_BUF_SIZE 32
 #define N_TTY_BUF_ALIGN(v) (v % N_TTY_BUF_SIZE)
 #define NCCS 19
 #define __DISABLED_CHAR '\0'
@@ -142,7 +142,6 @@
 #define TTY_MAGIC 0x5401
 #define TTY_DRIVER_MAGIC 0x5402
 #define TTY_LDISC_MAGIC 0x5403
-#define N_TTY_BUF_SIZE 32
 
 struct tty_ldisc {
 	int magic;

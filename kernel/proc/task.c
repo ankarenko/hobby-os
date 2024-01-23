@@ -5,6 +5,7 @@
 #include "kernel/cpu/hal.h"
 #include "kernel/cpu/tss.h"
 #include "kernel/memory/malloc.h"
+#include "kernel/util/debug.h"
 #include "kernel/cpu/gdt.h"
 #include "kernel/proc/elf.h"
 #include "kernel/util/debug.h"
@@ -387,10 +388,26 @@ process* get_current_process() {
   return _current_thread->parent;
 }
 
+process *process_fork(process *parent) {
+  lock_scheduler();
+  process *proc = kcalloc(1, sizeof(process));
+  proc->pid = next_pid++;
+  proc->gid = parent->gid;
+  proc->sid = parent->sid;
+  proc->
+  
+  /*
+	log("Task: Fork from %s(p%d)", parent->name, parent->pid);
+  */
+
+  return NULL;
+
+}
+
 bool initialise_multitasking(virtual_addr entry) {
   sched_init();
 
-  process* parent = create_process(NULL, "root",  vmm_get_directory());
+  process* parent = create_process(NULL, "swapper",  vmm_get_directory());
   _current_thread = kernel_thread_create(parent, entry);
   sched_push_queue(_current_thread);
   
@@ -403,7 +420,6 @@ bool initialise_multitasking(virtual_addr entry) {
     TODO: SA: scheduler and other IRQ are hanled differently and differnt values 
     could be put on stack it lead to a problem with imterpteting register values
     so probably it's better to unify it
-
    **/
   setvect(IRQ0, scheduler_isr, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32);
 

@@ -126,8 +126,9 @@ typedef struct _fs_struct {
   if you happen to change that it is better to add new fields 
   to the end of the structure
 */
-typedef struct _process {
+struct process {
   int32_t pid;
+
   int32_t priority;
   struct pdirectory* va_dir;
   physical_addr pa_dir;
@@ -145,7 +146,11 @@ typedef struct _process {
   struct tty_struct *tty;
 
   struct sigaction sighand[NSIG];
-} process;
+
+  int32_t gid;  // group id
+  int32_t sid;  // session id
+  struct process *parent;
+};
 
 thread* get_current_thread();
 process* get_current_process();

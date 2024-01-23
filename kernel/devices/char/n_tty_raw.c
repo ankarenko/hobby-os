@@ -54,7 +54,8 @@ static ssize_t push_buf(struct tty_struct *tty, char c) {
   
   semaphore_down(tty->to_write);
   semaphore_down(tty->mutex);
-  
+
+
   tty->buffer[tty->read_tail] = c;
   tty->read_tail = N_TTY_BUF_ALIGN(tty->read_tail + 1);
   if (tty->read_head == tty->read_tail) {
@@ -66,6 +67,7 @@ static ssize_t push_buf(struct tty_struct *tty, char c) {
 }
 
 static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
+  log("receive raw");
   for (int i = 0; i < nr; ++i) {
     push_buf(tty, buf[i]);
   }
