@@ -163,6 +163,7 @@ thread* kernel_thread_create(struct process* parent, virtual_addr eip);
 struct process* create_system_process(virtual_addr entry, char* name);
 struct list_head* get_proc_list();
 struct process* create_elf_process(struct process* parent, char* path);
+struct process *process_fork(struct process *parent);
 
 // sched.c
 void lock_scheduler();

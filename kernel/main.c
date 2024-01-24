@@ -150,11 +150,29 @@ void kthread() {
   }
 }
 
+void kthread_fork() {
+  int col = 0;
+  bool dir = true;
+  
+  struct process *current_process = get_current_process();
+  int parent_id = current_process->pid;
+
+  process_fork(current_process);
+  
+  while (1) {
+    printf("\nNew thread 10");
+    if (get_current_process()->pid != parent_id) {
+      printf(" from child");
+    }
+    thread_sleep(3000);
+  }
+}
+
 //! our simple command parser
 bool run_cmd(char* cmd_buf) {
   if (strcmp(cmd_buf, "create") == 0) {
     printf("\nnew thread: ");
-    create_system_process(&kthread, "ktread");
+    create_system_process(&kthread_fork, "ktread");
   } if (strcmp(cmd_buf, "play") == 0) {
     init_consumer_producer();
     create_system_process(&producer, "producer");

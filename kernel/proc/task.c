@@ -319,7 +319,8 @@ void terminate_process() {
 }
 
 struct process* create_system_process(virtual_addr entry, char* name) {
-  struct process* proc = create_process(get_current_process(), name == NULL? "system" : name, vmm_get_directory());
+  struct process *cur_process = get_current_process();
+  struct process *proc = create_process(cur_process, name == NULL? "system" : name, vmm_get_directory());
   thread* th = kernel_thread_create(proc, entry);
   
   if (!th) {
@@ -376,6 +377,7 @@ static files_struct *clone_file_descriptor_table(files_struct *fs_src) {
 }
 
 struct process* process_fork(struct process* parent) {
+  //save 
   lock_scheduler();
   struct process* proc = kcalloc(1, sizeof(struct process));
   proc->pid = next_pid++;
@@ -409,12 +411,13 @@ struct process* process_fork(struct process* parent) {
   thread *th = thread_create(proc, NULL, 0);
   
   // copy registers
-  th->esp = th->kernel_esp - sizeof(interrupt_registers);
-  memcpy(&th->kernel_esp, parent_thread->kernel_esp, sizeof(interrupt_registers));
+  th->esp = th->kernel_esp - sizeof(trap_frame);
+  memcpy((char*)th->esp, (char*)parent_thread->kernel_esp, sizeof(trap_frame));
 
   // NOTE: equal virtual address, but different physical!
 	th->user_esp = parent_thread->user_esp; 
 
+  sched_push_queue(th);
   unlock_scheduler();
 
   return NULL;
