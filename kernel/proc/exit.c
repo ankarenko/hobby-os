@@ -24,7 +24,7 @@ bool exit_files(files_struct* files) {
   return true;
 }
 
-bool exit_process(process* proc) {
+bool exit_process(struct process* proc) {
   // free image
   if (proc->mm_mos) {
     for (
@@ -38,7 +38,7 @@ bool exit_process(process* proc) {
     }
   }
 
-  list_del(&proc->proc_sibling);
+  list_del(&proc->sibling);
   
   kfree(proc->mm_mos);
   kfree(proc->path);
@@ -51,7 +51,7 @@ bool exit_process(process* proc) {
 // TODO: bug, when kill 2 times and then create
 bool exit_thread(thread* th) {
   bool is_user = th->user_esp;
-  process* parent = th->parent;
+  struct process* parent = th->parent;
   //vmm_load_usertable(parent->pa_dir);
   
   

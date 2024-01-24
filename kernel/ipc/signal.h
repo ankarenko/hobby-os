@@ -26,7 +26,7 @@
 #define SIGURG	16	  // Urgent condition on I/O channel
 #define SIGSTOP	17	  // Stop signal not from terminal
 #define SIGTSTP	18	  // Stop signal from terminal
-#define SIGCONT	19	  // A stopped process is being continued
+#define SIGCONT	19	  // A stopped struct processis being continued
 #define SIGCHLD	20	  // Notification to parent on child stop or exit
 #define SIGTTIN	21	  // Read on terminal by background process
 #define SIGTTOU	22	  // Write to terminal by background process

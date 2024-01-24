@@ -94,7 +94,7 @@ void main(int argc, char** argv) {
     id = (int32_t)*argv[1];
 
     print("File: %s\n", argv[0]);
-    print("Process id: %d\n", id);
+    print("struct processid: %d\n", id);
   }
   */
   

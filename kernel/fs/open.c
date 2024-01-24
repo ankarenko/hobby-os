@@ -21,7 +21,7 @@ struct vfs_dentry *alloc_dentry(struct vfs_dentry *parent, char *name) {
 }
 
 static int32_t find_unused_fd_slot() {
-  process *proc = get_current_process();
+  struct process* proc = get_current_process();
 
   for (uint32_t i = 0; i < MAX_FD; ++i)
     if (!proc->files->fd[i])
@@ -39,7 +39,7 @@ struct vfs_file *get_empty_file() {
 }
 
 int32_t vfs_close(int32_t fd) {
-  process *cur_proc = get_current_process();
+  struct process* cur_proc = get_current_process();
   struct vfs_file *file = cur_proc->files->fd[fd];
 
   semaphore_down(&cur_proc->files->lock);
@@ -96,7 +96,7 @@ static int do_getattr(/*struct vfs_mount *mnt, */ struct vfs_dentry *dentry, str
 }
 
 int vfs_fstat(int32_t fd, struct kstat *stat) {
-  process *cur_proc = get_current_process();
+  struct process* cur_proc = get_current_process();
   struct vfs_file *file = cur_proc->files->fd[fd];
   if (fd < 0 || !file)
     return -EBADF;
@@ -181,7 +181,7 @@ int32_t vfs_open(const char *path, int32_t flags, ...) {
   }
 
   // atomic_inc(&file->f_dentry->d_inode->i_count);
-  process *cur_proc = get_current_process();
+  struct process* cur_proc = get_current_process();
   cur_proc->files->fd[fd] = file;
   return fd;
 }

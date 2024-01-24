@@ -115,7 +115,7 @@ int32_t vfs_cd(const char* path) {
     return -ENOTDIR;
   }
 
-  process* cur_proc = get_current_process();
+  struct process* cur_proc = get_current_process();
   cur_proc->fs->d_root = nd.dentry;
   cur_proc->fs->mnt_root = nd.mnt;
   return 0;
@@ -168,7 +168,7 @@ static void init_rootfs(struct vfs_file_system_type* fs_type, char* dev_name) {
   struct vfs_mount* mnt = fs_type->mount(fs_type, dev_name, "/");
   list_add_tail(&mnt->sibling, &vfsmntlist);
 
-  process* cur = get_current_process();
+  struct process* cur = get_current_process();
 
   cur->fs->d_root = mnt->mnt_root;
   cur->fs->mnt_root = mnt;
@@ -182,7 +182,7 @@ int vfs_jmp(struct nameidata* nd, const char* path, int32_t flags, mode_t mode) 
 
   const char* cur = simplified;
 
-  process* cur_proc = get_current_process();
+  struct process* cur_proc = get_current_process();
   nd->mnt = cur_proc->fs->mnt_root;
 
   // check if root dir

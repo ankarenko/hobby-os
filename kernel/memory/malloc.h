@@ -9,7 +9,7 @@
 
 #include "kernel/util/math.h"
 
-#define KERNEL_HEAP_TOP 0xE0000000
+#define KERNEL_HEAP_TOP    0xE0000000
 #define KERNEL_HEAP_BOTTOM 0xC8000000 // we can do as well KERNEL_AND_BITMAP_END + 4096
 #define USER_HEAP_TOP 0x40000000
 
@@ -27,5 +27,6 @@ void* krealloc(void *ptr, size_t size);
 void kfree(void *ptr);
 void* kcalloc_aligned(size_t n, size_t size, uint32_t alignment);
 void* kmalloc_aligned(size_t size, uint32_t alignment);
+void *kalign_heap(size_t size);
 
 #endif

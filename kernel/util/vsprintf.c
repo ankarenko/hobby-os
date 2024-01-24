@@ -252,7 +252,7 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args) {
       continue;
     }
 
-    /* process flags */
+    /* struct processflags */
     flags = 0;
   repeat:
     ++fmt; /* this also skips first '%' */

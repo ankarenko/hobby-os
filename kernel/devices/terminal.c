@@ -212,7 +212,7 @@ void terminal_run() {
   assert(ptm != NULL);
   */
   struct key_event ev;
-  process* proc = get_current_process();
+  struct process* proc = get_current_process();
 
   char buf[128];
 

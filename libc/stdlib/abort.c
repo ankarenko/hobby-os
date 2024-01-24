@@ -7,7 +7,7 @@ __attribute__((__noreturn__)) void abort(void) {
   printf("kernel: PANIC: abort()\n");
   asm volatile("hlt");
 #else
-  // TODO: Abnormally terminate the process as if by SIGABRT.
+  // TODO: Abnormally terminate the struct processas if by SIGABRT.
   printf("abort()\n");
 #endif
   while (1) {

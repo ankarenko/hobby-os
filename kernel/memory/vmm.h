@@ -113,6 +113,8 @@ physical_addr vmm_get_physical_address_userland(
 //! allocates a page in physical memory
 bool vmm_alloc_page(pt_entry*);
 
+struct pdirectory *vmm_create_address_space();
+
 //! frees a page in physical memory
 void vmm_free_page(pt_entry* e);
 
@@ -147,7 +149,7 @@ void vmm_map_address(uint32_t virt, uint32_t phys, uint32_t flags);
 
 //virtual_addr vmm_alloc_size(virtual_addr from, uint32_t size, uint32_t flags);
 void vmm_unmap_address(uint32_t virt);
-
+struct pdirectory *vmm_fork(struct pdirectory* dir);
 
 /* sbrk.c */
 void* sbrk(size_t n, struct _mm_struct_mos* mm);

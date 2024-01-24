@@ -6,7 +6,7 @@
 #include "kernel/fs/vfs.h"
 
 int vfs_unlink(const char *path, int flag) {
-  process* cur_proc = get_current_process();
+  struct process* cur_proc = get_current_process();
 
 	int ret = vfs_open(path, O_RDONLY);
 	

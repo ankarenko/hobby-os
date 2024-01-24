@@ -68,7 +68,7 @@ typedef struct _vm_area_struct
 } vm_area_struct;
 
 typedef struct _mm_struct_mos {
-  struct list_head mmap;
+  //struct list_head mmap;
 	uint32_t free_area_cache; // not used now
 	uint32_t start_code, end_code, start_data, end_data; 
 	// NOTE: MQ 2020-01-30
@@ -82,6 +82,8 @@ typedef struct _mm_struct_mos {
   virtual_addr heap_end;
 } mm_struct_mos;
 
+typedef struct process;
+
 typedef struct _thread {
   uint32_t kernel_esp;
   uint32_t kernel_ss;
@@ -89,7 +91,7 @@ typedef struct _thread {
   uint32_t user_ss;   // user stack segment
   uint32_t esp;
 
-  struct _process* parent;
+  struct process *parent;
   uint32_t tid;
 
   physical_addr phys_ustack_bottom;
@@ -98,6 +100,7 @@ typedef struct _thread {
   // uint32_t state;
   enum thread_state state;
   ktime_t sleep_time_delta;
+
   struct list_head sched_sibling;
   struct list_head th_sibling;
 
@@ -140,7 +143,7 @@ struct process {
   char* path;
 
   struct list_head threads;
-  struct list_head proc_sibling;
+  struct list_head sibling;
   files_struct* files; 
   fs_struct* fs;
   struct tty_struct *tty;
@@ -150,16 +153,17 @@ struct process {
   int32_t gid;  // group id
   int32_t sid;  // session id
   struct process *parent;
+  struct list_head children;
 };
 
 thread* get_current_thread();
-process* get_current_process();
+struct process* get_current_process();
 void thread_sleep(uint32_t ms);
 bool initialise_multitasking(virtual_addr entry);
-thread* kernel_thread_create(process* parent, virtual_addr eip);
-process* create_system_process(virtual_addr entry, char* name);
+thread* kernel_thread_create(struct process* parent, virtual_addr eip);
+struct process* create_system_process(virtual_addr entry, char* name);
 struct list_head* get_proc_list();
-process* create_elf_process(process* parent, char* path);
+struct process* create_elf_process(struct process* parent, char* path);
 
 // sched.c
 void lock_scheduler();

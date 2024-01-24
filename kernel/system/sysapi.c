@@ -55,7 +55,7 @@ static int32_t sys_write(uint32_t fd, char *buf, size_t count) {
 
 static void* sys_sbrk(size_t n) {
   thread* th = get_current_thread();
-  process* parent = th->parent;
+  struct process* parent = th->parent;
   virtual_addr addr = sbrk(
     n, parent->mm_mos
   );
@@ -63,7 +63,7 @@ static void* sys_sbrk(size_t n) {
 }
 
 static int32_t sys_getpid() {
-	process* proc = get_current_process();
+	struct process* proc = get_current_process();
   return proc->pid;
 }
 
@@ -84,7 +84,7 @@ static int32_t sys_execve(const char *pathname, char *const argv[], char *const 
 static pid_t sys_fork() {
   return -1;
 	/*
-  struct process *child = process_fork(current_process);
+  struct struct process* child = process_fork(current_process);
 	queue_thread(child->thread);
 
 	return child->pid;

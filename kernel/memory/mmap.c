@@ -13,6 +13,8 @@
 unit_static vm_area_struct* get_unmapped_area(
   mm_struct_mos *mm, uint32_t addr, uint32_t len
 ) {
+  assert_not_implemented();
+  /*
   vm_area_struct *vma = kcalloc(1, sizeof(vm_area_struct));
   vma->vm_mm = mm;
 
@@ -59,6 +61,7 @@ unit_static vm_area_struct* get_unmapped_area(
   }
 
   return vma;
+  */
 }
 
 unit_static int expand_area(
@@ -67,6 +70,8 @@ unit_static int expand_area(
   uint32_t address, 
   bool fixed
 ) {
+  assert_not_implemented();
+  /*
   address = PAGE_ALIGN(address);
   if (address <= vma->vm_end)
     return 0;
@@ -91,17 +96,20 @@ unit_static int expand_area(
       kfree(vma_expand);
     }
   }
+  */
   return 0;
 }
 
 static struct vm_area_struct *find_vma(mm_struct_mos *mm, uint32_t addr) {
+  err("Not implemented");
+  /*
   vm_area_struct *iter = NULL;
   list_for_each_entry(iter, &mm->mmap, vm_sibling) {
     if (iter->vm_start <= addr && addr < iter->vm_end) {
       return iter;
     }
   }
-
+  */
   return NULL;
 }
 
@@ -112,7 +120,7 @@ virtual_addr do_mmap(
   uint32_t flag, 
   int32_t fd
 ) {
-  
+  err("Not implemented");
   /*
     for now it only supports ZERRO addresses, which means
     kernel decides on his own where allocate address.
@@ -120,6 +128,7 @@ virtual_addr do_mmap(
   //assert(addr == 0 && flag != MMAP_FIXED);
   
   // struct vfs_file *file = fd >= 0 ? current_process->files->fd[fd] : NULL;
+  /*
   mm_struct_mos* mm = get_current_process()->mm_mos;
   uint32_t aligned_addr = ALIGN_DOWN(addr, PMM_FRAME_SIZE);
   vm_area_struct *vma = find_vma(mm, aligned_addr);
@@ -128,6 +137,7 @@ virtual_addr do_mmap(
     vma = get_unmapped_area(mm, aligned_addr, len);
   else if (vma->vm_end < addr + len)
     expand_area(mm, vma, addr + len, true);
+    */
 
   /*
     if (file)
@@ -142,7 +152,7 @@ virtual_addr do_mmap(
   uint32_t frames = div_ceil(vma->vm_end - vma->vm_start, PMM_FRAME_SIZE); 
   uint32_t paddr = (uint32_t)pmm_alloc_frames(frames);
   */
-
+  /*
   if (flag != MMAP_DONT_ALLOCATE) {
     for (
       virtual_addr vaddr = vma->vm_start; 
@@ -155,10 +165,12 @@ virtual_addr do_mmap(
   }
 
   return addr ? addr : vma->vm_start;
+  */
 }
 
 // FIXME: MQ 2019-01-16 Currently, we assume that start_brk is not changed
 virtual_addr do_brk(virtual_addr addr, size_t len) {
+  /*
   mm_struct_mos *mm = get_current_process()->mm_mos;
   vm_area_struct *vma = find_vma(mm, addr);
   uint32_t new_brk = PAGE_ALIGN(addr + len);
@@ -174,13 +186,14 @@ virtual_addr do_brk(virtual_addr addr, size_t len) {
     expand_area(mm, new_vma, new_brk, true);
   else
     new_vma->vm_end = new_brk;
-
+  */
   /*
     if (vma->vm_file)
             vma->vm_file->f_op->mmap(vma->vm_file, new_vma);
     else
     {
   */
+ /*
   if (vma->vm_end < new_vma->vm_end) {
     assert((new_vma->vm_end - vma->vm_end) % PMM_FRAME_SIZE == 0);
 
@@ -193,6 +206,6 @@ virtual_addr do_brk(virtual_addr addr, size_t len) {
       vmm_unmap_address(addr);
 
   memcpy(vma, new_vma, sizeof(vm_area_struct));
-
+  */
   return 0;
 }

@@ -69,7 +69,7 @@ static int ptmx_open(struct vfs_inode *inode, struct vfs_file *file) {
 	file->private_data = ttym;
 	ttym->driver->tops->open(ttym, file);
   // Make the given terminal the controlling terminal of the
-  // calling process.  The calling process must be a session
+  // calling process.  The calling struct processmust be a session
   // https://man7.org/linux/man-pages/man2/ioctl_tty.2.html
 	// tiocsctty(ttym, 0);
 
@@ -89,7 +89,7 @@ static int ptmx_open(struct vfs_inode *inode, struct vfs_file *file) {
 static int tty_open(struct vfs_inode *inode, struct vfs_file *file) {
   struct tty_struct *tty = NULL;
   int32_t dev = inode->i_rdev;
-  process *current_process = get_current_process();
+  struct process* current_process = get_current_process();
 
   if (MAJOR(dev) == UNIX98_PTY_SLAVE_MAJOR)
     tty = find_tty_from_driver(pts_driver, MINOR(dev));

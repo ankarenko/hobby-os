@@ -33,7 +33,7 @@ void signal_handler(interrupt_registers *regs) {
 }
 
 int do_sigaction(int signum, const struct sigaction *action, struct sigaction *old_action) {
-	process* current_process = get_current_process();
+	struct process* current_process= get_current_process();
   
   if (!valid_signal(signum) || signum < 1 || sig_kernel_only(signum))
 		return -EINVAL;
@@ -96,7 +96,7 @@ static int next_signal(sigset_t pending, sigset_t blocked) {
 
 void handle_signal(interrupt_registers *regs, sigset_t restored_sig) {
   thread* current_thread = get_current_thread();
-  process* current_process = get_current_process();
+  struct process* current_process= get_current_process();
   
   int signum;
   if ((signum = next_signal(current_thread->pending, current_thread->blocked)) == 0) {
@@ -120,6 +120,7 @@ void handle_signal(interrupt_registers *regs, sigset_t restored_sig) {
   
   if (from_syscall) {
     tss_set_stack(KERNEL_DATA, current_thread->kernel_esp);
+    // NOTE: we don't need to worry about restoring general purpose registers
     enter_usermode(sigaction->sa_handler, signal_frame, NULL);
   }
 }
@@ -138,7 +139,7 @@ void sigreturn(interrupt_registers *regs) {
     |-------------------------| <- trap frame esp
   */
 
-  process* current_process = get_current_process();
+  struct process* current_process= get_current_process();
   thread* current_thread = get_current_thread();
   log("Signal: Return from signal handler %s(p%d)", current_process->path, current_process->pid);
   

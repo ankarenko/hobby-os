@@ -2,7 +2,9 @@
 #include "kernel/util/string/string.h"
 #include "kernel/util/math.h"
 #include "kernel/util/list.h"
+#include "kernel/memory/malloc.h"
 #include "kernel/memory/kernel_info.h"
+#include "kernel/memory/pmm.h"
 #include "kernel/util/debug.h"
 #include "kernel/proc/task.h"
 
@@ -64,23 +66,58 @@ void vmm_free_page(pt_entry* e) {
   pt_entry_del_attrib(e, I86_PTE_PRESENT);
 }
 
+/* create new address space. */
+struct pdirectory* vmm_create_address_space() {
+	struct pdirectory* space;
+
+	/* we need our page directory to be aligned, 0-11 bits should be zero */
+  /*
+  virtual_addr aligned_object = kalign_heap(PAGE_SIZE);
+	space = kcalloc(PAGE_SIZE, sizeof(char)); // (struct pdirectory*)pmm_alloc_frame();
+  if (aligned_object)
+		kfree(aligned_object);
+  */
+  space = kcalloc_aligned(PAGE_SIZE, sizeof(char), PAGE_SIZE);
+  
+
+	/* clear page directory and clone kernel space. */
+	vmm_pdirectory_clear(space);
+	vmm_clone_kernel_space(space);
+  physical_addr phys = vmm_get_physical_address(space, false);
+  
+  assert(phys % PAGE_SIZE == 0); // check alignment 
+
+  // recursive trick
+  space->m_entries[TABLES_PER_DIR - 1] = 
+    phys | 
+    I86_PDE_PRESENT | 
+    I86_PDE_WRITABLE;
+
+  //vmm_switch_pdirectory(space);
+	return space;
+}
+
+
 void vmm_unmap_address(virtual_addr virt) {
   struct pdirectory* va_dir = PAGE_DIRECTORY_BASE;
 
   if (virt != PAGE_ALIGN(virt)) {
-    printf("0x%x is not page aligned", virt);
-    return;
+    err("0x%x is not page aligned", virt);
   }
 		//dlog("0x%x is not page aligned", virt);
 
-	if (!pd_entry_is_present(va_dir->m_entries[PAGE_DIRECTORY_INDEX(virt)]))
-		return;
+	if (!pd_entry_is_present(va_dir->m_entries[PAGE_DIRECTORY_INDEX(virt)])) {
+		err("PD entry not present");
+    return;
+  }
 
 	struct ptable *pt = (struct ptable *)(PAGE_TABLE_VIRT_ADDRESS(virt));
   uint32_t pte = PAGE_TABLE_INDEX(virt);
 
-	if (!pt_entry_is_present(pt->m_entries[pte]))
+	if (!pt_entry_is_present(pt->m_entries[pte])) {
+    err("PT entry not present");
 		return;
+  }
 
 	pt->m_entries[pte] = 0;
 	vmm_flush_tlb_entry(virt);
@@ -100,6 +137,61 @@ struct pdirectory* vmm_get_directory() {
 
 struct pdirectory* vmm_get_kernel_space() {
   return _current_dir;
+}
+
+struct pdirectory *vmm_fork(struct pdirectory *va_dir) {
+  if (va_dir == _kernel_dir) {
+    // forking kernel
+    return va_dir;
+  }
+  disable_interrupts(); 
+
+  struct pdirectory *forked_dir = vmm_create_address_space();
+  void *aligned = kalign_heap(PMM_FRAME_ALIGN);
+
+  uint32_t heap_current = (uint32_t)sbrk(0, NULL);
+
+  // NOTE: make sure we are not exceeding the boundaries of the kernel heap
+  assert(
+    ALIGN_UP(heap_current + sizeof(struct ptable) + PMM_FRAME_SIZE, PMM_FRAME_SIZE) <= KERNEL_HEAP_TOP
+  );
+
+  assert(heap_current % PMM_FRAME_ALIGN == 0);
+  
+  for (int ipd = 0; ipd < 768; ++ipd) {
+    if (pd_entry_is_present(va_dir->m_entries[ipd])) {
+      struct ptable *forked_pt = (struct ptable *)heap_current;
+      uint32_t forked_pt_paddr = (uint32_t)pmm_alloc_frame();
+      vmm_map_address((uint32_t)forked_pt, forked_pt_paddr, I86_PTE_PRESENT | I86_PTE_WRITABLE);
+			memset(forked_pt, 0, sizeof(struct ptable));
+      heap_current += sizeof(struct ptable);
+
+      struct ptable *pt = PAGE_TABLE_BASE + ipd * PMM_FRAME_SIZE;
+
+      for (int ipt = 0; ipt < PAGES_PER_TABLE; ++ipt) {
+        if (pt_entry_is_present(pt->m_entries[ipt])) {
+          char *pte = (ipd << 10 | (0b1111111111 & ipt)) << 12;  // NOTE: lowest virtual address assigned to ipd and ipt
+					char *forked_pte = heap_current;
+					uint32_t forked_pte_paddr = (uint32_t)pmm_alloc_frame();
+
+          vmm_map_address((uint32_t)forked_pte, forked_pte_paddr, I86_PTE_PRESENT | I86_PTE_WRITABLE);
+          memcpy(forked_pte, pte, PMM_FRAME_SIZE);
+          vmm_unmap_address((uint32_t)forked_pte);
+          forked_pt->m_entries[ipt] = pt->m_entries[ipt];
+          pt_entry_set_frame(&forked_pt->m_entries[ipt], forked_pte_paddr);
+        }
+      }
+      vmm_unmap_address((uint32_t)forked_pt);
+      forked_dir->m_entries[ipd] = va_dir->m_entries[ipd];
+      pd_entry_set_frame(&forked_dir->m_entries[ipd], forked_pt_paddr);
+    }
+  }
+
+  if (aligned) {
+    kfree(aligned);
+  }
+  enable_interrupts();
+  return forked_dir;
 }
 
 void vmm_flush_tlb_entry(virtual_addr addr) {
@@ -228,7 +320,7 @@ void vmm_map_address(uint32_t virt, uint32_t phys, uint32_t flags) {
   struct pdirectory* va_dir = PAGE_DIRECTORY_BASE;
 
   if (virt != PAGE_ALIGN(virt)) {
-    printf("0x%x is not page aligned", virt);
+    err("0x%x is not page aligned", virt);
   }
 
   if (!pd_entry_is_present(va_dir->m_entries[PAGE_DIRECTORY_INDEX(virt)]))

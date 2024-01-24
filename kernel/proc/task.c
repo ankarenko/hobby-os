@@ -34,39 +34,6 @@ void scheduler_isr();
 void (*old_pic_isr)();
 void idle_task();
 
-/* create new address space. */
-struct pdirectory* create_address_space() {
-	struct pdirectory* space;
-
-	/* we need our page directory to be aligned, 0-11 bits should be zero */
-  /*
-  virtual_addr aligned_object = kalign_heap(PAGE_SIZE);
-	space = kcalloc(PAGE_SIZE, sizeof(char)); // (struct pdirectory*)pmm_alloc_frame();
-  if (aligned_object)
-		kfree(aligned_object);
-  */
-  space = kcalloc_aligned(PAGE_SIZE, sizeof(char), PAGE_SIZE);
-  
-
-
-	/* clear page directory and clone kernel space. */
-	vmm_pdirectory_clear(space);
-	vmm_clone_kernel_space(space);
-  physical_addr phys = vmm_get_physical_address(space, false);
-  
-  assert(phys % PAGE_SIZE == 0); // check alignment 
-
-  // recursive trick
-  space->m_entries[TABLES_PER_DIR - 1] = 
-    phys | 
-    I86_PDE_PRESENT | 
-    I86_PDE_WRITABLE;
-  //5255168 //5263392
-
-  //vmm_switch_pdirectory(space);
-	return space;
-}
-
 /* create a new kernel space stack. */
 bool create_kernel_stack(virtual_addr* kernel_stack) {
 	void* ret;
@@ -150,7 +117,7 @@ static void thread_wakeup_timer(struct sleep_timer *timer) {
 }
 
 static thread* thread_create(
-  process* parent, 
+  struct process* parent, 
   virtual_addr eip,
   virtual_addr entry
 ) {
@@ -160,7 +127,7 @@ static thread* thread_create(
   virtual_addr kernel_stack;
 
   if (!create_kernel_stack(&kernel_stack)) {
-    return NULL;
+    err("Unable to create kernel stack");
   }
 
   th->parent = parent;
@@ -178,7 +145,7 @@ static thread* thread_create(
   th->s_timer = (struct sleep_timer)TIMER_INITIALIZER(thread_wakeup_timer, UINT32_MAX);
 
   /* adjust stack. We are about to push data on it. */
-  th->esp = th->kernel_esp - sizeof(trap_frame); // ????ALIGN_UP(sizeof(trap_frame), 16);
+  th->esp = th->kernel_esp - sizeof(trap_frame); // TODO: ????ALIGN_UP(sizeof(trap_frame), 16);
   trap_frame* frame = ((trap_frame*) th->esp);
   memset(frame, 0, sizeof(trap_frame));
   
@@ -197,7 +164,7 @@ static thread* thread_create(
 }
 
 bool empack_params(thread* th) {
-  process* parent = th->parent;
+  struct process* parent = th->parent;
   char* path = parent->path;
 
   uint32_t argc = 2;
@@ -232,10 +199,10 @@ bool empack_params(thread* th) {
 }
 
 static void user_thread_elf_entry(thread *th) {
-  enable_interrupts();
+  enable_interrupts(); // not sure if it's needed because enter_usermode enables the flag
   interruptdone(IRQ0);
 
-  process* parent = th->parent;
+  struct process* parent = th->parent;
   char* path = parent->path;
   virtual_addr entry = NULL;
 
@@ -252,12 +219,12 @@ static void user_thread_elf_entry(thread *th) {
   enter_usermode(entry, th->user_esp, PROCESS_TRAPPED_PAGE_FAULT);
 }
 
-thread* user_thread_create(process* parent) {
+thread* user_thread_create(struct process* parent) {
   thread* th = thread_create(parent, NULL, user_thread_elf_entry);
   return th;
 }
 
-thread* kernel_thread_create(process* parent, virtual_addr eip) {
+thread* kernel_thread_create(struct process* parent, virtual_addr eip) {
   thread* th = thread_create(parent, eip, kernel_thread_entry);
   return th;
 }
@@ -272,32 +239,33 @@ static files_struct* create_files_descriptors() {
   return files;
 }
 
-static process* create_process(process *parent, char* name, struct pdirectory* pdir) {
+static struct process* create_process(struct process* parent, char* name, struct pdirectory* pdir) {
   lock_scheduler();
 
-  process* proc = kcalloc(1, sizeof(process));
+  struct process* proc = kcalloc(1, sizeof(struct process));
   INIT_LIST_HEAD(&proc->threads);
-  INIT_LIST_HEAD(&proc->proc_sibling);
-  list_add(&proc->proc_sibling, get_proc_list());
+  INIT_LIST_HEAD(&proc->sibling);
+  list_add(&proc->sibling, get_proc_list());
   proc->pid = ++next_pid;
   proc->thread_count = 0;
   proc->files = create_files_descriptors();
   proc->path = strdup(name);
   proc->mm_mos = kcalloc(1, sizeof(mm_struct_mos));
-  INIT_LIST_HEAD(&proc->mm_mos->mmap);
+  //INIT_LIST_HEAD(&proc->mm_mos->mmap);
+  INIT_LIST_HEAD(&proc->children);
 
   for (int i = 0; i < NSIG; ++i)
 	  proc->sighand[i].sa_handler = sig_kernel_ignore(i + 1) ? SIG_IGN : SIG_DFL;
 
   proc->image_base = NULL;
   proc->image_size = 0;
-  proc->va_dir = pdir? pdir : create_address_space();
+  proc->va_dir = pdir? pdir : vmm_create_address_space();
   proc->pa_dir = vmm_get_physical_address(proc->va_dir, false);
 
   proc->fs = kcalloc(1, sizeof(fs_struct));
   if (parent) {
 		memcpy(proc->fs, parent->fs, sizeof(fs_struct));
-		//list_add_tail(&proc->sibling, &parent->children);
+		list_add_tail(&proc->sibling, &parent->children);
 	}
   
   unlock_scheduler();
@@ -354,8 +322,8 @@ void terminate_process() {
   */
 }
 
-process* create_system_process(virtual_addr entry, char* name) {
-  process* proc = create_process(get_current_process(), name == NULL? "system" : name, vmm_get_directory());
+struct process* create_system_process(virtual_addr entry, char* name) {
+  struct process* proc = create_process(get_current_process(), name == NULL? "system" : name, vmm_get_directory());
   thread* th = kernel_thread_create(proc, entry);
   
   if (!th) {
@@ -366,12 +334,12 @@ process* create_system_process(virtual_addr entry, char* name) {
   return proc;
 }
 
-process* create_elf_process(process* parent, char* path) {
-  process* proc = create_process(parent, path, NULL);
+struct process* create_elf_process(struct process* parent, char* path) {
+  struct process* proc = create_process(parent, path, NULL);
   thread* th = user_thread_create(proc);
 
   if (!th || !proc) {
-    assert_not_reached("Thread or process were not created properly", NULL);
+    assert_not_reached("Thread or struct processwere not created properly", NULL);
   }
 
   sched_push_queue(th);
@@ -382,23 +350,68 @@ thread* get_current_thread() {
   return _current_thread;
 }
 
-process* get_current_process() {
+struct process* get_current_process() {
   if (_current_thread == NULL)
     return NULL;
   return _current_thread->parent;
 }
 
-process *process_fork(process *parent) {
+static mm_struct_mos* clone_mm_struct(mm_struct_mos* mm_parent) {
+  mm_struct_mos* mm = kcalloc(1, sizeof(mm_struct_mos));
+
+  return mm;
+}
+
+static files_struct *clone_file_descriptor_table(files_struct *fs_src) {
+  files_struct *fs = kcalloc(1, sizeof(files_struct));
+  
+	memcpy(fs, fs_src, sizeof(files_struct));
+  // NOTE: MQ 2019-12-30 Increasing file description usage when forking because child refers to the same one
+  /*
+  for (int i = 0; i < MAX_FD; ++i)
+    if (parent->files->fd[i])
+      atomic_inc(&parent->files->fd[i]->f_count);
+	*/
+  return fs;
+
+	//sema_init(&files->lock, 1);
+}
+
+struct process* process_fork(struct process* parent) {
   lock_scheduler();
-  process *proc = kcalloc(1, sizeof(process));
+  struct process* proc = kcalloc(1, sizeof(struct process));
   proc->pid = next_pid++;
   proc->gid = parent->gid;
   proc->sid = parent->sid;
-  proc->
+  proc->parent = parent;
+  parent->tty = parent->tty;
+  parent->path = strdup(parent->path);
+  parent->mm_mos = clone_mm_struct(parent->mm_mos);
+  memcpy(&proc->sighand, &parent->sighand, sizeof(parent->sighand));
+  INIT_LIST_HEAD(&proc->children);
+
+  list_add_tail(&proc->sibling, &parent->children);
+
+	proc->fs = kcalloc(1, sizeof(fs_struct));
+	memcpy(proc->fs, parent->fs, sizeof(fs_struct));
+
+  proc->files = clone_file_descriptor_table(parent);
+	proc->va_dir = vmm_fork(parent->va_dir);
   
-  /*
-	log("Task: Fork from %s(p%d)", parent->name, parent->pid);
-  */
+  // copy active parent's thread
+	thread *parent_thread = NULL;
+  list_for_each_entry(parent_thread, &parent->threads, th_sibling);
+
+  thread *th = thread_create(proc, NULL, 0);
+  
+  // copy registers
+  th->esp = th->kernel_esp - sizeof(interrupt_registers);
+  memcpy(&th->kernel_esp, parent_thread->kernel_esp, sizeof(interrupt_registers));
+
+  // NOTE: equal virtual address, but different physical!
+	th->user_esp = parent_thread->user_esp; 
+
+  unlock_scheduler();
 
   return NULL;
 
@@ -407,7 +420,7 @@ process *process_fork(process *parent) {
 bool initialise_multitasking(virtual_addr entry) {
   sched_init();
 
-  process* parent = create_process(NULL, "swapper",  vmm_get_directory());
+  struct process* parent = create_process(NULL, "swapper",  vmm_get_directory());
   _current_thread = kernel_thread_create(parent, entry);
   sched_push_queue(_current_thread);
   
