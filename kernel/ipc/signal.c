@@ -19,7 +19,7 @@ struct signal_frame {
 	void (*sigreturn)(struct interrupt_registers *);
 	int32_t signum;
 	//bool signaling;
-	sigset_t blocked;
+	sig_t blocked;
 	interrupt_registers uregs;
 };
 
@@ -47,7 +47,7 @@ int do_sigaction(int signum, const struct sigaction *action, struct sigaction *o
 	return 0;
 }
 
-int do_sigprocmask(int how, const sigset_t *set, sigset_t *oldset) {
+int do_sigprocmask(int how, const sig_t *set, sig_t *oldset) {
 	thread* current_thread = get_current_thread();
 
   if (oldset)
@@ -70,8 +70,8 @@ int do_sigprocmask(int how, const sigset_t *set, sigset_t *oldset) {
 	return 0;
 }
 
-static int next_signal(sigset_t pending, sigset_t blocked) {
-	sigset_t mask = pending & ~blocked;
+static int next_signal(sig_t pending, sig_t blocked) {
+	sig_t mask = pending & ~blocked;
 	uint32_t signum = 0;
 
   for (int i = 0; i < NSIG; ++i) {
@@ -94,7 +94,7 @@ static int next_signal(sigset_t pending, sigset_t blocked) {
   */
 }
 
-void handle_signal(interrupt_registers *regs, sigset_t restored_sig) {
+void handle_signal(interrupt_registers *regs, sig_t restored_sig) {
   thread* current_thread = get_current_thread();
   struct process* current_process= get_current_process();
   

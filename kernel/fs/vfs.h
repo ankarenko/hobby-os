@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "kernel/util/atomic.h"
 #include "kernel/util/stat.h"
 #include "kernel/util/ctype.h"
 #include "kernel/system/time.h"
@@ -106,7 +107,7 @@ struct vfs_inode {
 	uid_t i_uid;
 	gid_t i_gid;
 	int32_t i_rdev;
-	//atomic_t i_count;
+	atomic_t i_count;
 	struct timespec i_atime;
 	struct timespec i_mtime;
 	struct timespec i_ctime;
@@ -172,6 +173,7 @@ struct vfs_file {
   struct vfs_mount *f_vfsmnt;
   struct vfs_dentry* f_dentry;
   struct vfs_file_operations *f_op;
+  atomic_t f_count;
   void *private_data;
 };
 
@@ -193,7 +195,7 @@ int32_t vfs_open(const char* fname, int32_t flags, ...);
 int vfs_fstat(int32_t fd, struct kstat* stat);
 int32_t vfs_delete(const char* fname);
 struct vfs_dentry *alloc_dentry(struct vfs_dentry *parent, char *name);
-struct vfs_file *get_empty_file();
+struct vfs_file *alloc_vfs_file();
 int generic_memory_readdir(struct vfs_file *file, struct dirent **dirent);
 int vfs_mknod(const char *path, int mode, int32_t dev);
 struct vfs_dentry *vfs_search_virt_subdirs(struct vfs_dentry *dir, const char *name);

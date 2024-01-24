@@ -33,8 +33,7 @@ struct vfs_inode *devfs_get_inode(struct vfs_superblock *sb, uint32_t mode) {
 static struct vfs_inode *devfs_alloc_inode(struct vfs_superblock *sb) {
   struct vfs_inode *inode = init_inode();
   inode->i_sb = sb;
-  //atomic_set(&inode->i_count, 0);
-
+  atomic_set(&inode->i_count, 0);
   return inode;
 }
 

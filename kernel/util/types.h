@@ -3,6 +3,8 @@
 
 #include <sys/types.h>
 
+typedef unsigned int sig_t;
+
 /*
 typedef unsigned int dev_t;
 typedef unsigned short umode_t;

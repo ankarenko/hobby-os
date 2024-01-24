@@ -119,7 +119,7 @@ static int32_t sys_sigaction(int signum, const struct sigaction *act, struct sig
   return do_sigaction(signum, act, oldact);
 }
 
-static int32_t sys_sigprocmask(int how, const sigset_t *set, sigset_t *oldset) {
+static int32_t sys_sigprocmask(int how, const sig_t *set, sig_t *oldset) {
   return do_sigprocmask(how, set, oldset);
 }
 

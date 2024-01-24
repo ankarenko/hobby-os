@@ -181,7 +181,7 @@ struct vfs_inode* init_inode() {
 struct vfs_inode* ext2_alloc_inode(struct vfs_superblock* sb) {
 	struct vfs_inode *i = init_inode();
 	i->i_sb = sb;
-	//atomic_set(&i->i_count, 0);
+	atomic_set(&i->i_count, 0);
 	return i;
 }
 

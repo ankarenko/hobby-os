@@ -67,13 +67,13 @@ static inline bool valid_signal(unsigned long sig) {
 struct sigaction {
 	__sighandler_t sa_handler;
 	uint32_t sa_flags;
-	sigset_t sa_mask;
+	sig_t sa_mask;
 };
 
 void signal_handler(interrupt_registers *regs);
-void handle_signal(interrupt_registers *regs, sigset_t restored_sig);
+void handle_signal(interrupt_registers *regs, sig_t restored_sig);
 void sigreturn(interrupt_registers *regs);
 int do_sigaction(int signum, const struct sigaction *action, struct sigaction *old_action);
-int do_sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
+int do_sigprocmask(int how, const sig_t *set, sig_t *oldset);
 
 #endif

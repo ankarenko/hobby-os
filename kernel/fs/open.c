@@ -30,11 +30,11 @@ static int32_t find_unused_fd_slot() {
   return -1;
 }
 
-struct vfs_file *get_empty_file() {
+struct vfs_file *alloc_vfs_file() {
   struct vfs_file *file = kcalloc(1, sizeof(struct vfs_file));
 
   // file->f_maxcount = INT_MAX;
-  // atomic_set(&file->f_count, 1);
+  atomic_set(&file->f_count, 1);
   return file;
 }
 
@@ -160,7 +160,7 @@ int32_t vfs_open(const char *path, int32_t flags, ...) {
   if (ret < 0)
     return ret;
 
-  struct vfs_file *file = get_empty_file();
+  struct vfs_file *file = alloc_vfs_file();
   file->f_dentry = nd.dentry;
   file->f_vfsmnt = nd.mnt;
   file->f_flags = flags;

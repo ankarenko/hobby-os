@@ -102,8 +102,8 @@ typedef struct _thread {
   struct list_head sibling;
 
   // used by UNIX signals
-  sigset_t pending;
-	sigset_t blocked;
+  sig_t pending;
+	sig_t blocked;
 	bool signaling;
   
   struct sleep_timer s_timer;

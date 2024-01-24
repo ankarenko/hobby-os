@@ -45,7 +45,7 @@ int32_t vfs_ls(const char* path) {
     return -ENOTDIR;
   }
 
-  struct vfs_file* file = get_empty_file();
+  struct vfs_file* file = alloc_vfs_file();
   file->f_dentry = nd.dentry;
 
   struct dirent* dirs = NULL;
