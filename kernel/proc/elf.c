@@ -71,7 +71,7 @@ bool elf_load_image(
   
   uint8_t* elf_file = vfs_read(app_path);
   //return true;
-  struct process* parent = th->parent;
+  struct process* parent = th->proc;
 
   if (!elf_file) {
     assert_not_reached("\nELF file not found", NULL);

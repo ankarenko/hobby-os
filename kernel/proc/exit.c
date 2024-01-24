@@ -41,7 +41,7 @@ bool exit_process(struct process* proc) {
   list_del(&proc->sibling);
   
   kfree(proc->mm_mos);
-  kfree(proc->path);
+  kfree(proc->name);
   kfree(proc->fs);
   kfree(proc);
 
@@ -51,7 +51,7 @@ bool exit_process(struct process* proc) {
 // TODO: bug, when kill 2 times and then create
 bool exit_thread(thread* th) {
   bool is_user = th->user_esp;
-  struct process* parent = th->parent;
+  struct process* parent = th->proc;
   //vmm_load_usertable(parent->pa_dir);
   
   
@@ -63,7 +63,6 @@ bool exit_thread(thread* th) {
     pmm_load_PDBR(parent->pa_dir);
   }
 
-  
   kfree(th->kernel_esp - KERNEL_STACK_SIZE);
   kfree(th);
   //vmm_unmap_address(th->parent->page_directory, th->kernel_esp - PMM_FRAME_SIZE);

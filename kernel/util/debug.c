@@ -29,7 +29,7 @@ static int debug_vsprintf(enum debug_level level, const char *fmt, va_list args)
   vsprintf(log_body, fmt, args);
   struct process* current_process= get_current_process();
   pid_t pid = current_process? current_process->pid : 0;
-  char *process_name = current_process? current_process->path : "";
+  char *process_name = current_process? current_process->name : "";
 
   int out;
   // NOTE: MQ 2020-11-25

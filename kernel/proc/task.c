@@ -29,6 +29,7 @@ void start_kernel_task(thread* th);
 
 static uint32_t next_pid = 0;
 static uint32_t next_tid = 0;
+static uint32_t next_sid = 0;
 
 void scheduler_isr();
 void (*old_pic_isr)();
@@ -130,7 +131,7 @@ static thread* thread_create(
     err("Unable to create kernel stack");
   }
 
-  th->parent = parent;
+  th->proc = parent;
   th->tid = ++next_tid;
 	th->state = THREAD_READY;
   th->kernel_esp = kernel_stack;
@@ -151,8 +152,6 @@ static thread* thread_create(
 	frame->return_address = PROCESS_TRAPPED_PAGE_FAULT;
 	frame->eip = entry;
 
-  th->parent = parent;
-
   list_add(&th->sibling, &parent->threads);
   parent->thread_count += 1;
   
@@ -161,8 +160,8 @@ static thread* thread_create(
 }
 
 bool empack_params(thread* th) {
-  struct process* parent = th->parent;
-  char* path = parent->path;
+  struct process* parent = th->proc;
+  char* path = parent->name;
 
   uint32_t argc = 2;
   int32_t id = parent->pid; 
@@ -199,8 +198,8 @@ static void user_thread_elf_entry(thread *th) {
   enable_interrupts(); // not sure if it's needed because enter_usermode enables the flag
   interruptdone(IRQ0);
 
-  struct process* parent = th->parent;
-  char* path = parent->path;
+  struct process* parent = th->proc;
+  char* path = parent->name;
   virtual_addr entry = NULL;
 
   // try to load image into our address space
@@ -240,16 +239,16 @@ static struct process* create_process(struct process* parent, char* name, struct
   lock_scheduler();
 
   struct process* proc = kcalloc(1, sizeof(struct process));
-  INIT_LIST_HEAD(&proc->threads);
-  INIT_LIST_HEAD(&proc->sibling);
+  
   list_add(&proc->sibling, get_proc_list());
   proc->pid = ++next_pid;
   proc->thread_count = 0;
   proc->files = create_files_descriptors();
-  proc->path = strdup(name);
+  proc->name = strdup(name);
   proc->mm_mos = kcalloc(1, sizeof(mm_struct_mos));
-  //INIT_LIST_HEAD(&proc->mm_mos->mmap);
-  INIT_LIST_HEAD(&proc->children);
+  
+  INIT_LIST_HEAD(&proc->childrens);
+  INIT_LIST_HEAD(&proc->threads);
 
   for (int i = 0; i < NSIG; ++i)
 	  proc->sighand[i].sa_handler = sig_kernel_ignore(i + 1) ? SIG_IGN : SIG_DFL;
@@ -262,7 +261,7 @@ static struct process* create_process(struct process* parent, char* name, struct
   proc->fs = kcalloc(1, sizeof(fs_struct));
   if (parent) {
 		memcpy(proc->fs, parent->fs, sizeof(fs_struct));
-		list_add_tail(&proc->sibling, &parent->children);
+		list_add_tail(&proc->child, &parent->childrens);
 	}
   
   unlock_scheduler();
@@ -350,7 +349,7 @@ thread* get_current_thread() {
 struct process* get_current_process() {
   if (_current_thread == NULL)
     return NULL;
-  return _current_thread->parent;
+  return _current_thread->proc;
 }
 
 static mm_struct_mos* clone_mm_struct(mm_struct_mos* mm_parent) {
@@ -364,13 +363,15 @@ static files_struct *clone_file_descriptor_table(files_struct *fs_src) {
   
 	memcpy(fs, fs_src, sizeof(files_struct));
   // NOTE: MQ 2019-12-30 Increasing file description usage when forking because child refers to the same one
+  
   /*
   for (int i = 0; i < MAX_FD; ++i)
     if (parent->files->fd[i])
       atomic_inc(&parent->files->fd[i]->f_count);
-	*/
-  return fs;
+      */
 
+  return fs;
+  // NOTE: I am not sure if we need to init lock
 	//sema_init(&files->lock, 1);
 }
 
@@ -382,12 +383,13 @@ struct process* process_fork(struct process* parent) {
   proc->sid = parent->sid;
   proc->parent = parent;
   parent->tty = parent->tty;
-  parent->path = strdup(parent->path);
+  parent->name = strdup(parent->name);
   parent->mm_mos = clone_mm_struct(parent->mm_mos);
   memcpy(&proc->sighand, &parent->sighand, sizeof(parent->sighand));
-  INIT_LIST_HEAD(&proc->children);
+  INIT_LIST_HEAD(&proc->childrens);
 
-  list_add_tail(&proc->sibling, &parent->children);
+  list_add_tail(&proc->child, &parent->childrens);
+  list_add(&proc->sibling, get_proc_list());
 
 	proc->fs = kcalloc(1, sizeof(fs_struct));
 	memcpy(proc->fs, parent->fs, sizeof(fs_struct));
@@ -395,8 +397,12 @@ struct process* process_fork(struct process* parent) {
   proc->files = clone_file_descriptor_table(parent);
 	proc->va_dir = vmm_fork(parent->va_dir);
   
-  // copy active parent's thread
-	thread *parent_thread = NULL;
+  thread *parent_thread = get_current_thread();
+  assert(
+    parent_thread->proc->pid == parent->pid, 
+    "Current thread doesn't belong to the process being forked"
+  );
+
   list_for_each_entry(parent_thread, &parent->threads, sibling);
 
   // penging and blocked signals are not inherited
@@ -412,7 +418,6 @@ struct process* process_fork(struct process* parent) {
   unlock_scheduler();
 
   return NULL;
-
 }
 
 bool initialise_multitasking(virtual_addr entry) {

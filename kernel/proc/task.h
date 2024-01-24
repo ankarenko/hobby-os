@@ -91,7 +91,7 @@ typedef struct _thread {
   uint32_t user_ss;   // user stack segment
   uint32_t esp;
 
-  struct process *parent;
+  struct process *proc;
   uint32_t tid;
 
   physical_addr phys_ustack_bottom;  // TODO: needs to be put in mm_struct 
@@ -137,10 +137,10 @@ struct process {
   uint32_t image_base;
   uint32_t image_size;
   int32_t thread_count;
-  char* path;
+  char* name;
 
   struct list_head threads;
-  struct list_head sibling;
+  struct list_head sibling; // used for a list of all processes
   
   files_struct* files; 
   fs_struct* fs;
@@ -151,7 +151,8 @@ struct process {
   int32_t gid;  // group id
   int32_t sid;  // session id
   struct process *parent;
-  struct list_head children;
+  struct list_head childrens;
+  struct list_head child; // used for a list of childs
 };
 
 thread* get_current_thread();

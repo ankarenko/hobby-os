@@ -55,7 +55,7 @@ static int32_t sys_write(uint32_t fd, char *buf, size_t count) {
 
 static void* sys_sbrk(size_t n) {
   thread* th = get_current_thread();
-  struct process* parent = th->parent;
+  struct process* parent = th->proc;
   virtual_addr addr = sbrk(
     n, parent->mm_mos
   );

@@ -141,7 +141,7 @@ void sigreturn(interrupt_registers *regs) {
 
   struct process* current_process= get_current_process();
   thread* current_thread = get_current_thread();
-  log("Signal: Return from signal handler %s(p%d)", current_process->path, current_process->pid);
+  log("Signal: Return from signal handler %s(p%d)", current_process->name, current_process->pid);
   
   struct signal_frame *signal_frame = (char *)regs->useresp - 4;
   if (signal_frame->uregs.int_no == DISPATCHER_ISR) {
