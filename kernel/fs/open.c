@@ -42,7 +42,7 @@ int32_t vfs_close(int32_t fd) {
   struct process* cur_proc = get_current_process();
   struct vfs_file *file = cur_proc->files->fd[fd];
 
-  semaphore_down(&cur_proc->files->lock);
+  semaphore_down(cur_proc->files->lock);
 
   int ret = 0;
   if (file) {
@@ -53,7 +53,7 @@ int32_t vfs_close(int32_t fd) {
     ret = -EBADF;
   }
 
-  semaphore_up(&cur_proc->files->lock);
+  semaphore_up(cur_proc->files->lock);
 
   return ret;
 }

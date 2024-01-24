@@ -131,17 +131,14 @@ static thread* thread_create(
   }
 
   th->parent = parent;
-	th->priority = 0;
   th->tid = ++next_tid;
 	th->state = THREAD_READY;
-	th->sleep_time_delta = 0;
   th->kernel_esp = kernel_stack;
   th->user_esp = NULL;
   th->kernel_ss = KERNEL_DATA;
   th->user_ss = USER_DATA;
   INIT_LIST_HEAD(&th->sched_sibling);
-  INIT_LIST_HEAD(&th->th_sibling);
-
+  INIT_LIST_HEAD(&th->sibling);
   th->s_timer = (struct sleep_timer)TIMER_INITIALIZER(thread_wakeup_timer, UINT32_MAX);
 
   /* adjust stack. We are about to push data on it. */
@@ -156,7 +153,7 @@ static thread* thread_create(
 
   th->parent = parent;
 
-  list_add(&th->th_sibling, &parent->threads);
+  list_add(&th->sibling, &parent->threads);
   parent->thread_count += 1;
   
   unlock_scheduler();
@@ -235,7 +232,7 @@ static files_struct* create_files_descriptors() {
     files->fd[i] = NULL;
   }
   
-  sema_init(&files->lock, 1);
+  files->lock = semaphore_alloc(1);
   return files;
 }
 
@@ -289,7 +286,7 @@ void terminate_process() {
 	/* release threads */
   /*
   thread* th = NULL;
-  list_for_each_entry(th, &cur->threads, th_sibling) {
+  list_for_each_entry(th, &cur->threads, sibling) {
     vmm_unmap_address(cur->va_dir, th->kernel_esp - PMM_FRAME_SIZE);
   }
   */
@@ -358,7 +355,7 @@ struct process* get_current_process() {
 
 static mm_struct_mos* clone_mm_struct(mm_struct_mos* mm_parent) {
   mm_struct_mos* mm = kcalloc(1, sizeof(mm_struct_mos));
-
+  memcpy(mm, mm_parent, sizeof(mm_struct_mos));
   return mm;
 }
 
@@ -400,8 +397,9 @@ struct process* process_fork(struct process* parent) {
   
   // copy active parent's thread
 	thread *parent_thread = NULL;
-  list_for_each_entry(parent_thread, &parent->threads, th_sibling);
+  list_for_each_entry(parent_thread, &parent->threads, sibling);
 
+  // penging and blocked signals are not inherited
   thread *th = thread_create(proc, NULL, 0);
   
   // copy registers

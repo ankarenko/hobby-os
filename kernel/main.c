@@ -182,7 +182,7 @@ bool run_cmd(char* cmd_buf) {
     list_for_each_entry(proc, get_proc_list(), sibling) {
       printf("\n%d: %s : ", proc->pid, proc->path);
 
-      list_for_each_entry(th, &proc->threads, th_sibling) {
+      list_for_each_entry(th, &proc->threads, sibling) {
         printf(" %d", th->tid);
       }
     }

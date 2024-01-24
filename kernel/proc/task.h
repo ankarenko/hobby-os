@@ -94,15 +94,12 @@ typedef struct _thread {
   struct process *parent;
   uint32_t tid;
 
-  physical_addr phys_ustack_bottom;
+  physical_addr phys_ustack_bottom;  // TODO: needs to be put in mm_struct 
   virtual_addr virt_ustack_bottom;
-  uint32_t priority;
-  // uint32_t state;
   enum thread_state state;
-  ktime_t sleep_time_delta;
 
   struct list_head sched_sibling;
-  struct list_head th_sibling;
+  struct list_head sibling;
 
   // used by UNIX signals
   sigset_t pending;
@@ -114,7 +111,7 @@ typedef struct _thread {
 
 typedef struct _files_struct {
   // TODO: what to do if two threads from different processes try to access a file
-	struct semaphore lock;   // used to synchronized threads and childs of a given process
+	struct semaphore *lock;   // used to synchronized threads and childs of a given process
 	struct vfs_file *fd[MAX_FD];
 } files_struct;
 
@@ -144,10 +141,11 @@ struct process {
 
   struct list_head threads;
   struct list_head sibling;
+  
   files_struct* files; 
   fs_struct* fs;
-  struct tty_struct *tty;
 
+  struct tty_struct *tty;
   struct sigaction sighand[NSIG];
 
   int32_t gid;  // group id

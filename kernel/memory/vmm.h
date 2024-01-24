@@ -104,11 +104,6 @@ struct pdirectory {
 };
 
 void vmm_init();
-void vmm_load_usertable(physical_addr p_dir);
-physical_addr vmm_get_physical_address_userland(
-  virtual_addr vaddr, 
-  bool is_page
-);
 
 //! allocates a page in physical memory
 bool vmm_alloc_page(pt_entry*);

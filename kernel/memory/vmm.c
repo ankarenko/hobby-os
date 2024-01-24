@@ -8,11 +8,7 @@
 #include "kernel/util/debug.h"
 #include "kernel/proc/task.h"
 
-#include "vmm.h"
-
-#define SEC_PAGE_DIRECTORY_BASE 0xFF800000
-#define SEC_PAGE_TABLE_BASE 0xFFBFF000
-#define SEC_PAGE_TABLE_VIRT_ADDRESS(virt) (SEC_PAGE_TABLE_BASE + (PAGE_DIRECTORY_INDEX(virt) * PMM_FRAME_SIZE))
+#include "kernel/memory/vmm.h"
 
 #define PAGE_DIRECTORY_BASE 0xFFFFF000
 #define PAGE_TABLE_BASE 0xFFC00000
@@ -71,15 +67,8 @@ struct pdirectory* vmm_create_address_space() {
 	struct pdirectory* space;
 
 	/* we need our page directory to be aligned, 0-11 bits should be zero */
-  /*
-  virtual_addr aligned_object = kalign_heap(PAGE_SIZE);
-	space = kcalloc(PAGE_SIZE, sizeof(char)); // (struct pdirectory*)pmm_alloc_frame();
-  if (aligned_object)
-		kfree(aligned_object);
-  */
   space = kcalloc_aligned(PAGE_SIZE, sizeof(char), PAGE_SIZE);
   
-
 	/* clear page directory and clone kernel space. */
 	vmm_pdirectory_clear(space);
 	vmm_clone_kernel_space(space);
@@ -93,7 +82,6 @@ struct pdirectory* vmm_create_address_space() {
     I86_PDE_PRESENT | 
     I86_PDE_WRITABLE;
 
-  //vmm_switch_pdirectory(space);
 	return space;
 }
 
@@ -294,16 +282,6 @@ void vmm_paging(struct pdirectory* va_dir, uint32_t pa_dir) {
       "mov %%cr0, %%ecx        \n"
       "or $0x80000000, %%ecx   \n"
       "mov %%ecx, %%cr0        \n" ::"r"(pa_dir));
-}
-
-physical_addr vmm_get_physical_address_userland(
-  virtual_addr vaddr, 
-  bool is_page
-) {
-  uint32_t* table = SEC_PAGE_TABLE_VIRT_ADDRESS(vaddr);
-  uint32_t tindex = PAGE_TABLE_INDEX(vaddr);
-  uint32_t paddr = table[tindex];
-  return is_page ? paddr : (paddr & ~0xfff) | (vaddr & 0xfff);
 }
 
 physical_addr vmm_get_physical_address(

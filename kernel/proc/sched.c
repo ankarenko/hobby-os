@@ -192,22 +192,6 @@ next_thread:
 
   sched_push_queue(th);
 
-  /*
-	if (th->state == THREAD_WAITING) {
-		if (th->sleep_time_delta > 0)
-			th->sleep_time_delta--;
-
-		if (th->sleep_time_delta == 0) {
-			thread_wake();
-      sched_push_queue(th);
-      goto do_switch;
-		}
-
-    sched_push_queue(th);
-		goto next_thread;
-	}
-  */
-
 do_switch:
   // INFO: SA switch to trhead invokes tss_set_stack implicitly
   // tss_set_stack(KERNEL_DATA, th->kernel_esp);

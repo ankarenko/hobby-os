@@ -69,7 +69,7 @@ bool exit_thread(thread* th) {
   //vmm_unmap_address(th->parent->page_directory, th->kernel_esp - PMM_FRAME_SIZE);
   
   parent->thread_count -= 1;
-  list_del(&th->th_sibling);
+  list_del(&th->sibling);
 
   // clear userstack
   if (th->user_esp) {
