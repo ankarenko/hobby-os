@@ -19,6 +19,7 @@ extern void enter_usermode(
 );
 
 extern thread*  _current_thread;
+extern void scheduler_end();
 
 LIST_HEAD(_proc_list);
 struct list_head* get_proc_list() {
@@ -376,8 +377,10 @@ static files_struct *clone_file_descriptor_table(files_struct *fs_src) {
 	//sema_init(&files->lock, 1);
 }
 
+extern uint32_t get_return_address();
+
 struct process* process_fork(struct process* parent) {
-  //save 
+  bool is_kernel = vmm_is_kernel_directory(parent->va_dir);
   lock_scheduler();
   struct process* proc = kcalloc(1, sizeof(struct process));
   proc->pid = next_pid++;
@@ -388,16 +391,19 @@ struct process* process_fork(struct process* parent) {
   parent->name = strdup(parent->name);
   parent->mm_mos = clone_mm_struct(parent->mm_mos);
   memcpy(&proc->sighand, &parent->sighand, sizeof(parent->sighand));
+  
   INIT_LIST_HEAD(&proc->childrens);
+  INIT_LIST_HEAD(&proc->threads);
 
-  list_add_tail(&proc->child, &parent->childrens);
+  list_add(&proc->child, &parent->childrens);
   list_add(&proc->sibling, get_proc_list());
 
 	proc->fs = kcalloc(1, sizeof(fs_struct));
 	memcpy(proc->fs, parent->fs, sizeof(fs_struct));
 
   proc->files = clone_file_descriptor_table(parent);
-	proc->va_dir = vmm_fork(parent->va_dir);
+  proc->va_dir = is_kernel? parent->va_dir : vmm_fork(parent->va_dir);
+  proc->pa_dir = vmm_get_physical_address(proc->va_dir, false);
   
   thread *parent_thread = get_current_thread();
   assert(
@@ -411,9 +417,18 @@ struct process* process_fork(struct process* parent) {
   thread *th = thread_create(proc, NULL, 0);
   
   // copy registers
-  th->esp = th->kernel_esp - sizeof(trap_frame);
-  memcpy((char*)th->esp, (char*)parent_thread->kernel_esp, sizeof(trap_frame));
+  if (!is_kernel) {
+    th->esp = th->kernel_esp - sizeof(interrupt_registers);
+    memcpy((char*)th->esp, (char*)parent_thread->kernel_esp, sizeof(interrupt_registers));
+  }
 
+  th->esp = th->esp - sizeof(switch_task_frame);
+  
+  memset((char*)th->esp, 0, sizeof(switch_task_frame));
+  switch_task_frame* stf = th->esp; 
+  uint32_t ret = get_return_address();
+  stf->eip = ret;
+  
   // NOTE: equal virtual address, but different physical!
 	th->user_esp = parent_thread->user_esp; 
 

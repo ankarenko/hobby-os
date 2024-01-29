@@ -26,6 +26,14 @@ typedef struct
 } /*__attribute__((packed))*/ interrupt_registers;
 #pragma pack(0)
 
+#pragma pack(1)
+typedef struct {
+  uint32_t edi, esi, ebp, ebx;
+	uint32_t eip;  
+} /*__attribute__((packed))*/ switch_task_frame;
+#pragma pack(0)
+
+
 // A few defines to make life a little easier
 #define IRQ0 32
 #define IRQ1 33

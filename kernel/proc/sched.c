@@ -99,6 +99,10 @@ struct list_head* get_ready_threads() {
   return &ready_threads;
 }
 
+struct list_head* get_waiting_threads() {
+  return &waiting_threads;
+}
+
 void scheduler_tick() {
 	make_schedule();
 }
@@ -178,11 +182,16 @@ bool thread_kill(uint32_t tid) {
   return false;
 }
 
+extern uint32_t address_end_of_switch_to_task = 0;
+
 void make_schedule() {
 next_thread:
   //log("Interrupt\n");
   
   thread* th = pop_next_thread_to_run();
+  if (th->tid == 8) {
+    int bn = 0;
+  }
 
   if (th->state == THREAD_TERMINATED) {
     // put it in a queue for a worker thread to purge
@@ -196,6 +205,7 @@ do_switch:
   // INFO: SA switch to trhead invokes tss_set_stack implicitly
   // tss_set_stack(KERNEL_DATA, th->kernel_esp);
   switch_to_thread(th);
+
   if (_current_thread->pending /*&& !(_current_thread->flags & TIF_SIGNAL_MANUAL)*/) {
     //_current_thread->handles_signal = true;
     // allocate space for signal handler trap  

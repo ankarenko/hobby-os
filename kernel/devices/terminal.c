@@ -219,7 +219,8 @@ void terminal_run() {
   while (true) {
     
 newline:
-    sprintf(&buf, "\n(%s)root@%s: ", 
+    terminal_newline();
+    sprintf(&buf, "(%s)root@%s: ", 
       strcmp(proc->fs->mnt_root->mnt_devname, "/dev/hda") == 0 ? "ext2" : proc->fs->mnt_root->mnt_devname,
       proc->fs->d_root->d_name
     );

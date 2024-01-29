@@ -128,10 +128,6 @@ struct pdirectory* vmm_get_kernel_space() {
 }
 
 struct pdirectory *vmm_fork(struct pdirectory *va_dir) {
-  if (va_dir == _kernel_dir) {
-    // forking kernel
-    return va_dir;
-  }
   disable_interrupts(); 
 
   struct pdirectory *forked_dir = vmm_create_address_space();
@@ -282,6 +278,10 @@ void vmm_paging(struct pdirectory* va_dir, uint32_t pa_dir) {
       "mov %%cr0, %%ecx        \n"
       "or $0x80000000, %%ecx   \n"
       "mov %%ecx, %%cr0        \n" ::"r"(pa_dir));
+}
+
+bool vmm_is_kernel_directory(struct pdirectory *dir) {
+  return dir == _kernel_dir;
 }
 
 physical_addr vmm_get_physical_address(

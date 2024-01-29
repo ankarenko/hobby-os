@@ -105,6 +105,8 @@ struct pdirectory {
 
 void vmm_init();
 
+bool vmm_is_kernel_directory(struct pdirectory *dir);
+
 //! allocates a page in physical memory
 bool vmm_alloc_page(pt_entry*);
 

@@ -178,6 +178,7 @@ bool thread_kill(uint32_t id);
 void thread_wake(thread *th);
 bool thread_signal(uint32_t tid, int32_t signal);
 void thread_update(thread *t, enum thread_state state);
+struct list_head* get_waiting_threads();
 
 // exit.c
 void garbage_worker_task();

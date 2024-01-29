@@ -25,6 +25,9 @@ scheduler_isr:
   mov %ax, %gs
 
   call scheduler_tick
+.global scheduler_end
+.type scheduler_end, @function
+scheduler_end:
 
   # send EOI and restore context.
   pop %gs
@@ -126,3 +129,10 @@ start_kernel_task:
   mov $4, %eax
   mov (%ecx, %eax, 4), %esp        # Load ESP for next task's kernel stack from the thread's TCB
   jmp .doneVAS
+
+
+.global get_return_address
+.type get_return_address, @function
+get_return_address:
+  mov 4(%ebp), %eax
+  ret

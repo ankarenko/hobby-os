@@ -189,11 +189,17 @@ bool run_cmd(char* cmd_buf) {
     }
   } else if (strcmp(cmd_buf, "lst") == 0) {
     thread* th = NULL;
-    printf("\nthreads running: [ ");
+    printf("\nthreads ready: [ ");
     list_for_each_entry(th, get_ready_threads(), sched_sibling) {
       printf("%d ", th->tid);
     }
     printf("]");
+    printf("\nthreads waiting: [ ");
+    list_for_each_entry(th, get_waiting_threads(), sched_sibling) {
+      printf("%d ", th->tid);
+    }
+    printf("]");
+    
 
     printf("\nprocesses:");
     struct process* proc = NULL;
@@ -396,7 +402,7 @@ void cmd_read_file() {
     buf[size] = '\0';
     printf(buf);
   };
-  printf("\n____________________________________________");
+  printf("\n____________________________________________\n");
 
   vfs_close(fd);
   /*
