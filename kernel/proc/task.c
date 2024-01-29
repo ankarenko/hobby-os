@@ -401,7 +401,7 @@ struct process* process_fork(struct process* parent) {
 	proc->fs = kcalloc(1, sizeof(fs_struct));
 	memcpy(proc->fs, parent->fs, sizeof(fs_struct));
 
-  proc->files = clone_file_descriptor_table(parent);
+  proc->files = clone_file_descriptor_table(parent->files);
   proc->va_dir = is_kernel? parent->va_dir : vmm_fork(parent->va_dir);
   proc->pa_dir = vmm_get_physical_address(proc->va_dir, false);
   

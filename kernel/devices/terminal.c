@@ -195,11 +195,31 @@ void terminal_writestring(const char* data) {
   terminal_write(data, strlen(data));
 }
 
+
+void shell_start() {
+  int size = 10;
+  char buf[size];
+
+  while (true) {
+    if (vfs_fread(0, &buf, size) < 0) {
+      err("Error occured");
+    }
+    log("shell: %s", buf);
+    log("!!");
+  }
+}
+
+
 void terminal_run() {
   terminal_initialize();
+  int tty_master = 0;
+  // returns fd of a master terminal
+  if ((tty_master = vfs_open("/dev/ptmx", O_RDONLY)) < 0) {
+    err("Unable to open ptmx");
+  }
 
   int kybrd_fd;
-  if ((kybrd_fd = vfs_open("/dev/input/kybrd", O_RDONLY)) < 0) {
+  if ((kybrd_fd = vfs_open("/dev/pts/0", O_RDONLY)) < 0) {
     err("Cannot open keyboard");
   }
   /*
@@ -215,6 +235,12 @@ void terminal_run() {
   struct process* proc = get_current_process();
 
   char buf[128];
+  struct process *parent = get_current_process();
+  
+  process_fork(parent);
+  if (parent != get_current_process()) {
+    shell_start();
+  }
 
   while (true) {
     
@@ -228,17 +254,22 @@ newline:
     terminal_write(&buf, strlen(&buf));
 
     char key;
+    int status = 0;
     while (true) {
       
-      //ptm->ldisc->read(ptm, NULL, &key, 1);
+      if ((status = vfs_fread(kybrd_fd, &key, 1)) < 0) {
+        log("Error reading keys");
+      }
 
-      vfs_fread(kybrd_fd, &ev, sizeof(ev));
+      //vfs_fread(kybrd_fd, &ev, sizeof(ev));
       
+      /*
       if (ev.type == KEY_RELEASE) {
         continue;
       }
+      */
 
-      enum KEYCODE key = ev.key;
+      //enum KEYCODE key = ev.key;
       
       switch (key) {
         case KEY_BACKSPACE:

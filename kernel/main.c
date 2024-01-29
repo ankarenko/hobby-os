@@ -479,27 +479,6 @@ void cmd_read_sect() {
 
 GREATEST_MAIN_DEFS();
 
-static int fd_ptmx = -1;
-
-
-void shell() {
-  int kybrd_fd;
-  if ((kybrd_fd = vfs_open("/dev/pts/0", O_RDONLY)) < 0) {
-    err("Unable to open");
-  }
-  int size = 10;
-  char buf[size];
-
-  while (true) {
-    if (vfs_fread(kybrd_fd, &buf, size) < 0) {
-      err("Error occured");
-    }
-    log("shell: %s", buf);
-    log("!!");
-  }
-  
-}
-
 void kybrd_manager() {
   int kybrd_fd = 0;
   if ((kybrd_fd = vfs_open("/dev/input/kybrd", O_RDONLY)) < 0) {
@@ -540,15 +519,10 @@ void main_thread() {
   kkybrd_install(IRQ1);
   
   tty_init();
-  fd_ptmx = 0;
-  // returns fd of a master terminal
-  if ((fd_ptmx = vfs_open("/dev/ptmx", O_RDONLY)) < 0) {
-    err("Unable to open ptmx");
-  }
 
   create_system_process(&kybrd_manager, "keyboard_manager");
   create_system_process(&terminal_run, "terminal");
-  create_system_process(&shell, "shell");
+  //create_system_process(&shell, "shell");
   cmd_init();
 }
 

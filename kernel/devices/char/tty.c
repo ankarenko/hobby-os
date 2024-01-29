@@ -139,8 +139,8 @@ static struct vfs_file_operations tty_fops = {
 
 static struct vfs_file_operations ptmx_fops = {
   .open = ptmx_open,
-  //.read = tty_read,
-  //.write = tty_write
+  .read = tty_read,
+  .write = tty_write
 };
 
 int tty_register_driver(struct tty_driver *driver) {

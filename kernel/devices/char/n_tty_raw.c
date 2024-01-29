@@ -31,7 +31,7 @@ static void ntty_close(struct tty_struct *tty) {
   tty->buffer = NULL;
 }
 
-static ssize_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *buf, size_t nr) {
+static ssize_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *buf, uint32_t nr) {
   semaphore_down_val(tty->to_read, nr);
   semaphore_down(tty->mutex);
 

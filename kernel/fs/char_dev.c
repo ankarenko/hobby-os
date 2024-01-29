@@ -56,7 +56,7 @@ static int chrdev_open(struct vfs_inode *inode, struct vfs_file *filp) {
   return -EINVAL;
 }
 
-static ssize_t chrdev_read(struct vfs_file *file, char *buf, size_t count, off_t ppos) {
+static ssize_t chrdev_read(struct vfs_file *file, char *buf, uint32_t count, off_t ppos) {
   struct char_device *cdev = get_chrdev(file->f_dentry->d_inode->i_rdev);
   if (cdev == NULL)
     return -ENODEV;
