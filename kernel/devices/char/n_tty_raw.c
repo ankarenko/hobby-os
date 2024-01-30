@@ -32,27 +32,32 @@ static void ntty_close(struct tty_struct *tty) {
 }
 
 static uint32_t ntty_get_room(struct tty_struct *tty) {
-  int16_t a = N_TTY_BUF_ALIGN(tty->read_tail - tty->read_head);
-  return max(1, a < 0? a + N_TTY_BUF_SIZE : a);
+  return max(1, tty->to_read->count);
 }
 
 static uint32_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *buf, uint32_t nr) {
   int room = min(ntty_get_room(tty), nr);
-  
+  bool read_all = false;
+
   semaphore_down_val(tty->to_read, room);
   semaphore_down(tty->mutex);
   
-  for (int i = 0; i < room; ++i) {
+  int i = 0;
+  for (i = 0; i < room; ++i) {
     buf[i] = tty->buffer[tty->read_head];
     tty->read_head = N_TTY_BUF_ALIGN(tty->read_head + 1);
     if (tty->read_head == tty->read_tail) {
+      read_all = true;
+      ++i;
       break;
     }
   }
 
+  buf[i] = __DISABLED_CHAR;
+
   semaphore_up(tty->mutex);
   semaphore_up_val(tty->to_write, room);
-  return room;
+  return read_all? 0 : room;
 }
 
 static uint32_t echo_buf(struct tty_struct *tty, const char *buf, uint32_t nr) {
@@ -65,12 +70,16 @@ static uint32_t push_buf(struct tty_struct *tty, char c) {
   semaphore_down(tty->to_write);
   semaphore_down(tty->mutex);
 
+  
 
   tty->buffer[tty->read_tail] = c;
   tty->read_tail = N_TTY_BUF_ALIGN(tty->read_tail + 1);
   if (tty->read_head == tty->read_tail) {
+    //assert(false);
     tty->read_head = N_TTY_BUF_ALIGN(tty->read_head + 1);
   }
+
+  //log("[%d, %d]", tty->read_head, tty->read_tail);
   
   semaphore_up(tty->mutex);
   semaphore_up(tty->to_read);

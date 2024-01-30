@@ -22,6 +22,11 @@
 #define FS_ROOT_DIRECTORY 3
 #define FS_NOT_FOUND 4
 
+#define STDIN 0
+#define STDOUT 1
+#define STDERR 2
+#define TERMINAL 3
+
 /**
  * TODO: SA 2023-12-20 I suspect there are lots of memory leaks, so 
  * it needs to be taken care of at some point in the future

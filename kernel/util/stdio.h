@@ -1,6 +1,8 @@
 #ifndef UTIL_STDIO_H
 #define UTIL_STDIO_H
 
+#include <stdint.h>
+
 #include "kernel/util/list.h"
 
 #define	EOF	(-1)
@@ -16,5 +18,9 @@ typedef struct __FILE {
   char *_IO_write_ptr, *_IO_write_base, *_IO_write_end;
 } FILE;
 
+void kprintf(char *fmt, ...);
+void kreadline(char *buf, uint32_t size);
+void kreadterminal(char *buf, uint32_t size);
+char kreadchar();
 
 #endif

@@ -34,7 +34,6 @@ static uint32_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *b
   semaphore_down(tty->to_read);
   semaphore_down(tty->mutex);
 
-
   bool read_all = false;
   int i = 0;
   for (i = 0; i < nr; ++i) {
@@ -43,14 +42,15 @@ static uint32_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *b
 
     if (tty->read_head == tty->read_tail) {
       read_all = true;
-      buf[i] = __DISABLED_CHAR;
       break;
     }
   }
 
+  buf[i] = __DISABLED_CHAR;
+
   semaphore_up(tty->mutex);
   semaphore_up(read_all? tty->to_write : tty->to_read);
-  return i;
+  return read_all? 0 : i;
 }
 
 static uint32_t echo_buf(struct tty_struct *tty, const char *buf, uint32_t nr) {
@@ -136,11 +136,11 @@ static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
       ch = __DISABLED_CHAR;
     }
 
-    push_buf(tty, ch);
-    
     if (L_ECHO(tty)) {
       echo_buf(tty, &(const char){ch}, 1);
     }
+
+    push_buf(tty, ch);
   }
 }
 

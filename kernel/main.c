@@ -113,7 +113,7 @@ void kthread() {
   int col = 0;
   bool dir = true;
   while (1) {
-    printf("\nNew thread 10");
+    kprintf("\nNew thread 10");
     thread_sleep(3000);
   }
 }
@@ -128,18 +128,20 @@ void kthread_fork() {
   process_fork(current_process);
   
   while (1) {
-    printf("\nNew thread 10");
+    kprintf("\nNew thread 10");
     if (get_current_process()->pid != parent_id) {
-      printf(" from child");
+      kprintf(" from child");
     }
     thread_sleep(3000);
   }
 }
 
+
 //! our simple command parser
 bool run_cmd(char* cmd_buf) {
+
   if (strcmp(cmd_buf, "create") == 0) {
-    printf("\nnew thread: ");
+    kprintf("\nnew thread: ");
     create_system_process(&kthread_fork, "ktread");
   } if (strcmp(cmd_buf, "play") == 0) {
     init_consumer_producer();
@@ -148,7 +150,7 @@ bool run_cmd(char* cmd_buf) {
   } else if (strcmp(cmd_buf, "kill") == 0) {
     char id[10];
 
-    printf("\nid: ");
+    kprintf("\nid: ");
     get_cmd(id, 10);
 
     if (id) {
@@ -157,61 +159,61 @@ bool run_cmd(char* cmd_buf) {
     }
   } else if (strcmp(cmd_buf, "lst") == 0) {
     thread* th = NULL;
-    printf("\nthreads ready: [ ");
+    kprintf("\nthreads ready: [ ");
     list_for_each_entry(th, get_ready_threads(), sched_sibling) {
-      printf("%d ", th->tid);
+      kprintf("%d ", th->tid);
     }
-    printf("]");
-    printf("\nthreads waiting: [ ");
+    kprintf("]");
+    kprintf("\nthreads waiting: [ ");
     list_for_each_entry(th, get_waiting_threads(), sched_sibling) {
-      printf("%d ", th->tid);
+      kprintf("%d ", th->tid);
     }
-    printf("]");
+    kprintf("]");
     
 
-    printf("\nprocesses:");
+    kprintf("\nprocesses:");
     struct process* proc = NULL;
     struct list_head *ls = get_proc_list();
     
     list_for_each_entry(proc, ls, sibling) {
-      printf("\n%d: %s : ", proc->pid, proc->name);
+      kprintf("\n%d: %s : ", proc->pid, proc->name);
 
       list_for_each_entry(th, &proc->threads, sibling) {
-        printf(" %d", th->tid);
+        kprintf(" %d", th->tid);
       }
     }
 
   } else if (strcmp(cmd_buf, "exit") == 0) {
-    printf("Goodbuy!");
+    kprintf("Goodbuy!");
     return true;
   } else if (strcmp(cmd_buf, "signal") == 0) {
     char id[10];
     char signal[10];
 
-    printf("\nid: ");
+    kprintf("\nid: ");
     get_cmd(id, 10);
 
-    printf("\nsignal: ");
+    kprintf("\nsignal: ");
     get_cmd(signal, 10);
     
     if (id && signal && thread_signal(atoi(id), atoi(signal))) {
       log("Signal: sent to process: %s", id);
     } else {
-      printf("Unable to find struct processwith id %s", id);
+      kprintf("Unable to find struct processwith id %s", id);
     }
 
   } else if (strcmp(cmd_buf, "time") == 0) {
     struct time* t = get_time(0);  // current time
-    printf("\nCurrent time (UTC): %d:%d:%d, %d.%d.%d", t->hour, t->minute, t->second, t->day, t->month, t->year);
+    kprintf("\nCurrent time (UTC): %d:%d:%d, %d.%d.%d", t->hour, t->minute, t->second, t->day, t->month, t->year);
   } else if (strcmp(cmd_buf, "layout") == 0) {
-    printf("Kernel start: %X\n", KERNEL_START);
-    printf("Text start: %X\n", KERNEL_TEXT_START);
-    printf("Text end: %X\n", KERNEL_TEXT_END);
-    printf("Data start: %X\n", KERNEL_DATA_START);
-    printf("Data end: %X\n", KERNEL_DATA_END);
-    printf("Stack bottom %X\n", STACK_BOTTOM);
-    printf("Stack top: %X\n", STACK_TOP);
-    printf("Kernel end: %X\n", KERNEL_END);
+    kprintf("Kernel start: %X\n", KERNEL_START);
+    kprintf("Text start: %X\n", KERNEL_TEXT_START);
+    kprintf("Text end: %X\n", KERNEL_TEXT_END);
+    kprintf("Data start: %X\n", KERNEL_DATA_START);
+    kprintf("Data end: %X\n", KERNEL_DATA_END);
+    kprintf("Stack bottom %X\n", STACK_BOTTOM);
+    kprintf("Stack top: %X\n", STACK_TOP);
+    kprintf("Kernel end: %X\n", KERNEL_END);
   } else if (strcmp(cmd_buf, "dump") == 0) {
     PMM_DEBUG();
   } else if (strcmp(cmd_buf, "clear") == 0) {
@@ -219,44 +221,44 @@ bool run_cmd(char* cmd_buf) {
   } else if (strcmp(cmd_buf, "cd") == 0) {
     char filepath[100];
 
-    printf("\npath: ");
+    kprintf("\npath: ");
     get_cmd(filepath, 100);
 
     int ret = vfs_cd(filepath);
     if (ret < 0) {
-      printf(ret == -ENOTDIR ? "\nnot a directory" : "\ndirectory not found");
+      kprintf(ret == -ENOTDIR ? "\nnot a directory" : "\ndirectory not found");
     }
   } else if (strcmp(cmd_buf, "mfile") == 0) {
     char filepath[100];
 
-    printf("\npath: ");
+    kprintf("\npath: ");
     get_cmd(filepath, 100);
     int fd = 0;
     if ((fd = vfs_open(filepath, O_CREAT, S_IFREG)) < 0) {
-      printf("\ndirectory not found");
+      kprintf("\ndirectory not found");
     }
     vfs_close(fd);
   } else if (strcmp(cmd_buf, "write") == 0) {
     char text[100];
 
-    printf("\npath: ");
+    kprintf("\npath: ");
     get_cmd(text, 100);
 
     int32_t fd = vfs_open(text, O_CREAT | O_APPEND, S_IFREG);
     if (fd < 0) {
-      printf("\nunable to open file");
+      kprintf("\nunable to open file");
     }
 
-    printf("\ntext: ");
+    kprintf("\ntext: ");
     get_cmd(text, 100);
 
     char* line = "#helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-hellowor#";
 
     // vfs_flseek(fd, 11, SEEK_SET);
     if (vfs_fwrite(fd, text, strlen(text)) < 0) {
-      printf("\nnot a file");
+      kprintf("\nnot a file");
     } else {
-      printf("\nfile updated");
+      kprintf("\nfile updated");
     }
     vfs_close(fd);
     // vfs_flseek(fd, 80, SEEK_SET);
@@ -264,28 +266,28 @@ bool run_cmd(char* cmd_buf) {
     // vfs_fwrite(fd, "!", 1);
 
   } else if (strcmp(cmd_buf, "test") == 0) {
-    printf("\nStart:");
+    kprintf("\nStart:");
     uint8_t* program = vfs_read("calc.exe");
     kfree(program);
 
-    printf("\nEnd");
+    kprintf("\nEnd");
   } else if (strcmp(cmd_buf, "rm") == 0) {
     char filepath[100];
 
-    printf("\npath: ");
+    kprintf("path: ");
     get_cmd(filepath, 100);
 
     if (vfs_unlink(filepath, 0) < 0) {
-      printf("\nfile or directory not found");
+      kprintf("\nfile or directory not found");
     }
   } else if (strcmp(cmd_buf, "mkdir") == 0) {
     char filepath[100];
 
-    printf("\npath: ");
+    kprintf("\npath: ");
     get_cmd(filepath, 100);
 
     if (vfs_mkdir(filepath, 0) < 0) {
-      printf("\ncannot create directory");
+      kprintf("\ncannot create directory");
     }
   } else if (strcmp(cmd_buf, "read") == 0) {
     cmd_read_sect();
@@ -296,90 +298,79 @@ bool run_cmd(char* cmd_buf) {
   } else if (strcmp(cmd_buf, "ls") == 0) {
     char filepath[100];
 
-    printf("\npath: ");
+    kprintf("path: ");
     get_cmd(filepath, 100);
 
     if (!vfs_ls(filepath)) {
-      printf("\ndirectory not found");
+      kprintf("\ndirectory not found");
     }
     // ls(filepath);
   } else if (strcmp(cmd_buf, "run") == 0) {
     char filepath[100];
-    printf("\npath: ");
+    kprintf("path: ");
     get_cmd(filepath, 100);
     struct process* cur_proc = get_current_process();
     create_elf_process(cur_proc, filepath);
   } else if (strcmp(cmd_buf, "") == 0) {
+    return false;
   } else {
-    printf("\ninvalid command");
+    kprintf("\ninvalid command");
   }
 
+
+  kprintf("\n");
   return false;
 }
 
 void cmd_read_kybrd() {
   char filepath[100];
 
-  printf("\npath: ");
+  kprintf("\npath: ");
   get_cmd(filepath, 100);
 
   int32_t fd = vfs_open(filepath, O_RDONLY, 0);
 
   if (fd == -ENOENT || fd < 0) {
-    printf("\nfile not found");
+    kprintf("\nfile not found");
     return;
   }
 
   uint32_t size = sizeof(struct key_event);
   uint8_t* buf = kcalloc(1, size);
-  printf("\n_____________________________________________\n");
+  kprintf("\n_____________________________________________\n");
   while (vfs_fread(fd, buf, size) >= 0) {
     struct key_event *ev = buf;
     char c = kkybrd_key_to_ascii(ev->key);
-    printf("%c", c);
+    kprintf("%c", c);
   };
-  printf("\n____________________________________________");
+  kprintf("\n____________________________________________");
   kfree(buf);
   vfs_close(fd);
-  /*
-  uint8_t* buf = vfs_read(filepath);
-  printf("\n_____________________________________________\n");
-  printf(buf);
-  printf("____________________________________________");
-  kfree(buf);
-  */
 }
 
 void cmd_read_file() {
   char filepath[100];
 
-  printf("\npath: ");
+  kprintf("\npath: ");
   get_cmd(filepath, 100);
 
   int32_t fd = vfs_open(filepath, O_RDONLY, 0);
 
   if (fd == -ENOENT || fd < 0) {
-    printf("\nfile not found");
+    kprintf("\nfile not found");
     return;
   }
 
   uint32_t size = 1;
   uint8_t* buf = kcalloc(size + 1, sizeof(uint8_t));
-  printf("\n_____________________________________________\n");
+  kprintf("\n_____________________________________________\n");
   while (vfs_fread(fd, buf, size) == size) {
     buf[size] = '\0';
-    printf(buf);
+    kprintf(buf);
   };
-  printf("\n____________________________________________\n");
+  kprintf("\n____________________________________________\n");
 
   vfs_close(fd);
-  /*
-  uint8_t* buf = vfs_read(filepath);
-  printf("\n_____________________________________________\n");
-  printf(buf);
-  printf("____________________________________________");
-  kfree(buf);
-  */
 }
 
 //! read sector command
@@ -388,11 +379,11 @@ void cmd_read_sect() {
   char sectornumbuf[4];
   uint8_t* sector = 0;
 
-  printf("\nPlease type in the sector number [0 is default] \n");
+  kprintf("\nPlease type in the sector number [0 is default] \n");
   get_cmd(sectornumbuf, 3);
   sectornum = atoi(sectornumbuf);
 
-  printf("\nSector %d contents:\n\n", sectornum);
+  kprintf("\nSector %d contents:\n\n", sectornum);
 
   //! read sector from disk
   sector = flpydsk_read_sector(sectornum);
@@ -402,16 +393,16 @@ void cmd_read_sect() {
     int i = 0;
     for (int c = 0; c < 4; c++) {
       for (int j = 0; j < 128; j++)
-        printf("%x ", sector[i + j]);
+        kprintf("%x ", sector[i + j]);
       i += 128;
 
-      printf("\nPress any key to continue\n");
+      kprintf("\nPress any key to continue\n");
       //getch();
     }
   } else
-    printf("\n*** Error reading sector from disk\n");
+    kprintf("\n*** Error reading sector from disk\n");
 
-  printf("\nDone.");
+  kprintf("\nDone.");
 }
 
 GREATEST_MAIN_DEFS();
@@ -448,23 +439,15 @@ void shell_start() {
   char command[size];
   struct process* proc = get_current_process();
 
-  char buf[128];
-
   while (true) {
 newline:
-    sprintf(&buf, "\n(%s)root@%s: ", 
+    
+    kprintf("(%s)root@%s: ", 
       strcmp(proc->fs->mnt_root->mnt_devname, "/dev/hda") == 0 ? "ext2" : proc->fs->mnt_root->mnt_devname,
       proc->fs->d_root->d_name
     );
-    vfs_fwrite(0, &buf, strlen(&buf));
 
-    int status = 0;
-    while ((status = vfs_fread(1, &command, size) == 0)) {
-      if (status < 0) {
-        err("Error while reading command");
-      }
-    }
-    
+    kreadline(&command, size);
     run_cmd(command);
   }
 }

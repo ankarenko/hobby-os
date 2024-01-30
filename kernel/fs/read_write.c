@@ -39,7 +39,7 @@ int32_t vfs_fread(int32_t fd, char *buf, uint32_t count) {
     ret = -EINVAL;
   }
 
-	return ret;
+  return ret;
 }
 
 off_t vfs_generic_llseek(struct vfs_file *file, off_t offset, int whence) {

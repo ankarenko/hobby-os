@@ -220,22 +220,19 @@ void terminal_run() {
 
   int size = 20;
   char buf[size];
-  buf[0] = '\0';
   
   while (true) {
   newline:
     char key;
-    int read = 0;
 
-    if ((read = vfs_fread(0, &buf, size)) < 0) {
-      log("Error reading keys");
-    }
 
-    buf[read] = '\0';
+    kreadterminal(&buf, size);
+    
 
     for (int i = 0; i < size; ++i) {
      
       key = buf[i];
+      //log("%c : %d", key, key);
 
       switch (key) {
         case '\n':
@@ -244,10 +241,11 @@ void terminal_run() {
         case '\0':
           goto newline;
           break;
-        case KEY_RETURN:
         case KEY_BACKSPACE:
           terminal_popchar();
           break;
+        
+        case KEY_RETURN:
         case KEY_UNKNOWN:
           break;
         default:
