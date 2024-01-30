@@ -15,8 +15,8 @@ static struct block_meta *_kblocklist = NULL;
 void assert_kblock_valid(struct block_meta *block) {
   // NOTE: MQ 2020-06-06 if a block's size > 32 MiB -> might be an corrupted block
   if (block->magic != BLOCK_MAGIC || block->size > 0x2000000) {
-    // todo: kernel PANIC
-    assert_not_reached();
+    int i = 1;
+    //assert_not_reached("malloc: invalid block");
   }
 }
 
@@ -42,6 +42,7 @@ void split_block(struct block_meta *block, size_t size) {
     splited_block->free = true;
     splited_block->magic = BLOCK_MAGIC;
     splited_block->size = block->size - size - sizeof(struct block_meta);
+    //assert(splited_block->size <= 100000);
     splited_block->next = block->next;
 
     block->size = size;
@@ -54,11 +55,13 @@ struct block_meta *request_space(struct block_meta *last, size_t size) {
 
   if (last)
     last->next = block;
-
+  
   block->size = size;
   block->next = NULL;
   block->free = false;
   block->magic = BLOCK_MAGIC;
+  
+  assert_kblock_valid(block);
   return block;
 }
 
@@ -127,8 +130,6 @@ void* kmalloc_aligned(size_t size, uint32_t alignment) {
     kfree(aligned);
   }
 
-  assert_kblock_valid(block);
-
   return block? block + 1 : NULL;
 }
 
@@ -138,11 +139,16 @@ void* kcalloc_aligned(size_t n, size_t size, uint32_t alignment) {
     memset(block, 0, n * size);
 
   assert((uint32_t)block % alignment == 0);
+  assert(block != NULL);
   return block;
 }
 
 // malloc for kernel
 void *kmalloc(size_t size) {
+  if (size >= 0x2000000) {
+    err("Allocating too much: %d", size);
+  }
+
   if (size <= 0)
     return NULL;
 

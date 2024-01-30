@@ -88,7 +88,7 @@ int fork();
 int sleep(unsigned int seconds);
 int execve(const char *pathname, char *const argv[], char *const envp[]);
 void* sbrk(intptr_t increment);
-ssize_t read(int fd, char *buf, size_t size);
+uint32_t read(int fd, char *buf, size_t size);
 int write(int fd, const char *buf, size_t size);
 int lseek(int fd, off_t offset, int whence);
 int close(int fd);

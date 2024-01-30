@@ -24,7 +24,7 @@ void kernel_print(char* format, ...) {
 }
 
 _syscall3(read, int, char *, size_t);
-ssize_t read(int fd, char *buf, size_t size) {
+uint32_t read(int fd, char *buf, size_t size) {
   //kernel_print("\nread");
 	SYSCALL_RETURN_ORIGINAL(syscall_read(fd, buf, size));
 }

@@ -84,7 +84,7 @@ struct vfs_file_operations {
 	int (*open)(struct vfs_inode *inode, struct vfs_file *file);
   int32_t (*read)(struct vfs_file* file, uint8_t* buffer, uint32_t length, off_t ppos);
   int (*readdir)(struct vfs_file *dir, struct dirent** dirent);
-  ssize_t (*write)(struct vfs_file *file, const char *buf, size_t count, off_t ppos);
+  uint32_t (*write)(struct vfs_file *file, const char *buf, size_t count, off_t ppos);
   int32_t (*close)(struct vfs_file*);
   off_t (*llseek)(struct vfs_file* file, off_t ppos, int);
 };
@@ -201,8 +201,8 @@ int vfs_mknod(const char *path, int mode, int32_t dev);
 struct vfs_dentry *vfs_search_virt_subdirs(struct vfs_dentry *dir, const char *name);
 
 // read_write.c
-int32_t vfs_fread(int32_t fd, char* buf, int32_t count);
-ssize_t vfs_fwrite(int32_t fd, char* buf, int32_t count);
+int32_t vfs_fread(int32_t fd, char* buf, uint32_t count);
+uint32_t vfs_fwrite(int32_t fd, char* buf, int32_t count);
 char* vfs_read(const char* path);
 off_t vfs_flseek(int32_t fd, off_t offset, int whence);
 off_t vfs_generic_llseek(struct vfs_file *file, off_t offset, int whence);

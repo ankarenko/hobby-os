@@ -31,26 +31,36 @@ static void ntty_close(struct tty_struct *tty) {
   tty->buffer = NULL;
 }
 
-static ssize_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *buf, uint32_t nr) {
-  semaphore_down_val(tty->to_read, nr);
-  semaphore_down(tty->mutex);
+static uint32_t ntty_get_room(struct tty_struct *tty) {
+  int16_t a = N_TTY_BUF_ALIGN(tty->read_tail - tty->read_head);
+  return max(1, a < 0? a + N_TTY_BUF_SIZE : a);
+}
 
-  for (int i = 0; i < nr; ++i) {
+static uint32_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *buf, uint32_t nr) {
+  int room = min(ntty_get_room(tty), nr);
+  
+  semaphore_down_val(tty->to_read, room);
+  semaphore_down(tty->mutex);
+  
+  for (int i = 0; i < room; ++i) {
     buf[i] = tty->buffer[tty->read_head];
     tty->read_head = N_TTY_BUF_ALIGN(tty->read_head + 1);
+    if (tty->read_head == tty->read_tail) {
+      break;
+    }
   }
 
   semaphore_up(tty->mutex);
-  semaphore_up_val(tty->to_write, nr);
-  return nr;
+  semaphore_up_val(tty->to_write, room);
+  return room;
 }
 
-static ssize_t echo_buf(struct tty_struct *tty, const char *buf, ssize_t nr) {
+static uint32_t echo_buf(struct tty_struct *tty, const char *buf, uint32_t nr) {
   tty->driver->tops->write(tty, buf, nr);
   return nr;
 }
 
-static ssize_t push_buf(struct tty_struct *tty, char c) {
+static uint32_t push_buf(struct tty_struct *tty, char c) {
   
   semaphore_down(tty->to_write);
   semaphore_down(tty->mutex);
@@ -67,7 +77,6 @@ static ssize_t push_buf(struct tty_struct *tty, char c) {
 }
 
 static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
-  log("receive raw");
   for (int i = 0; i < nr; ++i) {
     push_buf(tty, buf[i]);
   }
@@ -76,7 +85,7 @@ static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
     echo_buf(tty, buf, nr);
 }
 
-static ssize_t ntty_write(struct tty_struct *tty, struct vfs_file *file, const char *buf, size_t nr) {
+static uint32_t ntty_write(struct tty_struct *tty, struct vfs_file *file, const char *buf, size_t nr) {
   ntty_receive_buf(tty, buf, nr);
   return nr;
 }

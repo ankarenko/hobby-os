@@ -120,7 +120,7 @@ int32_t tty_read(struct vfs_file* file, uint8_t* buffer, uint32_t length, off_t 
   return ld->read(tty, file, buffer, length);
 }
 
-static ssize_t tty_write(struct vfs_file *file, const char *buf, size_t count, off_t ppos) {
+static uint32_t tty_write(struct vfs_file *file, const char *buf, size_t count, off_t ppos) {
   struct tty_struct *tty = (struct tty_struct *)file->private_data;
 
   if (!tty || !tty->driver->tops->write || !tty->ldisc->write)

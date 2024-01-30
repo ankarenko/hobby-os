@@ -48,40 +48,8 @@ static struct vfs_file* _cur_dir = NULL;
 
 //! gets next command
 void get_cmd(char* buf, int n) {
-  int kybrd_fd = 0;
-  if ((kybrd_fd = vfs_open("/dev/input/kybrd", O_RDONLY)) < 0) {
-    err("Cannot open keyboard");
-  }
-
-  int32_t i = 0;
-  struct key_event ev;
-  while (i < n) {
-    vfs_fread(kybrd_fd, &ev, sizeof(ev));
-    
-    if (ev.type == KEY_RELEASE) {
-      continue;
-    }
-
-    enum KEYCODE key = ev.key;
-
-    switch (key) {
-      case KEY_BACKSPACE:
-        i = max(i - 1, 0);
-        break;
-      case KEY_RETURN:
-        buf[i] = '\0';
-        // terminal_clrline();
-        // terminal_newline();
-        return;
-      case KEY_UNKNOWN:
-        break;
-      default:
-        char c = kkybrd_key_to_ascii(key);
-        buf[i] = c;
-        i++;
-        break;
-    }
-  }
+  vfs_fread(1, buf, n);
+  buf[n] = '\0';
 }
 
 #define N 100
@@ -414,37 +382,6 @@ void cmd_read_file() {
   */
 }
 
-extern void cmd_init() {
-  int kybrd_fd;
-  if ((kybrd_fd = vfs_open("/dev/input/kybrd", O_RDONLY)) < 0) {
-    err("Cannot open keyboard");
-  }
-  
-  char cmd_buf[100];
-  
-  while (1) {
-    get_cmd(cmd_buf, 98);
-
-    if (run_cmd(cmd_buf) == true)
-      break;
-  }
-  /*
-  char cmd_buf[100];
-
-  while (1) {
-    struct process* proc = get_current_process();
-    printf("\n(%s)root@%s: ",
-           strcmp(proc->fs->mnt_root->mnt_devname, "/dev/hda") == 0 ? "ext2" : proc->fs->mnt_root->mnt_devname,
-           proc->fs->d_root->d_name);
-
-    get_cmd(cmd_buf, 98);
-
-    if (run_cmd(cmd_buf) == true)
-      break;
-  }
-  */
-}
-
 //! read sector command
 void cmd_read_sect() {
   uint32_t sectornum = 0;
@@ -488,10 +425,8 @@ void kybrd_manager() {
   struct key_event ev;
 
   while (true) {
-    log("kybrd_manager");
     vfs_fread(kybrd_fd, &ev, sizeof(ev));
-    log("notified ch=%c, state = %d", ev.key, ev.type);
-    
+
     if (ev.type == KEY_RELEASE) {
       continue;
     }
@@ -505,6 +440,32 @@ void kybrd_manager() {
         pts->ldisc->receive_buf(pts, &c, 1);
       }
     } 
+  }
+}
+
+void shell_start() {
+  int size = 10;
+  char command[size];
+  struct process* proc = get_current_process();
+
+  char buf[128];
+
+  while (true) {
+newline:
+    sprintf(&buf, "\n(%s)root@%s: ", 
+      strcmp(proc->fs->mnt_root->mnt_devname, "/dev/hda") == 0 ? "ext2" : proc->fs->mnt_root->mnt_devname,
+      proc->fs->d_root->d_name
+    );
+    vfs_fwrite(0, &buf, strlen(&buf));
+
+    int status = 0;
+    while ((status = vfs_fread(1, &command, size) == 0)) {
+      if (status < 0) {
+        err("Error while reading command");
+      }
+    }
+    
+    run_cmd(command);
   }
 }
 
@@ -522,8 +483,14 @@ void main_thread() {
 
   create_system_process(&kybrd_manager, "keyboard_manager");
   create_system_process(&terminal_run, "terminal");
+
+  while (true) {
+    thread_sleep(100000000);
+    /* code */
+  }
+  
   //create_system_process(&shell, "shell");
-  cmd_init();
+  //cmd_init();
 }
 
 void kernel_main(multiboot_info_t* mbd, uint32_t magic) {

@@ -24,7 +24,7 @@ char *vfs_read(const char *path) {
 	return buf;
 }
 
-int32_t vfs_fread(int32_t fd, char *buf, int32_t count) {
+int32_t vfs_fread(int32_t fd, char *buf, uint32_t count) {
   struct process* cur_proc = get_current_process();
 	struct vfs_file* file = cur_proc->files->fd[fd];
 
@@ -82,7 +82,7 @@ off_t vfs_flseek(int32_t fd, off_t offset, int whence) {
 	return ret;
 }
 
-ssize_t vfs_fwrite(int32_t fd, char* buf, int32_t count) {
+uint32_t vfs_fwrite(int32_t fd, char* buf, int32_t count) {
   struct process* cur_proc = get_current_process();
   semaphore_down(cur_proc->files->lock);
   struct vfs_file *file = cur_proc->files->fd[fd];

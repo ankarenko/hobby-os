@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 
+#include "kernel/util/debug.h"
 #include "kernel/util/math.h"
 
 #define BLOCK_MAGIC 0x464E
@@ -23,7 +24,8 @@ void assert_kblock_valid(struct block_meta *block) {
   // NOTE: MQ 2020-06-06 if a block's size > 32 MiB -> might be an corrupted block
   if (block->magic != BLOCK_MAGIC || block->size > 0x2000000) {
     // todo: kernel PANIC
-    // assert_not_reached();
+    // 99% that I accidently overwriten the block
+    assert_not_reached("malloc: invalid block, most probably buffer overflow");
   }
 }
 
@@ -81,6 +83,7 @@ void free(void *ptr) {
 
 // malloc for kernel
 void *malloc(size_t size) {
+
   if (size <= 0)
     return NULL;
 

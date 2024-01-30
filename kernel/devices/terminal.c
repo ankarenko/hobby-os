@@ -195,20 +195,7 @@ void terminal_writestring(const char* data) {
   terminal_write(data, strlen(data));
 }
 
-
-void shell_start() {
-  int size = 10;
-  char buf[size];
-
-  while (true) {
-    if (vfs_fread(0, &buf, size) < 0) {
-      err("Error occured");
-    }
-    log("shell: %s", buf);
-    log("!!");
-  }
-}
-
+extern void shell_start();
 
 void terminal_run() {
   terminal_initialize();
@@ -218,23 +205,12 @@ void terminal_run() {
     err("Unable to open ptmx");
   }
 
-  int kybrd_fd;
-  if ((kybrd_fd = vfs_open("/dev/pts/0", O_RDONLY)) < 0) {
+  int input_fd;
+  if ((input_fd = vfs_open("/dev/pts/0", O_RDONLY)) < 0) {
     err("Cannot open keyboard");
   }
-  /*
-  struct tty_struct *ptm = NULL;
-  if (pts_driver) {
-    struct tty_struct *pts = list_first_entry(&pts_driver->ttys, struct tty_struct, sibling);
-    struct tty_struct *ptm = pts->link;
-  }
 
-  assert(ptm != NULL);
-  */
   struct key_event ev;
-  struct process* proc = get_current_process();
-
-  char buf[128];
   struct process *parent = get_current_process();
   
   process_fork(parent);
@@ -242,42 +218,36 @@ void terminal_run() {
     shell_start();
   }
 
+  int size = 20;
+  char buf[size];
+  buf[0] = '\0';
+  
   while (true) {
-    
-newline:
-    terminal_newline();
-    sprintf(&buf, "(%s)root@%s: ", 
-      strcmp(proc->fs->mnt_root->mnt_devname, "/dev/hda") == 0 ? "ext2" : proc->fs->mnt_root->mnt_devname,
-      proc->fs->d_root->d_name
-    );
-
-    terminal_write(&buf, strlen(&buf));
-
+  newline:
     char key;
-    int status = 0;
-    while (true) {
-      
-      if ((status = vfs_fread(kybrd_fd, &key, 1)) < 0) {
-        log("Error reading keys");
-      }
+    int read = 0;
 
-      //vfs_fread(kybrd_fd, &ev, sizeof(ev));
-      
-      /*
-      if (ev.type == KEY_RELEASE) {
-        continue;
-      }
-      */
+    if ((read = vfs_fread(0, &buf, size)) < 0) {
+      log("Error reading keys");
+    }
 
-      //enum KEYCODE key = ev.key;
-      
+    buf[read] = '\0';
+
+    for (int i = 0; i < size; ++i) {
+     
+      key = buf[i];
+
       switch (key) {
+        case '\n':
+          terminal_newline();
+          break;
+        case '\0':
+          goto newline;
+          break;
+        case KEY_RETURN:
         case KEY_BACKSPACE:
           terminal_popchar();
           break;
-        
-        case KEY_RETURN:
-          goto newline;
         case KEY_UNKNOWN:
           break;
         default:

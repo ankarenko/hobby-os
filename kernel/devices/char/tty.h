@@ -106,8 +106,8 @@
 #define UNIX98_PTY_MASTER_MAJOR 128
 #define UNIX98_PTY_MAJOR_COUNT 8
 #define UNIX98_PTY_SLAVE_MAJOR (UNIX98_PTY_MASTER_MAJOR + UNIX98_PTY_MAJOR_COUNT)
-#define N_TTY_BUF_SIZE 32
-#define N_TTY_BUF_ALIGN(v) (v % N_TTY_BUF_SIZE)
+#define N_TTY_BUF_SIZE 128
+#define N_TTY_BUF_ALIGN(v) ((v) % N_TTY_BUF_SIZE)
 #define NCCS 19
 #define __DISABLED_CHAR '\0'
 #define SERIAL_MINOR_BASE 64
@@ -150,8 +150,8 @@ struct tty_ldisc {
 
 	int (*open)(struct tty_struct *);
 	void (*close)(struct tty_struct *);
-	ssize_t (*read)(struct tty_struct *tty, struct vfs_file *file, char *buf, size_t nr);
-	ssize_t (*write)(struct tty_struct *tty, struct vfs_file *file, const char *buf, size_t nr);
+	uint32_t (*read)(struct tty_struct *tty, struct vfs_file *file, char *buf, size_t nr);
+	uint32_t (*write)(struct tty_struct *tty, struct vfs_file *file, const char *buf, size_t nr);
 	int (*receive_room)(struct tty_struct *tty);
 	void (*receive_buf)(struct tty_struct *tty, const char *cp, int count);
 	//unsigned int (*poll)(struct tty_struct *tty, struct vfs_file *, struct poll_table *);

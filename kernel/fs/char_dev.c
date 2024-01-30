@@ -1,6 +1,7 @@
 #include "kernel/memory/malloc.h"
 #include "kernel/util/string/string.h"
 #include "kernel/util/errno.h"
+#include "kernel/util/debug.h"
 
 #include "kernel/fs/char_dev.h"
 
@@ -56,7 +57,7 @@ static int chrdev_open(struct vfs_inode *inode, struct vfs_file *filp) {
   return -EINVAL;
 }
 
-static ssize_t chrdev_read(struct vfs_file *file, char *buf, uint32_t count, off_t ppos) {
+static uint32_t chrdev_read(struct vfs_file *file, char *buf, uint32_t count, off_t ppos) {
   struct char_device *cdev = get_chrdev(file->f_dentry->d_inode->i_rdev);
   if (cdev == NULL)
     return -ENODEV;
@@ -67,7 +68,7 @@ static ssize_t chrdev_read(struct vfs_file *file, char *buf, uint32_t count, off
   return -EINVAL;
 }
 
-static ssize_t chrdev_write(struct vfs_file *file, const char *buf, size_t count, off_t ppos) {
+static uint32_t chrdev_write(struct vfs_file *file, const char *buf, size_t count, off_t ppos) {
   struct char_device *cdev = get_chrdev(file->f_dentry->d_inode->i_rdev);
   if (cdev == NULL)
     return -ENODEV;

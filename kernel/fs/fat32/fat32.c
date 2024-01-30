@@ -880,7 +880,7 @@ vfs_file fat_get_rootdir() {
   return rootdir;
 }
 
-ssize_t fat_write(vfs_file *file, const char *buf, size_t count, off_t ppos) {
+uint32_t fat_write(vfs_file *file, const char *buf, size_t count, off_t ppos) {
   uint32_t bytes_per_cluster = minfo.bytes_per_sect * minfo.sect_per_cluster;
   uint32_t file_sect_start = cluster_to_sector(file->first_cluster);
   uint32_t file_start = file_sect_start * minfo.bytes_per_sect; 

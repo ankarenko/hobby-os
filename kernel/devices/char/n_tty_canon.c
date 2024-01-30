@@ -30,11 +30,10 @@ static void ntty_close(struct tty_struct *tty) {
   tty->buffer = NULL;
 }
 
-static ssize_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *buf, size_t nr) {
+static uint32_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *buf, size_t nr) {
   semaphore_down(tty->to_read);
   semaphore_down(tty->mutex);
 
-  log("canon read");
 
   bool read_all = false;
   int i = 0;
@@ -54,8 +53,9 @@ static ssize_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *bu
   return i;
 }
 
-static ssize_t echo_buf(struct tty_struct *tty, const char *buf, ssize_t nr) {
+static uint32_t echo_buf(struct tty_struct *tty, const char *buf, uint32_t nr) {
   char *wbuf = kcalloc(1, N_TTY_BUF_SIZE);
+
   char *ibuf = wbuf;
   int wlength = 0;
 
@@ -79,18 +79,14 @@ static ssize_t echo_buf(struct tty_struct *tty, const char *buf, ssize_t nr) {
   return wlength;
 }
 
-static ssize_t push_buf(struct tty_struct *tty, char c) {
+static uint32_t push_buf(struct tty_struct *tty, char c) {
   semaphore_down(tty->to_write);
   semaphore_down(tty->mutex);
 
-  log("canon write ch=%c", c);
-
   tty->buffer[tty->read_tail] = c;
   tty->read_tail = N_TTY_BUF_ALIGN(tty->read_tail + 1);
-  log("tail=%d", tty->read_tail);
 
   if (tty->read_head == tty->read_tail) {
-    assert(false);
     tty->read_head = N_TTY_BUF_ALIGN(tty->read_head + 1);
   }
 
@@ -143,14 +139,12 @@ static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
     push_buf(tty, ch);
     
     if (L_ECHO(tty)) {
-      log("ECHO START");
       echo_buf(tty, &(const char){ch}, 1);
-      log("ECHO END");
     }
   }
 }
 
-static ssize_t ntty_write(struct tty_struct *tty, struct vfs_file *file, const char *buf, size_t nr) {
+static uint32_t ntty_write(struct tty_struct *tty, struct vfs_file *file, const char *buf, size_t nr) {
   ntty_receive_buf(tty, buf, nr);
   return nr;
 }

@@ -305,7 +305,7 @@ ext2_group_desc *ext2_get_group_desc(struct vfs_superblock* sb, uint32_t group);
 void ext2_write_group_desc(struct vfs_superblock *sb, ext2_group_desc *gdp);
 
 // file.c
-ssize_t ext2_read_file(struct vfs_file* file, char *buf, size_t count, off_t ppos);
+uint32_t ext2_read_file(struct vfs_file* file, char *buf, size_t count, off_t ppos);
 struct vfs_inode* ext2_alloc_inode(struct vfs_superblock* sb);
 
 // inode.c

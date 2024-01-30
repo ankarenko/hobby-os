@@ -3,7 +3,7 @@
 #include <time.h>
 
 _syscall3(read, int, char *, size_t);
-ssize_t read(int fd, char *buf, size_t size) {
+uint32_t read(int fd, char *buf, size_t size) {
 	SYSCALL_RETURN_ORIGINAL(syscall_read(fd, buf, size));
 }
 

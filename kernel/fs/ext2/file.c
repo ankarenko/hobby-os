@@ -34,7 +34,7 @@ static void ext2_read_nth_block(
   kfree(block_buf);
 }
 // need 
-ssize_t ext2_write_file(struct vfs_file *file, const char *buf, size_t count, off_t ppos) {
+uint32_t ext2_write_file(struct vfs_file *file, const char *buf, size_t count, off_t ppos) {
 	struct vfs_inode *inode = file->f_dentry->d_inode;
 	struct ext2_inode *ei = EXT2_INODE(inode);
 	struct vfs_superblock *sb = inode->i_sb;
@@ -78,7 +78,7 @@ ssize_t ext2_write_file(struct vfs_file *file, const char *buf, size_t count, of
 	return count;
 }
 
-ssize_t ext2_read_file(struct vfs_file* file, char *buf, size_t count, off_t ppos) {
+uint32_t ext2_read_file(struct vfs_file* file, char *buf, size_t count, off_t ppos) {
 	struct vfs_inode* inode = file->f_dentry->d_inode;
   ext2_inode* ei = EXT2_INODE(inode);
 	struct vfs_superblock* sb = inode->i_sb;
