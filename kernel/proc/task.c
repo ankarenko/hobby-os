@@ -421,22 +421,15 @@ struct process* process_fork(struct process* parent) {
   
   
 
-  // copy registers
-  if (!is_kernel) {
-    th->esp = th->kernel_esp - sizeof(interrupt_registers);
-    memcpy((char*)th->esp, (char*)parent_thread->kernel_esp, sizeof(interrupt_registers));
-  } else {
-    // ebp + 8 means that we skip return address, it will be put to switch stack frame
-    int stack_size = parent_thread->kernel_esp - (stf.ebp + 8);
-    th->esp = th->kernel_esp - stack_size;
-    memcpy(th->esp, stf.ebp + 8, stack_size);
-    
-    th->esp = th->esp - sizeof(switch_task_frame);
-    int prev_frame_size = parent_thread->kernel_esp - *((uint32_t*)stf.ebp);
-    stf.ebp = th->kernel_esp - prev_frame_size;
-    memcpy((char*)th->esp, &stf, sizeof(switch_task_frame));
-  }
-
+  // ebp + 8 means that we skip return address, it will be put to switch stack frame
+  int stack_size = parent_thread->kernel_esp - (stf.ebp + 8);
+  th->esp = th->kernel_esp - stack_size;
+  memcpy(th->esp, stf.ebp + 8, stack_size);
+  
+  th->esp = th->esp - sizeof(switch_task_frame);
+  int prev_frame_size = parent_thread->kernel_esp - *((uint32_t*)stf.ebp);
+  stf.ebp = th->kernel_esp - prev_frame_size;
+  memcpy((char*)th->esp, &stf, sizeof(switch_task_frame));
   
   // NOTE: equal virtual address, but different physical!
 	th->user_esp = parent_thread->user_esp; 
