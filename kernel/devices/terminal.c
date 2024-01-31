@@ -9,8 +9,8 @@
 #include "kernel/util/debug.h"
 #include "kernel/devices/kybrd.h"
 #include "kernel/proc/task.h"
+#include "kernel/system/sysapi.h"
 #include "kernel/util/math.h"
-#include "kernel/util/ansi_codes.h"
 #include "kernel/util/fcntl.h"
 #include "kernel/cpu/hal.h"
 #include "kernel/memory/kernel_info.h"
@@ -211,14 +211,14 @@ void terminal_run() {
     err("Cannot open keyboard");
   }
 
+  dup2(1, 0);
+  dup2(2, 1);
+
   struct key_event ev;
   struct process *parent = get_current_process();
-  
-  log("ADDRESS OF PARENT: %x", parent);
 
-  if (process_fork(parent) == 0) {
+  if (process_fork(parent) == 0)
     shell_start();
-  }
 
   int size = 20;
   char buf[size];

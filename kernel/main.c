@@ -463,9 +463,13 @@ newline:
 }
 
 void main_thread() {
-  thread* th = NULL;
-
-  create_system_process(&idle_task, "idle");
+  struct process *parent = get_current_process();
+  
+  if (process_fork(parent) == 0)
+    garbage_worker_task();
+  
+  if (process_fork(parent) == 0)
+    idle_task();
 
   vfs_init(&ext2_fs_type, "/dev/hda");
   chrdev_init();
@@ -474,16 +478,15 @@ void main_thread() {
   
   tty_init();
 
-  create_system_process(&kybrd_manager, "keyboard_manager");
-  create_system_process(&terminal_run, "terminal");
+  if (process_fork(parent) == 0)
+    kybrd_manager();
+  
+  if (process_fork(parent) == 0)
+    terminal_run();
 
   while (true) {
     thread_sleep(100000000);
-    /* code */
   }
-  
-  //create_system_process(&shell, "shell");
-  //cmd_init();
 }
 
 void kernel_main(multiboot_info_t* mbd, uint32_t magic) {

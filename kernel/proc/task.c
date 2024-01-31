@@ -242,7 +242,7 @@ static struct process* create_process(struct process* parent, char* name, struct
   struct process* proc = kcalloc(1, sizeof(struct process));
   
   list_add(&proc->sibling, get_proc_list());
-  proc->pid = ++next_pid;
+  proc->pid = next_pid++;
   proc->thread_count = 0;
   proc->files = create_files_descriptors();
   proc->name = strdup(name);
@@ -380,18 +380,29 @@ static files_struct *clone_file_descriptor_table(files_struct *fs_src) {
 extern void load_trap_frame(trap_frame *);
 extern void set_eax(int32_t v);
 
+int32_t dup2(int oldfd, int newfd) {
+  struct process *current_process = get_current_process();
+  current_process->files->fd[newfd] = current_process->files->fd[oldfd];
+  return newfd;
+}
+
 static void child_return_fork() {
-  // has to return 0
+  enable_interrupts();
+  interruptdone(IRQ0);
+  // needs to be last as previous funcion invokacions can spoil eax
   set_eax(0);
   return;
 }
 
 pid_t process_fork(struct process* parent) {
+  lock_scheduler();
+
+  log("Task: Fork from %s(p%d)", parent->name, parent->pid);
   trap_frame stf;
   load_trap_frame(&stf);
 
   bool is_kernel = vmm_is_kernel_directory(parent->va_dir);
-  lock_scheduler();
+  
   struct process* proc = kcalloc(1, sizeof(struct process));
   proc->pid = next_pid++;
   proc->gid = parent->gid;
@@ -459,11 +470,9 @@ bool initialise_multitasking(virtual_addr entry) {
   struct process* parent = create_process(NULL, "swapper",  vmm_get_directory());
   _current_thread = kernel_thread_create(parent, entry);
   sched_push_queue(_current_thread);
-  
-  //process_fork(parent)
 
-  thread* garbage_worker = kernel_thread_create(parent, garbage_worker_task);
-  sched_push_queue(garbage_worker);
+  //thread* garbage_worker = kernel_thread_create(parent, garbage_worker_task);
+  //sched_push_queue(garbage_worker);
 
   /* register isr */
   old_pic_isr = getvect(IRQ0);

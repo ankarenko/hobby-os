@@ -39,9 +39,7 @@ static int32_t sys_debug_printf(const char *format, va_list args) {
 }
 
 static int32_t sys_dup2(int oldfd, int newfd) {
-  struct process *current_process = get_current_process();
-  current_process->files->fd[newfd] = current_process->files->fd[oldfd];
-  return newfd;
+  return dup2(oldfd, newfd);
 }
 
 static int32_t sys_read(uint32_t fd, char *buf, size_t count) {

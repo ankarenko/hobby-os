@@ -2,6 +2,7 @@
 #include "kernel/proc/task.h"
 #include "kernel/util/math.h"
 #include "kernel/memory/vmm.h"
+#include "kernel/util/debug.h"
 #include "kernel/fs/vfs.h"
 
 bool free_heap(mm_struct_mos* mm) {

@@ -164,6 +164,7 @@ struct process* create_system_process(virtual_addr entry, char* name);
 struct list_head* get_proc_list();
 struct process* create_elf_process(struct process* parent, char* path);
 pid_t process_fork(struct process* parent);
+int32_t dup2(int oldfd, int newfd);
 
 // sched.c
 void lock_scheduler();
