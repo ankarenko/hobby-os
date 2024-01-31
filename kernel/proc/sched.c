@@ -189,7 +189,7 @@ next_thread:
   //log("Interrupt\n");
   
   thread* th = pop_next_thread_to_run();
-  if (th->tid == 8) {
+  if (th->tid == 8 || th->tid == 6) {
     int bn = 0;
   }
 

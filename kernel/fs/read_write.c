@@ -89,6 +89,11 @@ uint32_t vfs_fwrite(int32_t fd, char* buf, int32_t count) {
 
   int ret = 0;
 
+  if (!file) {
+    ret = -ENOENT;
+    goto exit;
+  }
+
   if (S_ISDIR(file->f_dentry->d_inode->i_mode)) {
     ret = -EISDIR;
     goto exit;

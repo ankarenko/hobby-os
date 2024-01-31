@@ -213,6 +213,8 @@ void terminal_run() {
   struct key_event ev;
   struct process *parent = get_current_process();
   
+  log("ADDRESS OF PARENT: %x", parent);
+
   process_fork(parent);
   if (parent != get_current_process()) {
     shell_start();

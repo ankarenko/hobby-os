@@ -378,8 +378,13 @@ static files_struct *clone_file_descriptor_table(files_struct *fs_src) {
 }
 
 extern uint32_t get_return_address();
+extern uint32_t get_ebp();
+extern void save_switch_task_frame(switch_task_frame *);
 
 struct process* process_fork(struct process* parent) {
+  switch_task_frame stf; // = kcalloc(1, sizeof(switch_task_frame));
+  save_switch_task_frame(&stf);
+
   bool is_kernel = vmm_is_kernel_directory(parent->va_dir);
   lock_scheduler();
   struct process* proc = kcalloc(1, sizeof(struct process));
@@ -411,23 +416,27 @@ struct process* process_fork(struct process* parent) {
     "Current thread doesn't belong to the process being forked"
   );
 
-  list_for_each_entry(parent_thread, &parent->threads, sibling);
-
   // penging and blocked signals are not inherited
   thread *th = thread_create(proc, NULL, 0);
   
+  
+
   // copy registers
   if (!is_kernel) {
     th->esp = th->kernel_esp - sizeof(interrupt_registers);
     memcpy((char*)th->esp, (char*)parent_thread->kernel_esp, sizeof(interrupt_registers));
+  } else {
+    // ebp + 8 means that we skip return address, it will be put to switch stack frame
+    int stack_size = parent_thread->kernel_esp - (stf.ebp + 8);
+    th->esp = th->kernel_esp - stack_size;
+    memcpy(th->esp, stf.ebp + 8, stack_size);
+    
+    th->esp = th->esp - sizeof(switch_task_frame);
+    int prev_frame_size = parent_thread->kernel_esp - *((uint32_t*)stf.ebp);
+    stf.ebp = th->kernel_esp - prev_frame_size;
+    memcpy((char*)th->esp, &stf, sizeof(switch_task_frame));
   }
 
-  th->esp = th->esp - sizeof(switch_task_frame);
-  
-  memset((char*)th->esp, 0, sizeof(switch_task_frame));
-  switch_task_frame* stf = th->esp; 
-  uint32_t ret = get_return_address();
-  stf->eip = ret;
   
   // NOTE: equal virtual address, but different physical!
 	th->user_esp = parent_thread->user_esp; 

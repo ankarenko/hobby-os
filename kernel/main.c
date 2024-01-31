@@ -136,13 +136,22 @@ void kthread_fork() {
   }
 }
 
+void execve(void *entry()) {
+  struct process *parent = get_current_process();
+  process_fork(parent);
+  if (parent != get_current_process()) {
+    entry();
+  }
+}
+
 
 //! our simple command parser
 bool run_cmd(char* cmd_buf) {
-
+  thread* th = get_current_thread();
+//3355566144 0xc801deec
   if (strcmp(cmd_buf, "create") == 0) {
     kprintf("\nnew thread: ");
-    create_system_process(&kthread_fork, "ktread");
+    execve(kthread_fork);
   } if (strcmp(cmd_buf, "play") == 0) {
     init_consumer_producer();
     create_system_process(&producer, "producer");

@@ -136,3 +136,31 @@ start_kernel_task:
 get_return_address:
   mov 4(%ebp), %eax
   ret
+
+.global get_ebp
+.type get_ebp, @function
+get_ebp:
+  mov %ebp, %eax
+  ret
+
+.global save_switch_task_frame
+.type save_switch_task_frame, @function
+save_switch_task_frame:
+  push %eax
+  push %ecx
+
+  # eax, ecx are saved by the compiler
+  mov 12(%esp), %eax       # load address of the parameter
+  
+  mov %ebp, 0(%eax) #0xc8017738
+  mov %edi, 4(%eax)
+  mov %esi, 8(%eax)
+  mov %ebx, 12(%eax)
+
+  mov 4(%ebp), %ecx
+  mov %ecx, 16(%eax)
+
+  pop %ecx
+  pop %eax
+
+  ret
