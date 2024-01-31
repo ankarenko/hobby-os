@@ -123,7 +123,7 @@ void pmm_init(multiboot_info_t* mbd) {
   }
 
   if (_memory_bitmap_size > BITMAP_SIZE) {
-    printf("bitmapsize is too big");
+    assert_not_reached("bitmapsize is too big");
     return;
   }
 
@@ -236,7 +236,7 @@ void* pmm_alloc_frames(uint32_t size) {
 
 void pmm_free_frame(void* p) {
   if ((physical_addr)p % PMM_FRAME_SIZE != 0) {
-    printf("pmm_dealloc: addr is not %d aligned", PMM_FRAME_SIZE);
+    assert_not_reached("pmm_dealloc: addr is not %d aligned", PMM_FRAME_SIZE);
     return; // todo: make crash
   }
 

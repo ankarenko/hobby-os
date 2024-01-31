@@ -10,6 +10,7 @@
 #include "kernel/devices/kybrd.h"
 #include "kernel/proc/task.h"
 #include "kernel/util/math.h"
+#include "kernel/util/ansi_codes.h"
 #include "kernel/util/fcntl.h"
 #include "kernel/cpu/hal.h"
 #include "kernel/memory/kernel_info.h"
@@ -223,20 +224,69 @@ void terminal_run() {
   int size = 20;
   char buf[size];
   
+  char command[10];
+
   while (true) {
   newline:
     char key;
-
+    
 
     kreadterminal(&buf, size);
     
 
     for (int i = 0; i < size; ++i) {
-     
       key = buf[i];
-      //log("%c : %d", key, key);
 
       switch (key) {
+        case '\e':
+          // TODO: very dirty implementation, needs to be something like a det machine
+          int command_index = 0;
+          while (buf[i] != 'm' && buf[i] != '\0') {
+            command[command_index] = buf[i];
+            ++i;
+            ++command_index;
+            if (i >= size) {
+              kreadterminal(&buf, size);
+              i = 0;
+            }
+          }
+          
+          command[command_index] = 'm';
+          command[command_index + 1] = '\0';
+          
+          int com_size = strlen(command);
+
+          if (memcmp(&command, COLOR_RESET, com_size) == 0) {
+            terminal_reset_color();
+            break;
+          }
+          
+          enum vga_color color = VGA_COLOR_GREEN;
+
+          if (memcmp(&command, BLK, com_size) == 0) {
+            color = VGA_COLOR_BLACK;
+          } else if (memcmp(&command, RED, com_size) == 0) {
+            color = VGA_COLOR_LIGHT_RED;
+          } else if (memcmp(&command, GRN, com_size) == 0) {
+            color = VGA_COLOR_GREEN;
+          } else if (memcmp(&command, YEL, com_size) == 0) {
+            //color = VGA_COLOR_
+          } else if (memcmp(&command, BLU, com_size) == 0) {
+            color = VGA_COLOR_LIGHT_BLUE;
+          } else if (memcmp(&command, MAG, com_size) == 0) {
+            color = VGA_COLOR_MAGENTA;
+          } else if (memcmp(&command, CYN, com_size) == 0) {
+            color = VGA_COLOR_CYAN;
+          } else if (memcmp(&command, WHT, com_size) == 0) {
+            color = VGA_COLOR_WHITE;
+          } else {
+            err("terminal: nvalid terminal code, ignoring");
+          }
+
+          terminal_set_color(color);
+            
+          break;
+
         case '\n':
           terminal_newline();
           break;

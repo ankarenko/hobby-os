@@ -68,34 +68,36 @@ int32_t vfs_ls(const char* path) {
       memcpy(&name, iter->d_name, strlen(iter->d_name));
       if (!S_ISDIR(iter->d_type)) {
         bool is_char_dev = S_ISCHR(iter->d_type);
-        terminal_set_color(is_char_dev? VGA_COLOR_LIGHT_BLUE : VGA_COLOR_LIGHT_RED);
-        printf("\n%s", name);
+        if (is_char_dev) {
+          kprintf(BLU"\n%s", name);
+        } else {
+          kprintf(RED"\n%s", name);
+        }
+        
         if (!is_char_dev) {
           struct time* created = get_time(inode.i_ctime.tv_sec);
           
-          printf("   %d %s %d%d:%d%d",
+          kprintf("   %d %s %d%d:%d%d",
               created->day,
               months[created->month - 1],
               created->hour / 10, created->hour % 10,
               created->minute / 10, created->minute % 10);
 
         
-          printf("   %u bytes", inode.i_size);
+          kprintf("   %u bytes", inode.i_size);
         
           kfree(created);
         }
-        terminal_reset_color();
+        kprintf(COLOR_RESET);
       } else {
-        printf("\n%s", name);
+        kprintf("\n%s", name);
       }
     } else {
       memcpy(&name, iter->d_name, strlen(iter->d_name));
       if (!S_ISDIR(iter->d_type)) {
-        printf("\n%s", name);
+        kprintf("\n%s", name);
       } else {
-        terminal_set_color(VGA_COLOR_LIGHT_RED);
-        printf("\n%s", name);
-        terminal_reset_color();
+        kprintf(RED"\n%s"COLOR_RESET, name);
       }
     }
     unlock_scheduler();

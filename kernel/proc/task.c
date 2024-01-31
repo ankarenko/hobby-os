@@ -418,8 +418,6 @@ struct process* process_fork(struct process* parent) {
 
   // penging and blocked signals are not inherited
   thread *th = thread_create(proc, NULL, 0);
-  
-  
 
   // ebp + 8 means that we skip return address, it will be put to switch stack frame
   int stack_size = parent_thread->kernel_esp - (stf.ebp + 8);
