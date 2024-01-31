@@ -185,8 +185,8 @@ struct tty_struct {
 	struct termios *termios;
 	//struct winsize winsize;
 
-	//pid_t pgrp;
-	//pid_t session;
+	pid_t pgrp;
+	pid_t session;
 
   struct semaphore *to_read;
   struct semaphore *to_write;

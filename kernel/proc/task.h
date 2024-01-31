@@ -32,7 +32,7 @@
 
 /* be very careful with modifying this as it's used by assembler code */
 typedef struct _trap_frame {
-  uint32_t epb, edi, esi, ebx;  // Pushed by pusha.
+  uint32_t ebp, edi, esi, ebx;  // Pushed by pusha.
   uint32_t eip;                 // eip is saved on stack by the caller's "CALL" instruction
   uint32_t return_address;
   uint32_t parameter1, parameter2, parameter3;
@@ -163,7 +163,7 @@ thread* kernel_thread_create(struct process* parent, virtual_addr eip);
 struct process* create_system_process(virtual_addr entry, char* name);
 struct list_head* get_proc_list();
 struct process* create_elf_process(struct process* parent, char* path);
-struct process *process_fork(struct process *parent);
+pid_t process_fork(struct process* parent);
 
 // sched.c
 void lock_scheduler();

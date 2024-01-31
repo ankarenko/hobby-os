@@ -125,21 +125,22 @@ void kthread_fork() {
   struct process *current_process = get_current_process();
   int parent_id = current_process->pid;
 
-  process_fork(current_process);
-  
-  while (1) {
-    kprintf("\nNew thread 10");
-    if (get_current_process()->pid != parent_id) {
-      kprintf(" from child");
+  if (process_fork(current_process) == 0) {
+    while (1) {
+      kprintf("\nHello from child");
+      thread_sleep(3000);
     }
-    thread_sleep(3000);
+  } else {
+    while (1) {
+      kprintf("\nHello from parent");
+      thread_sleep(3000);
+    }
   }
 }
 
 void execve(void *entry()) {
   struct process *parent = get_current_process();
-  process_fork(parent);
-  if (parent != get_current_process()) {
+  if (process_fork(parent) == 0) {
     entry();
   }
 }
@@ -370,7 +371,7 @@ void cmd_read_file() {
     return;
   }
 
-  uint32_t size = 1;
+  uint32_t size = 5;
   uint8_t* buf = kcalloc(size + 1, sizeof(uint8_t));
   kprintf("\n_____________________________________________\n");
   while (vfs_fread(fd, buf, size) == size) {

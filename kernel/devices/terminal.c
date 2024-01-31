@@ -216,8 +216,7 @@ void terminal_run() {
   
   log("ADDRESS OF PARENT: %x", parent);
 
-  process_fork(parent);
-  if (parent != get_current_process()) {
+  if (process_fork(parent) == 0) {
     shell_start();
   }
 
@@ -245,10 +244,14 @@ void terminal_run() {
             command[command_index] = buf[i];
             ++i;
             ++command_index;
-            if (i >= size) {
+            if (i >= size) { // read more
               kreadterminal(&buf, size);
               i = 0;
             }
+          }
+          
+          if (buf[i] == '\0') {
+            assert_not_reached("terminal: invalid parsing of color key");
           }
           
           command[command_index] = 'm';
@@ -294,6 +297,7 @@ void terminal_run() {
           goto newline;
           break;
         case KEY_BACKSPACE:
+        case '\177':
           terminal_popchar();
           break;
         

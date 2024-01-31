@@ -508,6 +508,17 @@ char kkybrd_key_to_ascii(enum KEYCODE code) {
     if (_shift || _capslock)
       if (key >= 'a' && key <= 'z')
         key -= 32;
+    
+    // todo: change it, just hardcoded it to test do_kill
+    if (key == '\003') {
+      return 0;
+    }
+    if (key == 'c' && _ctrl) {
+      return '\003';
+    }
+
+    if (key == KEY_BACKSPACE)
+      return 127;
 
     if (_shift && !_capslock)
       if (key >= '0' && key <= '9')

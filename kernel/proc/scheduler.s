@@ -143,9 +143,9 @@ get_ebp:
   mov %ebp, %eax
   ret
 
-.global save_switch_task_frame
-.type save_switch_task_frame, @function
-save_switch_task_frame:
+.global load_trap_frame
+.type load_trap_frame, @function
+load_trap_frame:
   push %eax
   push %ecx
 
@@ -163,4 +163,10 @@ save_switch_task_frame:
   pop %ecx
   pop %eax
 
+  ret
+
+.global set_eax
+.type set_eax, @function
+set_eax:
+  mov 4(%esp), %eax
   ret

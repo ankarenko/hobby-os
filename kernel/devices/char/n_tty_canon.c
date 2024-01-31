@@ -2,6 +2,7 @@
 #include "kernel/locking/semaphore.h"
 #include "kernel/memory/malloc.h"
 #include "kernel/util/debug.h"
+#include "kernel/ipc/signal.h"
 #include "kernel/util/math.h"
 #include "kernel/util/string/string.h"
 
@@ -95,6 +96,15 @@ static uint32_t push_buf(struct tty_struct *tty, char c) {
 }
 
 static void eraser(struct tty_struct *tty, char ch) {
+  semaphore_down(tty->mutex);
+  if (tty->read_tail != tty->read_head) {
+    tty->read_tail--;
+  }
+  semaphore_up(tty->mutex);
+
+  if (L_ECHO(tty)) {
+    echo_buf(tty, &(const char){ch}, 1);
+  }
 }
 
 static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
@@ -114,7 +124,7 @@ static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
       ch = '\r';
 
     if (L_ISIG(tty)) {
-      /*
+      
       int32_t sig = -1;
       if (INTR_CHAR(tty) == ch)
         sig = SIGINT;
@@ -123,13 +133,18 @@ static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
       else if (SUSP_CHAR(tty) == ch)
         sig = SIGTSTP;
 
-      if (valid_signal(sig) && sig > 0)
-      {
-        if (tty->pgrp > 0)
+      if (valid_signal(sig) && sig > 0) {
+        //if (tty->pgrp > 0)
           do_kill(-tty->pgrp, sig);
         continue;
       }
-      */
+    }
+
+    if (ch == ERASE_CHAR(tty) || ch == KILL_CHAR(tty) || 
+      (ch == WERASE_CHAR(tty) && L_IEXTEN(tty))
+    ) {
+      eraser(tty, ch);
+      continue;
     }
 
     if (EOF_CHAR(tty) == ch) {

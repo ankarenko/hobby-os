@@ -377,13 +377,18 @@ static files_struct *clone_file_descriptor_table(files_struct *fs_src) {
 	//sema_init(&files->lock, 1);
 }
 
-extern uint32_t get_return_address();
-extern uint32_t get_ebp();
-extern void save_switch_task_frame(switch_task_frame *);
+extern void load_trap_frame(trap_frame *);
+extern void set_eax(int32_t v);
 
-struct process* process_fork(struct process* parent) {
-  switch_task_frame stf; // = kcalloc(1, sizeof(switch_task_frame));
-  save_switch_task_frame(&stf);
+static void child_return_fork() {
+  // has to return 0
+  set_eax(0);
+  return;
+}
+
+pid_t process_fork(struct process* parent) {
+  trap_frame stf;
+  load_trap_frame(&stf);
 
   bool is_kernel = vmm_is_kernel_directory(parent->va_dir);
   lock_scheduler();
@@ -419,15 +424,25 @@ struct process* process_fork(struct process* parent) {
   // penging and blocked signals are not inherited
   thread *th = thread_create(proc, NULL, 0);
 
+  /*
+    NOTE: our goal is to make a separate thread that returns from process_fork method
+    with same registers and stack (but different return value %eax = 0)
+    
+    To do this, we clone the parents stack and adjust its values a little bit so it can be 
+    picked up and run by the scheduler
+  */
   // ebp + 8 means that we skip return address, it will be put to switch stack frame
   int stack_size = parent_thread->kernel_esp - (stf.ebp + 8);
   th->esp = th->kernel_esp - stack_size;
   memcpy(th->esp, stf.ebp + 8, stack_size);
   
-  th->esp = th->esp - sizeof(switch_task_frame);
+  th->esp = th->esp - sizeof(trap_frame);
   int prev_frame_size = parent_thread->kernel_esp - *((uint32_t*)stf.ebp);
   stf.ebp = th->kernel_esp - prev_frame_size;
-  memcpy((char*)th->esp, &stf, sizeof(switch_task_frame));
+  stf.return_address = stf.eip;
+  stf.eip = child_return_fork;
+
+  memcpy((char*)th->esp, &stf, sizeof(trap_frame));
   
   // NOTE: equal virtual address, but different physical!
 	th->user_esp = parent_thread->user_esp; 
@@ -435,7 +450,7 @@ struct process* process_fork(struct process* parent) {
   sched_push_queue(th);
   unlock_scheduler();
 
-  return NULL;
+  return proc->pid;
 }
 
 bool initialise_multitasking(virtual_addr entry) {
@@ -445,6 +460,8 @@ bool initialise_multitasking(virtual_addr entry) {
   _current_thread = kernel_thread_create(parent, entry);
   sched_push_queue(_current_thread);
   
+  //process_fork(parent)
+
   thread* garbage_worker = kernel_thread_create(parent, garbage_worker_task);
   sched_push_queue(garbage_worker);
 

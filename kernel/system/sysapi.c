@@ -23,6 +23,7 @@
 #define __NR_getpid 20
 #define __NR_kill 37
 #define __NR_signal 48
+#define __NR_dup2 63
 #define __NR_sigaction 67
 #define __NR_sigsuspend 72
 #define __NR_sigreturn 103
@@ -35,6 +36,12 @@
 static int32_t sys_debug_printf(const char *format, va_list args) {
   int i = vprintf(format, args);
   return i;
+}
+
+static int32_t sys_dup2(int oldfd, int newfd) {
+  struct process *current_process = get_current_process();
+  current_process->files->fd[newfd] = current_process->files->fd[oldfd];
+  return newfd;
 }
 
 static int32_t sys_read(uint32_t fd, char *buf, size_t count) {
@@ -134,6 +141,7 @@ static void *syscalls[] = {
   [__NR_fork] = sys_fork,
   [__NR_time] = sys_time,
   [__NR_fstat] = sys_fstat,
+  [__NR_dup2] = sys_dup2,
   [__NR_print] = sys_debug_printf,
   [__NR_lseek] = sys_lseek,
   [__NR_close] = sys_close,

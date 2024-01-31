@@ -75,5 +75,6 @@ void handle_signal(interrupt_registers *regs, sig_t restored_sig);
 void sigreturn(interrupt_registers *regs);
 int do_sigaction(int signum, const struct sigaction *action, struct sigaction *old_action);
 int do_sigprocmask(int how, const sig_t *set, sig_t *oldset);
+int do_kill(pid_t pid, int32_t signum);
 
 #endif

@@ -35,6 +35,11 @@ int fstat(int fildes, struct stat* buf) {
 	SYSCALL_RETURN(syscall_fstat(fildes, buf));
 }
 
+_syscall2(dup2, int, int);
+int dup2(int oldfd, int newfd) {
+	SYSCALL_RETURN_ORIGINAL(syscall_dup2(oldfd, newfd));
+}
+
 _syscall1(exit, int);
 void _exit(int32_t status) {
   //kernel_print("\nexit");

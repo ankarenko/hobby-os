@@ -16,6 +16,7 @@
 #define __NR_getpid 20
 #define __NR_kill 37
 #define __NR_signal 48
+#define __NR_dup2 63
 #define __NR_sigaction 67
 #define __NR_sigsuspend 72
 #define __NR_sigreturn 103

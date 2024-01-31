@@ -125,6 +125,10 @@ void handle_signal(interrupt_registers *regs, sig_t restored_sig) {
   }
 }
 
+int do_kill(pid_t pid, int32_t signum) {
+  log("Killing %d", pid);
+}
+
 void sigreturn(interrupt_registers *regs) {
   // NOTE: MQ 2020-08-26
 	/*
