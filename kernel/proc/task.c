@@ -19,10 +19,11 @@ extern void enter_usermode(
 
 extern struct thread *_current_thread;
 struct list_head all_threads;
+LIST_HEAD(_proc_list);
 
 extern void scheduler_end();
 
-LIST_HEAD(_proc_list);
+
 struct list_head* get_proc_list() {
   return &_proc_list;
 }
@@ -117,6 +118,16 @@ static void thread_wakeup_timer(struct sleep_timer *timer) {
   if (th->state == THREAD_WAITING) {
     thread_update(th, THREAD_READY);
   }
+}
+
+struct process *find_process_by_pid(pid_t pid) {
+	struct process *iter;
+  list_for_each_entry(iter, get_proc_list(), sibling) {
+    if (iter->pid == pid)
+      return iter;
+  }
+
+  return NULL;
 }
 
 static struct thread* thread_create(
@@ -246,6 +257,8 @@ static struct process* create_process(struct process* parent, char* name, struct
   
   list_add(&proc->sibling, get_proc_list());
   proc->pid = next_pid++;
+  proc->gid = proc->pid;
+  
   atomic_set(&proc->thread_count, 0);
   proc->files = create_files_descriptors();
   proc->name = strdup(name);
@@ -266,6 +279,9 @@ static struct process* create_process(struct process* parent, char* name, struct
 
   proc->fs = kcalloc(1, sizeof(fs_struct));
   if (parent) {
+    proc->gid = parent->gid;
+		proc->sid = parent->sid;
+		
 		memcpy(proc->fs, parent->fs, sizeof(fs_struct));
 		list_add_tail(&proc->child, &parent->childrens);
 	}
@@ -432,7 +448,7 @@ pid_t process_fork(struct process* parent) {
   struct thread *parent_thread = get_current_thread();
   assert(
     parent_thread->proc->pid == parent->pid, 
-    "Current struct thread doesn't belong to the process being forked"
+    "Current thread doesn't belong to the process being forked"
   );
 
   // penging and blocked signals are not inherited
@@ -467,8 +483,21 @@ pid_t process_fork(struct process* parent) {
   return proc->pid;
 }
 
+int32_t setpgid(pid_t pid, pid_t pgid) {
+  struct process *current_process = get_current_process();
+  struct process *p = !pid ? current_process : find_process_by_pid(pid);
+  struct process *l = !pgid ? p : find_process_by_pid(pgid);
+
+  if (l->sid != p->sid)
+    return -1;
+
+  p->gid = l->pid;
+  return 0;
+}
+
 bool initialise_multitasking(virtual_addr entry) {
   INIT_LIST_HEAD(&all_threads);
+
   sched_init();
 
   struct process* parent = create_process(NULL, "swapper",  vmm_get_directory());

@@ -86,6 +86,35 @@ static int ptmx_open(struct vfs_inode *inode, struct vfs_file *file) {
 	return 0;
 }
 
+static int tiocsctty(struct tty_struct *tty, int arg) {
+  struct process *current_process = get_current_process();
+
+	if (current_process->pid == current_process->sid && current_process->sid == tty->session)
+		return 0;
+  /*
+	if (current_process->pid != current_process->sid || current_process->tty)
+		return -EPERM;
+  */
+  /*
+	if (tty->session) {
+		if (arg != 1)
+			return -EPERM;
+
+		struct process *proc;
+		for_each_process(proc)
+		{
+			if (proc->tty == tty)
+				proc->tty = NULL;
+		}
+	}
+  */
+
+	current_process->tty = tty;
+	tty->session = current_process->sid;
+	tty->pgrp = current_process->gid;
+	return 0;
+}
+
 static int tty_open(struct vfs_inode *inode, struct vfs_file *file) {
   struct tty_struct *tty = NULL;
   int32_t dev = inode->i_rdev;
@@ -105,7 +134,7 @@ static int tty_open(struct vfs_inode *inode, struct vfs_file *file) {
     tty->driver->tops->open(tty, file);
 
   file->private_data = tty;
-  //tiocsctty(tty, 0);
+  tiocsctty(tty, 0);
   
   return 0;
 }

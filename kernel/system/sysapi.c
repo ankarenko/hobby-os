@@ -23,12 +23,15 @@
 #define __NR_getpid 20
 #define __NR_kill 37
 #define __NR_signal 48
+#define __NR_setpgid 57
 #define __NR_dup2 63
+#define __NR_getpgrp 65
 #define __NR_sigaction 67
 #define __NR_sigsuspend 72
 #define __NR_sigreturn 103
 #define __NR_fstat 108
 #define __NR_sigprocmask 126
+#define __NR_getsid 147
 #define __NR_nanosleep 162
 #define __NR_print 0
 
@@ -65,11 +68,6 @@ static void* sys_sbrk(size_t n) {
     n, parent->mm_mos
   );
   return addr;
-}
-
-static int32_t sys_getpid() {
-	struct process* proc = get_current_process();
-  return proc->pid;
 }
 
 static int32_t sys_exit() {
@@ -128,6 +126,22 @@ static int32_t sys_sigprocmask(int how, const sig_t *set, sig_t *oldset) {
   return do_sigprocmask(how, set, oldset);
 }
 
+static int32_t sys_setpgid(pid_t pid, pid_t pgid) {
+  return setpgid(pid, pgid);
+}
+
+static int32_t sys_getsid() {
+  return get_current_process()->sid;
+}
+
+static int32_t sys_getpgrp() {
+  return get_current_process()->gid;
+}
+
+static int32_t sys_getpid() {
+  return get_current_process()->pid;
+}
+
 static void *syscalls[] = {
   [__NR_exit] = sys_exit,
   [__NR_nanosleep] = sys_nanosleep,
@@ -140,9 +154,12 @@ static void *syscalls[] = {
   [__NR_time] = sys_time,
   [__NR_fstat] = sys_fstat,
   [__NR_dup2] = sys_dup2,
+  [__NR_setpgid] = sys_setpgid,
   [__NR_print] = sys_debug_printf,
   [__NR_lseek] = sys_lseek,
   [__NR_close] = sys_close,
+  [__NR_getsid] = sys_getsid,
+  [__NR_getpgrp] = sys_getpgrp,
   [__NR_getpid] = sys_getpid,
   [__NR_kill] = sys_kill,
   [__NR_sigaction] = sys_sigaction,

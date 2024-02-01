@@ -162,6 +162,7 @@ struct process {
   struct list_head child; // used for a list of childs
 };
 
+// task.c
 struct thread* get_current_thread();
 struct process* get_current_process();
 void thread_sleep(uint32_t ms);
@@ -172,6 +173,8 @@ struct list_head* get_proc_list();
 struct process* create_elf_process(struct process* parent, char* path);
 pid_t process_fork(struct process* parent);
 int32_t dup2(int oldfd, int newfd);
+struct process *find_process_by_pid(pid_t pid);
+int32_t setpgid(pid_t pid, pid_t pgid);
 
 // sched.c
 void lock_scheduler();
@@ -192,5 +195,6 @@ struct list_head* get_waiting_threads();
 // exit.c
 void garbage_worker_task();
 void do_exit(int code);
+bool exit_thread(struct thread* th);
 
 #endif

@@ -134,7 +134,7 @@ static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
         sig = SIGTSTP;
 
       if (valid_signal(sig) && sig > 0) {
-        //if (tty->pgrp > 0)
+        if (tty->pgrp > 0)
           do_kill(-tty->pgrp, sig);
         continue;
       }

@@ -169,13 +169,18 @@ void hello() {
   }
 }
 
+
 void exec(void *entry()) {
+  // TODO: FORBID 0 DEREFERENCE!
   struct process *parent = get_current_process();
-  
-  if (process_fork(parent) == 0) {
+  int pid = 0;
+  if ((pid = process_fork(parent)) == 0) {
+    setpgid(0, 0);
     entry();
     do_exit(0);
   }
+  setpgid(pid, pid);
+  parent->tty->pgrp = pid; // set foreground process
 
   wait_until_wakeup(&parent->wait_chld);
 }
@@ -224,7 +229,7 @@ bool interpret_command(char* cmd_buf) {
     struct list_head *ls = get_proc_list();
     
     list_for_each_entry(proc, ls, sibling) {
-      kprintf("\n(p%d) %s : ", proc->pid, proc->name);
+      kprintf("\n(p%d) %s - gid:%d : ", proc->pid, proc->name, proc->gid);
 
       list_for_each_entry(th, &proc->threads, child) {
         kprintf(" %d", th->tid);
@@ -512,9 +517,16 @@ void main_thread() {
   if (process_fork(parent) == 0)
     kybrd_manager();
   
-  if (process_fork(parent) == 0)
-    terminal_run();
+  pid_t id = 0;
 
+  // NOTE: calling setpgid twice seems redudant but it eluminates race conditions
+  // caused by not knowing whether the parent or the child is selected by the scheduler
+  if ((id = process_fork(parent)) == 0) {
+    setpgid(0, 0);
+    terminal_run();
+  }
+  setpgid(id, id); 
+  
   // wait until is waken up (should not be waken up)
   wait_until_wakeup(&parent->wait_chld);
   assert_not_reached(); // no, please no!

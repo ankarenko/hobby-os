@@ -217,8 +217,12 @@ void terminal_run() {
   struct key_event ev;
   struct process *parent = get_current_process();
 
-  if (process_fork(parent) == 0)
+  int32_t id = 0;
+  if ((id = process_fork(parent)) == 0) {
+    setpgid(0, 0);
     shell_start();
+  }
+  setpgid(id, id);
 
   int size = 20;
   char buf[size];

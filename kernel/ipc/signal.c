@@ -129,6 +129,11 @@ int do_kill(pid_t pid, int32_t signum) {
   //do_kill()
   //do_exit(0);
   log("Killing %d", pid);
+  struct process *proc = find_process_by_pid(-pid);
+  struct thread *th = list_first_entry(&proc->threads, struct thread, child);
+  exit_thread(th);
+
+
 }
 
 void sigreturn(interrupt_registers *regs) {
