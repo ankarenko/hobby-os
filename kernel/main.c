@@ -484,9 +484,8 @@ void main_thread() {
   if (process_fork(parent) == 0)
     terminal_run();
 
-  while (true) {
-    thread_sleep(100000000);
-  }
+  // infinite sleep
+  wait_event(&parent->wait_chld, false);
 }
 
 void kernel_main(multiboot_info_t* mbd, uint32_t magic) {

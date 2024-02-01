@@ -30,13 +30,13 @@ extern void schedule();
 	}
   
 #define wait_until(cond) ({                           \
-  for (; !(cond);) {                                  \
-		thread_wait(_current_thread);    \
+  for (; !(cond);) {   \
+    thread_wait(_current_thread);    \
 		schedule();                                       \
 	}                                                   \
 })
 
-#define wait_event(wh, cond) ({                   \
+#define wait_event(wh, cond) ({   \
   DEFINE_WAIT(__wait);                            \
   list_add_tail(&__wait.sibling, &(wh)->list);    \
   wait_until(cond);                               \

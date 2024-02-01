@@ -44,6 +44,7 @@
     "algorithm": "c",
     "terminal.h": "c",
     "cstdio": "c",
-    "task.h": "c"
+    "task.h": "c",
+    "atomic": "c"
   }
 }
