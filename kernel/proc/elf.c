@@ -65,7 +65,7 @@ static int elf_verify(struct Elf32_Ehdr *elf_header) {
 // which is provided in params
 bool elf_load_image(
   char* app_path, 
-  thread* th, 
+  struct thread* th, 
   virtual_addr* entry
 ) {
   
@@ -162,7 +162,7 @@ bool elf_load_image(
   th->virt_ustack_bottom = stack_bottom;
   */
   
-  /* create stack space for main thread at the end of the program */
+  /* create stack space for main struct thread at the end of the program */
   // dont forget that the stack grows up from down
   
   th->user_ss = USER_DATA;

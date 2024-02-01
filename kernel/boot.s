@@ -28,7 +28,7 @@ boot_page_directory:
 
 # [ PDE 0 MAPPED TO FIRST 4MB, PDE 768 MAPPED TO FIRST 4MB ] 
 
-# Reserve a stack for the initial thread.
+# Reserve a stack for the initial struct thread.
 .section .bss
 .section .stack
 .align 16

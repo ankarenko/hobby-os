@@ -8,7 +8,6 @@
 #include "kernel/util/debug.h"
 #include "kernel/cpu/gdt.h"
 #include "kernel/proc/elf.h"
-#include "kernel/util/debug.h"
 
 #include "kernel/proc/task.h"
 
@@ -18,7 +17,7 @@ extern void enter_usermode(
   virtual_addr return_addr
 );
 
-extern thread*  _current_thread;
+extern struct thread *_current_thread;
 extern void scheduler_end();
 
 LIST_HEAD(_proc_list);
@@ -26,7 +25,7 @@ struct list_head* get_proc_list() {
   return &_proc_list;
 }
 
-void start_kernel_task(thread* th);
+void start_kernel_task(struct thread* th);
 
 static uint32_t next_pid = 0;
 static uint32_t next_tid = 0;
@@ -65,7 +64,7 @@ bool create_kernel_stack(virtual_addr* kernel_stack) {
 	return true;
 }
 
-/* creates user stack for main thread. */
+/* creates user stack for main struct thread. */
 bool create_user_stack(
   struct pdirectory* space, 
   virtual_addr* user_esp,
@@ -100,7 +99,7 @@ bool create_user_stack(
   return true;
 }
 
-void kernel_thread_entry(thread *th, void *flow()) {
+void kernel_thread_entry(struct thread *th, void *flow()) {
   // we are not returning from PIT interrupt, 
   // so we need to enable interrupts manually
   enable_interrupts();
@@ -111,21 +110,21 @@ void kernel_thread_entry(thread *th, void *flow()) {
 }
 
 static void thread_wakeup_timer(struct sleep_timer *timer) {
-	thread *th = from_timer(th, timer, s_timer);
+	struct thread *th = from_timer(th, timer, s_timer);
 	list_del(&timer->sibling);
   if (th->state == THREAD_WAITING) {
     thread_update(th, THREAD_READY);
   }
 }
 
-static thread* thread_create(
+static struct thread* thread_create(
   struct process* parent, 
   virtual_addr eip,
   virtual_addr entry
 ) {
   lock_scheduler();
 
-  thread *th = kcalloc(1, sizeof(thread));
+  struct thread *th = kcalloc(1, sizeof(struct thread));
   virtual_addr kernel_stack;
 
   if (!create_kernel_stack(&kernel_stack)) {
@@ -160,7 +159,7 @@ static thread* thread_create(
   return th;
 }
 
-bool empack_params(thread* th) {
+bool empack_params(struct thread* th) {
   struct process* parent = th->proc;
   char* path = parent->name;
 
@@ -195,7 +194,7 @@ bool empack_params(thread* th) {
   return true;
 }
 
-static void user_thread_elf_entry(thread *th) {
+static void user_thread_elf_entry(struct thread *th) {
   enable_interrupts(); // not sure if it's needed because enter_usermode enables the flag
   interruptdone(IRQ0);
 
@@ -216,13 +215,13 @@ static void user_thread_elf_entry(thread *th) {
   enter_usermode(entry, th->user_esp, PROCESS_TRAPPED_PAGE_FAULT);
 }
 
-thread* user_thread_create(struct process* parent) {
-  thread* th = thread_create(parent, NULL, user_thread_elf_entry);
+struct thread* user_thread_create(struct process* parent) {
+  struct thread* th = thread_create(parent, NULL, user_thread_elf_entry);
   return th;
 }
 
-thread* kernel_thread_create(struct process* parent, virtual_addr eip) {
-  thread* th = thread_create(parent, eip, kernel_thread_entry);
+struct thread* kernel_thread_create(struct process* parent, virtual_addr eip) {
+  struct thread* th = thread_create(parent, eip, kernel_thread_entry);
   return th;
 }
 
@@ -250,6 +249,7 @@ static struct process* create_process(struct process* parent, char* name, struct
   
   INIT_LIST_HEAD(&proc->childrens);
   INIT_LIST_HEAD(&proc->threads);
+  INIT_LIST_HEAD(&proc->wait_chld.list);
 
   for (int i = 0; i < NSIG; ++i)
 	  proc->sighand[i].sa_handler = sig_kernel_ignore(i + 1) ? SIG_IGN : SIG_DFL;
@@ -285,7 +285,7 @@ extern void cmd_init();
 void terminate_process() {
 	/* release threads */
   /*
-  thread* th = NULL;
+  struct thread* th = NULL;
   list_for_each_entry(th, &cur->threads, sibling) {
     vmm_unmap_address(cur->va_dir, th->kernel_esp - PMM_FRAME_SIZE);
   }
@@ -293,7 +293,7 @@ void terminate_process() {
   
   /*
   for (uint32_t i = 0; i < cur->thread_count; ++i) {
-    thread* pThread = &cur->threads[i];
+    struct thread* pThread = &cur->threads[i];
     vmm_unmap_address(cur->va_dir, pThread->kernel_esp);
     vmm_unmap_address(cur->va_dir, pThread->user_esp);
     // make it orphan, so it will be deleetd from the queue
@@ -322,7 +322,7 @@ void terminate_process() {
 struct process* create_system_process(virtual_addr entry, char* name) {
   struct process *cur_process = get_current_process();
   struct process *proc = create_process(cur_process, name == NULL? "system" : name, vmm_get_directory());
-  thread* th = kernel_thread_create(proc, entry);
+  struct thread* th = kernel_thread_create(proc, entry);
   
   if (!th) {
     return false;
@@ -334,7 +334,7 @@ struct process* create_system_process(virtual_addr entry, char* name) {
 
 struct process* create_elf_process(struct process* parent, char* path) {
   struct process* proc = create_process(parent, path, NULL);
-  thread* th = user_thread_create(proc);
+  struct thread* th = user_thread_create(proc);
 
   if (!th || !proc) {
     assert_not_reached("Thread or struct processwere not created properly", NULL);
@@ -344,7 +344,7 @@ struct process* create_elf_process(struct process* parent, char* path) {
   return proc;
 }
 
-thread* get_current_thread() {
+struct thread* get_current_thread() {
   return _current_thread;
 }
 
@@ -426,17 +426,17 @@ pid_t process_fork(struct process* parent) {
   proc->va_dir = is_kernel? parent->va_dir : vmm_fork(parent->va_dir);
   proc->pa_dir = vmm_get_physical_address(proc->va_dir, false);
   
-  thread *parent_thread = get_current_thread();
+  struct thread *parent_thread = get_current_thread();
   assert(
     parent_thread->proc->pid == parent->pid, 
-    "Current thread doesn't belong to the process being forked"
+    "Current struct thread doesn't belong to the process being forked"
   );
 
   // penging and blocked signals are not inherited
-  thread *th = thread_create(proc, NULL, 0);
+  struct thread *th = thread_create(proc, NULL, 0);
 
   /*
-    NOTE: our goal is to make a separate thread that returns from process_fork method
+    NOTE: our goal is to make a separate struct thread that returns from process_fork method
     with same registers and stack (but different return value %eax = 0)
     
     To do this, we clone the parents stack and adjust its values a little bit so it can be 
@@ -471,7 +471,7 @@ bool initialise_multitasking(virtual_addr entry) {
   _current_thread = kernel_thread_create(parent, entry);
   sched_push_queue(_current_thread);
 
-  //thread* garbage_worker = kernel_thread_create(parent, garbage_worker_task);
+  //struct thread* garbage_worker = kernel_thread_create(parent, garbage_worker_task);
   //sched_push_queue(garbage_worker);
 
   /* register isr */

@@ -6,7 +6,7 @@
 #include "kernel/locking/semaphore.h"
 
 struct sem_waiter {
-  thread* task;
+  struct thread* task;
   struct list_head sibling;
 };
 
@@ -14,7 +14,7 @@ struct sem_waiter {
 // othewise spin locks needs to be used
 void semaphore_down_val(struct semaphore *sem, int val) {
   disable_interrupts();
-  thread *cur_thread = get_current_thread();
+  struct thread *cur_thread = get_current_thread();
 
   if (sem->count >= val) {
     sem->count -= val;
@@ -45,7 +45,7 @@ void semaphore_up_val(struct semaphore *sem, int val) {
     return;
 
   disable_interrupts();
-  thread *cur_thread = get_current_thread();
+  struct thread *cur_thread = get_current_thread();
 
   if (list_empty(&sem->wait_list)) {
     sem->count = min(sem->capacity, sem->count + val);

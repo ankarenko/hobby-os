@@ -50,7 +50,7 @@ bool exit_process(struct process* proc) {
 }
 
 // TODO: bug, when kill 2 times and then create
-bool exit_thread(thread* th) {
+bool exit_thread(struct thread* th) {
   bool is_user = th->user_esp;
   struct process* parent = th->proc;
   //vmm_load_usertable(parent->pa_dir);
@@ -92,7 +92,7 @@ bool exit_thread(thread* th) {
 
 void garbage_worker_task() {
   while (1) {
-    thread* th = pop_next_thread_to_terminate();
+    struct thread* th = pop_next_thread_to_terminate();
 
     if (th == NULL) {
       thread_sleep(300);

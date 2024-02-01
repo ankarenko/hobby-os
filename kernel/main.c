@@ -113,7 +113,7 @@ void kthread() {
   int col = 0;
   bool dir = true;
   while (1) {
-    kprintf("\nNew thread 10");
+    kprintf("\nNew struct thread 10");
     thread_sleep(3000);
   }
 }
@@ -148,10 +148,10 @@ void execve(void *entry()) {
 
 //! our simple command parser
 bool run_cmd(char* cmd_buf) {
-  thread* th = get_current_thread();
+  struct thread* th = get_current_thread();
 //3355566144 0xc801deec
   if (strcmp(cmd_buf, "create") == 0) {
-    kprintf("\nnew thread: ");
+    kprintf("\nnew struct thread: ");
     execve(kthread_fork);
   } if (strcmp(cmd_buf, "play") == 0) {
     init_consumer_producer();
@@ -168,7 +168,7 @@ bool run_cmd(char* cmd_buf) {
       thread_kill(id_num);
     }
   } else if (strcmp(cmd_buf, "lst") == 0) {
-    thread* th = NULL;
+    struct thread* th = NULL;
     kprintf("\nthreads ready: [ ");
     list_for_each_entry(th, get_ready_threads(), sched_sibling) {
       kprintf("%d ", th->tid);

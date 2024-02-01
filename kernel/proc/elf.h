@@ -175,7 +175,7 @@ struct Elf32_Layout
 
 bool elf_load_image(
   char* app_path, 
-  thread* th,
+  struct thread* th,
   virtual_addr* entry
 );
 void elf_unload_image();

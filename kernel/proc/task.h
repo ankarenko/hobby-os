@@ -9,6 +9,7 @@
 #include "kernel/locking/semaphore.h"
 #include "kernel/util/list.h"
 #include "kernel/devices/char/tty.h"
+#include "kernel/proc/wait.h"
 #include "kernel/memory/vmm.h"
 #include "kernel/system/timer.h"
 #include "kernel/fs/vfs.h"
@@ -84,7 +85,7 @@ typedef struct _mm_struct_mos {
 
 typedef struct process;
 
-typedef struct _thread {
+struct thread {
   uint32_t kernel_esp;
   uint32_t kernel_ss;
   uint32_t user_esp;  // user stack
@@ -107,7 +108,7 @@ typedef struct _thread {
 	bool signaling;
   
   struct sleep_timer s_timer;
-} thread;
+};
 
 typedef struct _files_struct {
   // TODO: what to do if two threads from different processes try to access a file
@@ -126,6 +127,9 @@ typedef struct _fs_struct {
   if you happen to change that it is better to add new fields 
   to the end of the structure
 */
+
+struct wait_queue_head;
+
 struct process {
   int32_t pid;
 
@@ -147,6 +151,7 @@ struct process {
 
   struct tty_struct *tty;
   struct sigaction sighand[NSIG];
+  struct wait_queue_head wait_chld;
 
   int32_t gid;  // group id
   int32_t sid;  // session id
@@ -155,11 +160,11 @@ struct process {
   struct list_head child; // used for a list of childs
 };
 
-thread* get_current_thread();
+struct thread* get_current_thread();
 struct process* get_current_process();
 void thread_sleep(uint32_t ms);
 bool initialise_multitasking(virtual_addr entry);
-thread* kernel_thread_create(struct process* parent, virtual_addr eip);
+struct thread* kernel_thread_create(struct process* parent, virtual_addr eip);
 struct process* create_system_process(virtual_addr entry, char* name);
 struct list_head* get_proc_list();
 struct process* create_elf_process(struct process* parent, char* path);
@@ -173,12 +178,13 @@ void make_schedule();
 void sched_init();
 void schedule();
 struct list_head* get_ready_threads();
-void sched_push_queue(thread* th);
-thread* pop_next_thread_to_terminate();
+void sched_push_queue(struct thread* th);
+struct thread* pop_next_thread_to_terminate();
 bool thread_kill(uint32_t id);
-void thread_wake(thread *th);
+void thread_wake(struct thread *th);
 bool thread_signal(uint32_t tid, int32_t signal);
-void thread_update(thread *t, enum thread_state state);
+void thread_wait(struct thread *th);
+void thread_update(struct thread *t, enum thread_state state);
 struct list_head* get_waiting_threads();
 
 // exit.c

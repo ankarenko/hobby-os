@@ -18,9 +18,9 @@ struct list_head waiting_threads;
 struct list_head terminated_threads;
 
 // TODO: put it in th kernel stack, it's is more efficient
-thread* _current_thread = NULL;
+struct thread* _current_thread = NULL;
 
-extern void switch_to_thread(thread* next_task);
+extern void switch_to_thread(struct thread* next_task);
 extern void scheduler_tick();
 
 static volatile uint32_t scheduler_lock_counter = 0;
@@ -55,17 +55,17 @@ static struct thread* get_next_thread_from_list(enum thread_state state) {
 	if (list_empty(list))
 		return NULL;
 
-	return list_entry(list->next, thread, sched_sibling);
+	return list_entry(list->next, struct thread, sched_sibling);
 }
 
-void sched_push_queue(thread *th) {
+void sched_push_queue(struct thread *th) {
   struct list_head *h = sched_get_list(th->state);
 
 	if (h)
 		list_add_tail(&th->sched_sibling, h);
 }
 
-void sched_remove_queue(thread* th) {
+void sched_remove_queue(struct thread* th) {
   struct list_head *h = &ready_threads;
 
 	if (h)
@@ -82,16 +82,16 @@ static struct thread *pop_next_thread_from_list(enum thread_state state) {
 	if (list_empty(list))
 		return NULL;
 
-	thread* th = list_entry(list->next, thread, sched_sibling);
+	struct thread* th = list_entry(list->next, struct thread, sched_sibling);
 	list_del(&th->sched_sibling);
 	return th;
 }
 
-static thread *pop_next_thread_to_run() {
+static struct thread *pop_next_thread_to_run() {
 	return pop_next_thread_from_list(THREAD_READY);
 }
 
-thread *pop_next_thread_to_terminate() {
+struct thread *pop_next_thread_to_terminate() {
   return pop_next_thread_from_list(THREAD_TERMINATED);
 }
 
@@ -107,7 +107,7 @@ void scheduler_tick() {
 	make_schedule();
 }
 
-void thread_remove_state(thread* t, enum thread_state state) {
+void thread_remove_state(struct thread* t, enum thread_state state) {
 	t->state &= ~state;
 }
 
@@ -116,11 +116,11 @@ void schedule() {
 	__asm volatile("int $32");
 }
 
-void thread_set_state(thread* t, enum thread_state state) {
+void thread_set_state(struct thread* t, enum thread_state state) {
 	t->state = state;
 }
 
-void thread_update(thread *t, enum thread_state state) {
+void thread_update(struct thread *t, enum thread_state state) {
   if (t->state == state)
 		return;
 
@@ -140,12 +140,16 @@ void thread_sleep(uint32_t ms) {
   schedule();
 }
 
-void thread_wake(thread *th) {
+void thread_wake(struct thread *th) {
   thread_update(th, THREAD_READY);
 }
 
+void thread_wait(struct thread *th) {
+  thread_update(th, THREAD_WAITING);
+}
+
 bool thread_signal(uint32_t tid, int32_t signum) {
-  thread* th = NULL;
+  struct thread* th = NULL;
   list_for_each_entry(th, sched_get_list(THREAD_READY), sched_sibling) {
     if (tid == th->tid) {
       th->pending |= sigmask(signum);
@@ -164,7 +168,7 @@ bool thread_signal(uint32_t tid, int32_t signum) {
 }
 
 bool thread_kill(uint32_t tid) {
-  thread* th = NULL;
+  struct thread* th = NULL;
   list_for_each_entry(th, sched_get_list(THREAD_READY), sched_sibling) {
     if (tid == th->tid) {
       thread_update(th, THREAD_TERMINATED);
@@ -188,13 +192,13 @@ void make_schedule() {
 next_thread:
   //log("Interrupt\n");
   
-  thread* th = pop_next_thread_to_run();
+  struct thread* th = pop_next_thread_to_run();
   if (th->tid == 8 || th->tid == 6) {
     int bn = 0;
   }
 
   if (th->state == THREAD_TERMINATED) {
-    // put it in a queue for a worker thread to purge
+    // put it in a queue for a worker struct thread to purge
     sched_push_queue(th);
     goto next_thread;
   }
@@ -209,7 +213,7 @@ do_switch:
   if (_current_thread->pending /*&& !(_current_thread->flags & TIF_SIGNAL_MANUAL)*/) {
     //_current_thread->handles_signal = true;
     // allocate space for signal handler trap  
-    // kernel_esp always points to the start of kernel stack for a thread
+    // kernel_esp always points to the start of kernel stack for a struct thread
 		interrupt_registers *regs = (interrupt_registers *)(_current_thread->kernel_esp - sizeof(interrupt_registers));
 		handle_signal(regs, _current_thread->blocked);
 	}

@@ -24,7 +24,7 @@ struct signal_frame {
 };
 
 void signal_handler(interrupt_registers *regs) {
-  thread* current_thread = get_current_thread();
+  struct thread* current_thread = get_current_thread();
 	if (!current_thread || !current_thread->pending || current_thread->signaling ||
 		((uint32_t)regs + sizeof(interrupt_registers) != current_thread->kernel_esp))
 		return;
@@ -48,7 +48,7 @@ int do_sigaction(int signum, const struct sigaction *action, struct sigaction *o
 }
 
 int do_sigprocmask(int how, const sig_t *set, sig_t *oldset) {
-	thread* current_thread = get_current_thread();
+	struct thread* current_thread = get_current_thread();
 
   if (oldset)
 		*oldset = current_thread->blocked;
@@ -95,12 +95,12 @@ static int next_signal(sig_t pending, sig_t blocked) {
 }
 
 void handle_signal(interrupt_registers *regs, sig_t restored_sig) {
-  thread* current_thread = get_current_thread();
+  struct thread* current_thread = get_current_thread();
   struct process* current_process= get_current_process();
   
   int signum;
   if ((signum = next_signal(current_thread->pending, current_thread->blocked)) == 0) {
-    log("Signal is blocked for thread: %d", signum, current_thread->tid);
+    log("Signal is blocked for struct thread: %d", signum, current_thread->tid);
     return;
   }
   
@@ -133,9 +133,9 @@ void sigreturn(interrupt_registers *regs) {
   // NOTE: MQ 2020-08-26
 	/*
     |_________________________| <- original esp
-    | thread->uregs           |
+    | struct thread->uregs           |
     |-------------------------|
-    | thread->blocked         | - is important in case of a signal being invoked while invoking invoking another signal
+    | struct thread->blocked         | - is important in case of a signal being invoked while invoking invoking another signal
     |-------------------------|
     | signum                  |
     |-------------------------| <- after exiting from user defined signal handler
@@ -144,7 +144,7 @@ void sigreturn(interrupt_registers *regs) {
   */
 
   struct process* current_process= get_current_process();
-  thread* current_thread = get_current_thread();
+  struct thread* current_thread = get_current_thread();
   log("Signal: Return from signal handler %s(p%d)", current_process->name, current_process->pid);
   
   struct signal_frame *signal_frame = (char *)regs->useresp - 4;

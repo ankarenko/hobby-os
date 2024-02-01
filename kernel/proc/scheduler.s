@@ -80,18 +80,18 @@ switch_to_thread:
   push %edi
   push %ebp
   
-  mov [_current_thread], %edi        # edi = address of the previous task's "thread control block"
+  mov [_current_thread], %edi        # edi = address of the previous task's "struct thread control block"
   
   mov $4, %eax
-  mov %esp, (%edi, %eax, 4)        # Save ESP for previous task's kernel stack in the thread's TCB
+  mov %esp, (%edi, %eax, 4)        # Save ESP for previous task's kernel stack in the struct thread's TCB
 
   #Load next task's state
   mov $(4 + 1), %eax
-  mov (%esp, %eax, 4), %esi        # esi = address of the next task's "thread control block" (parameter passed on stack)
+  mov (%esp, %eax, 4), %esi        # esi = address of the next task's "struct thread control block" (parameter passed on stack)
   mov %esi, [_current_thread]        # Current task's TCB is the next task TCB
 
   mov $4, %eax
-  mov (%esi, %eax, 4), %esp        # Load ESP for next task's kernel stack from the thread's TCB
+  mov (%esi, %eax, 4), %esp        # Load ESP for next task's kernel stack from the struct thread's TCB
   mov (%esi), %ebx                 # ebx = address for the top of the next task's kernel stack
 
   push %ebx 
@@ -125,9 +125,9 @@ switch_to_thread:
 .global start_kernel_task
 .type start_kernel_task, @function
 start_kernel_task:
-  mov 4(%esp), %ecx        # esi = address of the next task's "thread control block" (parameter passed on stack)
+  mov 4(%esp), %ecx        # esi = address of the next task's "struct thread control block" (parameter passed on stack)
   mov $4, %eax
-  mov (%ecx, %eax, 4), %esp        # Load ESP for next task's kernel stack from the thread's TCB
+  mov (%ecx, %eax, 4), %esp        # Load ESP for next task's kernel stack from the struct thread's TCB
   jmp .doneVAS
 
 

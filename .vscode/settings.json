@@ -43,6 +43,7 @@
     "utility": "c",
     "algorithm": "c",
     "terminal.h": "c",
-    "cstdio": "c"
+    "cstdio": "c",
+    "task.h": "c"
   }
 }

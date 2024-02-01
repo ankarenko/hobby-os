@@ -23,7 +23,7 @@ enter_usermode:
   out %al, $0x20
 
   #mov 4(%esp), %eax
-	# set address in user stack which causes the page fault when finishing a user thread
+	# set address in user stack which causes the page fault when finishing a user struct thread
 	#sub $4, %eax
 	#mov 4(%ebp), %ebx
 	#mov %ebx, (%eax)
