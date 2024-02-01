@@ -46,9 +46,13 @@ int32_t vfs_close(int32_t fd) {
 
   int ret = 0;
   if (file) {
+    atomic_dec(&file->f_count);
     cur_proc->files->fd[fd] = NULL;
-    // should I free vfs_mount, vfs_dentry?
-    kfree(file);
+    if (!atomic_read(&file->f_count)) {
+			if (file->f_op && file->f_op->release)
+				ret = file->f_op->release(file->f_dentry->d_inode, file);
+			kfree(file);
+		}
   } else {
     ret = -EBADF;
   }

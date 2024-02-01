@@ -101,6 +101,7 @@ struct thread {
 
   struct list_head sched_sibling;
   struct list_head sibling;
+  struct list_head child;
 
   // used by UNIX signals
   sig_t pending;
@@ -140,7 +141,7 @@ struct process {
   int32_t state;
   uint32_t image_base;
   uint32_t image_size;
-  int32_t thread_count;
+  atomic_t thread_count;
   char* name;
 
   struct list_head threads;
@@ -155,6 +156,7 @@ struct process {
 
   int32_t gid;  // group id
   int32_t sid;  // session id
+  int32_t exit_code;
   struct process *parent;
   struct list_head childrens;
   struct list_head child; // used for a list of childs
@@ -189,5 +191,6 @@ struct list_head* get_waiting_threads();
 
 // exit.c
 void garbage_worker_task();
+void do_exit(int code);
 
 #endif

@@ -5,28 +5,17 @@
 #include "kernel/util/debug.h"
 #include "kernel/fs/vfs.h"
 
-bool free_heap(mm_struct_mos* mm) {
-  uint32_t frames = div_ceil(mm->brk, PMM_FRAME_SIZE);
-  //pmm_free_frames();
-}
+static void exit_mm(struct process *proc) {
+	mm_struct_mos *iter, *next;
+	/*
+  list_for_each_entry_safe(iter, next, &proc->mm->mmap, vm_sibling) {
+		if (!iter->vm_file)
+			vmm_unmap_range(proc->pdir, iter->vm_start, iter->vm_end);
 
-bool exit_file(struct vfs_file* file) {
-  kfree(file);
-  return true;
-}
-
-bool exit_files(files_struct* files) {
-  for (int i = 0; i < MAX_FD; ++i) {
-    if (files->fd[i]) {
-      exit_file(files->fd[i]);
-    }
-  }
-  kfree(files);
-  return true;
-}
-
-bool exit_process(struct process* proc) {
-  // free image
+		list_del(&iter->vm_sibling);
+		kfree(iter);
+	}
+  */
   if (proc->mm_mos) {
     for (
       virtual_addr vaddr = proc->mm_mos->heap_start; 
@@ -38,37 +27,65 @@ bool exit_process(struct process* proc) {
       vmm_unmap_address(vaddr);
     }
   }
-
-  list_del(&proc->sibling);
-  
   kfree(proc->mm_mos);
+}
+
+static void exit_files(struct process *proc) {
+	for (int i = 0; i < MAX_FD; ++i) {
+		struct vfs_file *file = proc->files->fd[i];
+
+		if (file && atomic_read(&file->f_count) == 1) {
+			
+      if (file->f_op->release) {
+        file->f_op->release(file->f_dentry->d_inode, file);
+      }
+
+			kfree(file);
+			proc->files->fd[i] = 0;
+		}
+	}
+}
+
+static void exit_notify(struct process *proc) {
+}
+
+void exit_process(struct process *proc) {
+  exit_mm(proc);
+  exit_files(proc);
+  exit_notify(proc);
+
+  if (proc->parent) {
+    //list_del(&proc->child);
+  }
+  
+  list_del(&proc->sibling);
   kfree(proc->name);
   kfree(proc->fs);
   kfree(proc);
-
-  return true;
 }
 
 // TODO: bug, when kill 2 times and then create
 bool exit_thread(struct thread* th) {
+  lock_scheduler();
   bool is_user = th->user_esp;
   struct process* parent = th->proc;
-  //vmm_load_usertable(parent->pa_dir);
-  
   
   // to be able to deduct physical address from a virtual one
   // we need to switch to a different address space
   // propably it's better to make recursive trick for 1022 index 
   // of a page directory
+  /*
   if (is_user) {
     pmm_load_PDBR(parent->pa_dir);
   }
+  */
 
+	thread_update(th, THREAD_TERMINATED);
+	del_timer(&th->s_timer);
+	
   kfree(th->kernel_esp - KERNEL_STACK_SIZE);
-  kfree(th);
-  //vmm_unmap_address(th->parent->page_directory, th->kernel_esp - PMM_FRAME_SIZE);
-  
-  parent->thread_count -= 1;
+  atomic_dec(&parent->thread_count);
+  list_del(&th->child);
   list_del(&th->sibling);
 
   // clear userstack
@@ -82,11 +99,14 @@ bool exit_thread(struct thread* th) {
       vmm_unmap_address(th->virt_ustack_bottom + i * PAGE_SIZE);
     }
   }
-  
-  // if there are no threads, then exit process
-  if (parent->thread_count == 0) {
+
+  if (atomic_read(&parent->thread_count) == 0) {
     exit_process(parent);
   }
+  
+  kfree(th);
+  wake_up(&parent->parent->wait_chld);
+  unlock_scheduler();
   return true;
 }
 
@@ -95,10 +115,27 @@ void garbage_worker_task() {
     struct thread* th = pop_next_thread_to_terminate();
 
     if (th == NULL) {
-      thread_sleep(300);
+      thread_sleep(1000);
       continue;
     }
 
     exit_thread(th);
   }
+}
+
+void do_exit(int code) {
+  lock_scheduler();
+  struct process *current_process = get_current_process();
+  struct thread *current_thread = get_current_thread();
+  
+  log("process: exit %s(p%d)", current_process->name, current_process->pid);
+	 
+  if (!exit_thread(current_thread)) {
+    err("exit: unable to exit trhead");
+  }
+
+  current_process->exit_code = code;
+
+  unlock_scheduler();
+  schedule();
 }

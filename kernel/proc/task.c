@@ -18,6 +18,8 @@ extern void enter_usermode(
 );
 
 extern struct thread *_current_thread;
+struct list_head all_threads;
+
 extern void scheduler_end();
 
 LIST_HEAD(_proc_list);
@@ -139,7 +141,7 @@ static struct thread* thread_create(
   th->kernel_ss = KERNEL_DATA;
   th->user_ss = USER_DATA;
   INIT_LIST_HEAD(&th->sched_sibling);
-  INIT_LIST_HEAD(&th->sibling);
+  //INIT_LIST_HEAD(&th->sibling);
   th->s_timer = (struct sleep_timer)TIMER_INITIALIZER(thread_wakeup_timer, UINT32_MAX);
 
   /* adjust stack. We are about to push data on it. */
@@ -152,8 +154,10 @@ static struct thread* thread_create(
 	frame->return_address = PROCESS_TRAPPED_PAGE_FAULT;
 	frame->eip = entry;
 
-  list_add(&th->sibling, &parent->threads);
-  parent->thread_count += 1;
+  list_add(&th->child, &parent->threads);
+  list_add(&th->sibling, &all_threads);
+  
+  atomic_inc(&parent->thread_count);
   
   unlock_scheduler();
   return th;
@@ -242,9 +246,10 @@ static struct process* create_process(struct process* parent, char* name, struct
   
   list_add(&proc->sibling, get_proc_list());
   proc->pid = next_pid++;
-  proc->thread_count = 0;
+  atomic_set(&proc->thread_count, 0);
   proc->files = create_files_descriptors();
   proc->name = strdup(name);
+  proc->exit_code = 0;
   proc->mm_mos = kcalloc(1, sizeof(mm_struct_mos));
   
   INIT_LIST_HEAD(&proc->childrens);
@@ -366,15 +371,12 @@ static files_struct *clone_file_descriptor_table(files_struct *fs_src) {
 	memcpy(fs, fs_src, sizeof(files_struct));
   // NOTE: MQ 2019-12-30 Increasing file description usage when forking because child refers to the same one
   
-  /*
+  
   for (int i = 0; i < MAX_FD; ++i)
-    if (parent->files->fd[i])
-      atomic_inc(&parent->files->fd[i]->f_count);
-      */
-
+    if (fs_src->fd[i])
+      atomic_inc(&fs_src->fd[i]->f_count);
+      
   return fs;
-  // NOTE: I am not sure if we need to init lock
-	//sema_init(&files->lock, 1);
 }
 
 extern void load_trap_frame(trap_frame *);
@@ -408,11 +410,12 @@ pid_t process_fork(struct process* parent) {
   proc->gid = parent->gid;
   proc->sid = parent->sid;
   proc->parent = parent;
-  parent->tty = parent->tty;
-  parent->name = strdup(parent->name);
-  parent->mm_mos = clone_mm_struct(parent->mm_mos);
+  proc->tty = parent->tty;
+  proc->name = strdup(parent->name);
+  proc->mm_mos = clone_mm_struct(parent->mm_mos);
   memcpy(&proc->sighand, &parent->sighand, sizeof(parent->sighand));
   
+  INIT_LIST_HEAD(&proc->wait_chld.list);
   INIT_LIST_HEAD(&proc->childrens);
   INIT_LIST_HEAD(&proc->threads);
 
@@ -465,14 +468,12 @@ pid_t process_fork(struct process* parent) {
 }
 
 bool initialise_multitasking(virtual_addr entry) {
+  INIT_LIST_HEAD(&all_threads);
   sched_init();
 
   struct process* parent = create_process(NULL, "swapper",  vmm_get_directory());
   _current_thread = kernel_thread_create(parent, entry);
   sched_push_queue(_current_thread);
-
-  //struct thread* garbage_worker = kernel_thread_create(parent, garbage_worker_task);
-  //sched_push_queue(garbage_worker);
 
   /* register isr */
   old_pic_isr = getvect(IRQ0);
@@ -480,8 +481,9 @@ bool initialise_multitasking(virtual_addr entry) {
     TODO: SA: scheduler and other IRQ are hanled differently and differnt values 
     could be put on stack it lead to a problem with imterpteting register values
     so probably it's better to unify it
-   **/
+  */
   setvect(IRQ0, scheduler_isr, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32);
 
   start_kernel_task(_current_thread);
+  assert_not_reached();
 }

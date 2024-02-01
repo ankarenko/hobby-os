@@ -43,6 +43,13 @@ extern void schedule();
   list_del(&__wait.sibling);                      \  
 })                                                 \
 
+#define wait_until_wakeup(wh) ({   \
+  DEFINE_WAIT(__wait);                            \
+  list_add_tail(&__wait.sibling, &(wh)->list);    \
+  thread_wait(_current_thread);    \
+	schedule();                               \
+  list_del(&__wait.sibling);                      \  
+})
 
 void wake_up(struct wait_queue_head *hq);
 

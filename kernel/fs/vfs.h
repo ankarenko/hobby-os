@@ -92,6 +92,7 @@ struct vfs_file_operations {
   uint32_t (*write)(struct vfs_file *file, const char *buf, size_t count, off_t ppos);
   int32_t (*close)(struct vfs_file*);
   off_t (*llseek)(struct vfs_file* file, off_t ppos, int);
+  int (*release)(struct vfs_inode *inode, struct vfs_file *file);
 };
 
 struct vfs_filesystem {
@@ -178,7 +179,7 @@ struct vfs_file {
   struct vfs_mount *f_vfsmnt;
   struct vfs_dentry* f_dentry;
   struct vfs_file_operations *f_op;
-  atomic_t f_count;
+  atomic_t f_count; // to keep track of the references and release at the right time
   void *private_data;
 };
 

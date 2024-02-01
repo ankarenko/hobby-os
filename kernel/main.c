@@ -143,14 +143,52 @@ void execve(void *entry()) {
   if (process_fork(parent) == 0) {
     entry();
   }
+  
+  wait_until_wakeup(&parent->wait_chld);
+}
+
+void ls() {
+  int size = N_TTY_BUF_SIZE;
+  char *path = kcalloc(size, sizeof(char));
+
+  kprintf("enter path: ");
+  kreadline(path, size);
+
+  if (!vfs_ls(path)) {
+    kprintf("\ndirectory not found");
+  }
+
+clean:
+  kfree(path);
+}
+
+void hello() {
+  while (1) {
+    kprintf("\nHello");
+    thread_sleep(2000);
+  }
+}
+
+void exec(void *entry()) {
+  struct process *parent = get_current_process();
+  
+  if (process_fork(parent) == 0) {
+    entry();
+    do_exit(0);
+  }
+
+  wait_until_wakeup(&parent->wait_chld);
 }
 
 
+void cmd_read_file();
+
 //! our simple command parser
-bool run_cmd(char* cmd_buf) {
+bool interpret_command(char* cmd_buf) {
   struct thread* th = get_current_thread();
-//3355566144 0xc801deec
-  if (strcmp(cmd_buf, "create") == 0) {
+  if (strcmp(cmd_buf, "hello") == 0) {
+    exec(hello);
+  } else if (strcmp(cmd_buf, "create") == 0) {
     kprintf("\nnew struct thread: ");
     execve(kthread_fork);
   } if (strcmp(cmd_buf, "play") == 0) {
@@ -186,9 +224,9 @@ bool run_cmd(char* cmd_buf) {
     struct list_head *ls = get_proc_list();
     
     list_for_each_entry(proc, ls, sibling) {
-      kprintf("\n%d: %s : ", proc->pid, proc->name);
+      kprintf("\n(p%d) %s : ", proc->pid, proc->name);
 
-      list_for_each_entry(th, &proc->threads, sibling) {
+      list_for_each_entry(th, &proc->threads, child) {
         kprintf(" %d", th->tid);
       }
     }
@@ -207,9 +245,9 @@ bool run_cmd(char* cmd_buf) {
     get_cmd(signal, 10);
     
     if (id && signal && thread_signal(atoi(id), atoi(signal))) {
-      log("Signal: sent to process: %s", id);
+      log("Signal: sent to thread: %s", id);
     } else {
-      kprintf("Unable to find struct processwith id %s", id);
+      kprintf("Unable to find thread with id %s", id);
     }
 
   } else if (strcmp(cmd_buf, "time") == 0) {
@@ -302,19 +340,11 @@ bool run_cmd(char* cmd_buf) {
   } else if (strcmp(cmd_buf, "read") == 0) {
     cmd_read_sect();
   } else if (strcmp(cmd_buf, "cat") == 0) {
-    cmd_read_file();
+    exec(cmd_read_file);
   } else if (strcmp(cmd_buf, "dcat") == 0) {
     cmd_read_kybrd();
   } else if (strcmp(cmd_buf, "ls") == 0) {
-    char filepath[100];
-
-    kprintf("path: ");
-    get_cmd(filepath, 100);
-
-    if (!vfs_ls(filepath)) {
-      kprintf("\ndirectory not found");
-    }
-    // ls(filepath);
+    exec(ls);
   } else if (strcmp(cmd_buf, "run") == 0) {
     char filepath[100];
     kprintf("path: ");
@@ -445,8 +475,8 @@ void kybrd_manager() {
 }
 
 void shell_start() {
-  int size = 10;
-  char command[size];
+  int size = N_TTY_BUF_SIZE - 1;
+  char *command = kcalloc(size, sizeof(char));
   struct process* proc = get_current_process();
 
   while (true) {
@@ -457,9 +487,10 @@ newline:
       proc->fs->d_root->d_name
     );
 
-    kreadline(&command, size);
-    run_cmd(command);
+    kreadline(command, size);
+    interpret_command(command);
   }
+  kfree(command);
 }
 
 void main_thread() {
@@ -484,8 +515,9 @@ void main_thread() {
   if (process_fork(parent) == 0)
     terminal_run();
 
-  // infinite sleep
-  wait_event(&parent->wait_chld, false);
+  // wait until is waken up (should not be waken up)
+  wait_until_wakeup(&parent->wait_chld);
+  assert_not_reached(); // no, please no!
 }
 
 void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
@@ -500,8 +532,6 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   i86_idt_initialize(0x8);
   install_tss(5, 0x10, 0);
   enable_interrupts();
-  
-  //terminal_initialize();
   
   log("Kernel size: %dKB", (int)(KERNEL_END - KERNEL_START) / 1024);
   log("Ends in 0x%x (DIR: %d, INDEX: %d)", KERNEL_END, PAGE_DIRECTORY_INDEX(KERNEL_END), PAGE_TABLE_INDEX(KERNEL_END));
