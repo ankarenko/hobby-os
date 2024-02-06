@@ -106,8 +106,11 @@
 #define UNIX98_PTY_MASTER_MAJOR 128
 #define UNIX98_PTY_MAJOR_COUNT 8
 #define UNIX98_PTY_SLAVE_MAJOR (UNIX98_PTY_MASTER_MAJOR + UNIX98_PTY_MAJOR_COUNT)
-#define N_TTY_BUF_SIZE 1024
+#define N_TTY_BUF_SIZE (128)
+#define N_TTY_BUF_CANON_SIZE (128)
 #define N_TTY_BUF_ALIGN(v) ((v) % N_TTY_BUF_SIZE)
+#define N_TTY_BUF_CANON_ALIGN(v) ((v) % N_TTY_BUF_CANON_SIZE)
+
 #define NCCS 19
 #define __DISABLED_CHAR '\0'
 #define SERIAL_MINOR_BASE 64
@@ -193,8 +196,8 @@ struct tty_struct {
   struct semaphore *mutex;
   
 	char* buffer;
-  uint8_t read_tail;
-  uint8_t read_head;
+  uint16_t read_tail;
+  uint16_t read_head;
 
   struct list_head sibling;
 };

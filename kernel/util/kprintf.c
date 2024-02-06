@@ -3,9 +3,11 @@
 #include "kernel/util/vsprintf.h"
 #include "kernel/util/stdio.h"
 #include "kernel/fs/vfs.h"
+#include "kernel/util/math.h"
 #include "kernel/util/debug.h"
+#include "kernel/devices/char/tty.h"
 
-#define BUF_SIZE 256
+#define BUF_SIZE (max(N_TTY_BUF_SIZE, 100))
 
 void kprintf(char *fmt, ...) {
   char buf[BUF_SIZE];

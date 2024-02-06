@@ -37,11 +37,17 @@ static uint32_t ntty_get_room(struct tty_struct *tty) {
 
 static uint32_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *buf, uint32_t nr) {
   int room = min(ntty_get_room(tty), nr);
+  //log("room %d", room);int room = min(ntty_get_room(tty), nr);
   bool read_all = false;
 
+  //log("current to_read: %d", tty->to_read->count);
   semaphore_down_val(tty->to_read, room);
   semaphore_down(tty->mutex);
-  
+  /*
+  log("reading %d", room);
+  log("left to read: %d", tty->to_read->count);
+  log("start read: [%d, %d]", tty->read_head, tty->read_tail);
+  */
   int i = 0;
   for (i = 0; i < room; ++i) {
     buf[i] = tty->buffer[tty->read_head];
@@ -54,9 +60,12 @@ static uint32_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *b
   }
 
   buf[i] = __DISABLED_CHAR;
+  //log("end read: [%d, %d]", tty->read_head, tty->read_tail);
 
   semaphore_up(tty->mutex);
   semaphore_up_val(tty->to_write, room);
+
+  //log("update to write to %d", tty->to_write->count);
   return read_all? 0 : room;
 }
 
@@ -66,21 +75,25 @@ static uint32_t echo_buf(struct tty_struct *tty, const char *buf, uint32_t nr) {
 }
 
 static uint32_t push_buf(struct tty_struct *tty, char c) {
-  
   semaphore_down(tty->to_write);
   semaphore_down(tty->mutex);
-
   
+  //log("raw write buf[%d] = %c", tty->read_tail, c);
 
   tty->buffer[tty->read_tail] = c;
   tty->read_tail = N_TTY_BUF_ALIGN(tty->read_tail + 1);
+  //log("new read tail %d", tty->read_tail);
   if (tty->read_head == tty->read_tail) {
-    //assert(false);
-    tty->read_head = N_TTY_BUF_ALIGN(tty->read_head + 1);
+    //log("overflow: move head head: %d, tail: %d");
+    //tty->read_head = N_TTY_BUF_ALIGN(tty->read_head + 1);
   }
+
+  //log("added: [%d : %d]", tty->read_head, tty->read_tail);
+
 
   //log("[%d, %d]", tty->read_head, tty->read_tail);
   
+  //log("writing");
   semaphore_up(tty->mutex);
   semaphore_up(tty->to_read);
 }
@@ -89,6 +102,7 @@ static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
   for (int i = 0; i < nr; ++i) {
     push_buf(tty, buf[i]);
   }
+  //log("%d", tty->to_write->count);
 
   if (L_ECHO(tty)) 
     echo_buf(tty, buf, nr);

@@ -15,6 +15,10 @@ static __inline void io_wait() {
 }
 
 //! enable all hardware interrupts
+/*
+  NOTE: be very careful with using this thing as it 
+  can ruin unlock/lock scheduler counter
+*/
 static __inline void enable_interrupts() {
   __asm__ __volatile__("sti");
 }

@@ -199,6 +199,7 @@ void terminal_writestring(const char* data) {
 extern void shell_start();
 
 void terminal_run() {
+  log("terminal: initializing");
   terminal_initialize();
   int tty_master = 0;
   // returns fd of a master terminal
@@ -235,7 +236,6 @@ void terminal_run() {
     
 
     kreadterminal(&buf, size);
-    
 
     for (int i = 0; i < size; ++i) {
       key = buf[i];
@@ -244,7 +244,7 @@ void terminal_run() {
         case '\e':
           // TODO: very dirty implementation, needs to be something like a det machine
           int command_index = 0;
-          while (buf[i] != 'm' && buf[i] != '\0') {
+          while (buf[i] != 'm' ) {
             command[command_index] = buf[i];
             ++i;
             ++command_index;
@@ -255,7 +255,8 @@ void terminal_run() {
           }
           
           if (buf[i] == '\0') {
-            assert_not_reached("terminal: invalid parsing of color key");
+            err("terminal: invalid parsing of color key");
+            continue;
           }
           
           command[command_index] = 'm';
@@ -310,6 +311,7 @@ void terminal_run() {
           break;
         default:
           char c = kkybrd_key_to_ascii(key);
+          //log("print %c", c);
           if (isascii(c)) {
             terminal_write(&c, 1);
           }

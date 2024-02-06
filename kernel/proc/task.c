@@ -45,7 +45,9 @@ bool create_kernel_stack(virtual_addr* kernel_stack) {
   /* allocate a 4k frame for the stack. */
   // https://forum.osdev.org/viewtopic.php?f=1&t=22014
   // stack is better to be aligned 16byte
+  log("allocating kernel stack");
   *kernel_stack = kcalloc_aligned(KERNEL_STACK_SIZE, sizeof(char), 16);
+  log("allocated kernel stack");
 
   /*
   virtual_addr aligned = kalign_heap(16); 
@@ -54,8 +56,6 @@ bool create_kernel_stack(virtual_addr* kernel_stack) {
     kfree(aligned);
   }
   */
-  
-
 
   if (!(*kernel_stack)) {
     return false;
@@ -151,6 +151,7 @@ static struct thread* thread_create(
   th->user_esp = NULL;
   th->kernel_ss = KERNEL_DATA;
   th->user_ss = USER_DATA;
+  atomic_set(&th->lock_counter, 0);
   INIT_LIST_HEAD(&th->sched_sibling);
   //INIT_LIST_HEAD(&th->sibling);
   th->s_timer = (struct sleep_timer)TIMER_INITIALIZER(thread_wakeup_timer, UINT32_MAX);
@@ -248,6 +249,16 @@ static files_struct* create_files_descriptors() {
   
   files->lock = semaphore_alloc(1);
   return files;
+}
+
+/*
+  NOTE: Process that always stays in the system, it is also responsible for
+  killing zombie processes 
+*/
+struct process *_init_proc = NULL;
+struct process *get_init_proc() {
+  assert(_init_proc != NULL, "init proc is not defined yet");
+  return _init_proc;
 }
 
 static struct process* create_process(struct process* parent, char* name, struct pdirectory* pdir) {
@@ -500,7 +511,10 @@ bool initialise_multitasking(virtual_addr entry) {
 
   sched_init();
 
-  struct process* parent = create_process(NULL, "swapper",  vmm_get_directory());
+  struct process* parent = create_process(NULL, "init",  vmm_get_directory());
+  assert(parent->pid == 0);
+  _init_proc = parent;
+
   _current_thread = kernel_thread_create(parent, entry);
   sched_push_queue(_current_thread);
 

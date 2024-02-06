@@ -31,6 +31,11 @@
 #define PROCESS_STATE_ACTIVE 1
 #define PROC_INVALID_ID -1
 
+#define SIGNAL_STOPED 0x01
+#define SIGNAL_CONTINUED 0x02
+#define SIGNAL_TERMINATED 0x04
+#define EXIT_TERMINATED 0x08
+
 /* be very careful with modifying this as it's used by assembler code */
 typedef struct _trap_frame {
   uint32_t ebp, edi, esi, ebx;  // Pushed by pusha.
@@ -44,7 +49,7 @@ enum thread_state {
   THREAD_READY,
   THREAD_RUNNING,
   THREAD_WAITING,
-  THREAD_TERMINATED,
+  THREAD_TERMINATED
 };
 
 struct _process;
@@ -109,6 +114,8 @@ struct thread {
 	bool signaling;
   
   struct sleep_timer s_timer;
+  atomic_t lock_counter;
+  bool postpone_kill;
 };
 
 typedef struct _files_struct {
@@ -130,6 +137,9 @@ typedef struct _fs_struct {
 */
 
 struct wait_queue_head;
+
+#define EXIT_ZOMBIE    0b0001
+#define EXIT_DEAD      0b0010
 
 struct process {
   int32_t pid;
@@ -156,7 +166,12 @@ struct process {
 
   int32_t gid;  // group id
   int32_t sid;  // session id
+  
+  // signals
   int32_t exit_code;
+  int32_t caused_signal;
+  uint32_t flags;
+
   struct process *parent;
   struct list_head childrens;
   struct list_head child; // used for a list of childs
@@ -175,6 +190,7 @@ pid_t process_fork(struct process* parent);
 int32_t dup2(int oldfd, int newfd);
 struct process *find_process_by_pid(pid_t pid);
 int32_t setpgid(pid_t pid, pid_t pgid);
+struct process *get_init_proc();
 
 // sched.c
 void lock_scheduler();
@@ -195,6 +211,6 @@ struct list_head* get_waiting_threads();
 // exit.c
 void garbage_worker_task();
 void do_exit(int code);
-bool exit_thread(struct thread* th);
+int exit_thread(struct thread* th);
 
 #endif

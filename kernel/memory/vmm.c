@@ -128,7 +128,7 @@ struct pdirectory* vmm_get_kernel_space() {
 }
 
 struct pdirectory *vmm_fork(struct pdirectory *va_dir) {
-  disable_interrupts(); 
+  lock_scheduler(); 
 
   struct pdirectory *forked_dir = vmm_create_address_space();
   void *aligned = kalign_heap(PMM_FRAME_ALIGN);
@@ -174,7 +174,7 @@ struct pdirectory *vmm_fork(struct pdirectory *va_dir) {
   if (aligned) {
     kfree(aligned);
   }
-  enable_interrupts();
+  unlock_scheduler();
   return forked_dir;
 }
 

@@ -39,7 +39,7 @@ static uint32_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *b
   int i = 0;
   for (i = 0; i < nr; ++i) {
     buf[i] = tty->buffer[tty->read_head];
-    tty->read_head = N_TTY_BUF_ALIGN(tty->read_head + 1);
+    tty->read_head = N_TTY_BUF_CANON_ALIGN(tty->read_head + 1);
 
     if (tty->read_head == tty->read_tail) {
       read_all = true;
@@ -85,10 +85,10 @@ static uint32_t push_buf(struct tty_struct *tty, char c) {
   semaphore_down(tty->mutex);
 
   tty->buffer[tty->read_tail] = c;
-  tty->read_tail = N_TTY_BUF_ALIGN(tty->read_tail + 1);
+  tty->read_tail = N_TTY_BUF_CANON_ALIGN(tty->read_tail + 1);
 
   if (tty->read_head == tty->read_tail) {
-    tty->read_head = N_TTY_BUF_ALIGN(tty->read_head + 1);
+    tty->read_head = N_TTY_BUF_CANON_ALIGN(tty->read_head + 1);
   }
 
   semaphore_up(tty->mutex);

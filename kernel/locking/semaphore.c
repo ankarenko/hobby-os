@@ -13,18 +13,20 @@ struct sem_waiter {
 // disabling interrupts are sufficient for one core systems
 // othewise spin locks needs to be used
 void semaphore_down_val(struct semaphore *sem, int val) {
-  disable_interrupts();
+  lock_scheduler();
   struct thread *cur_thread = get_current_thread();
-
+  
   if (sem->count >= val) {
     sem->count -= val;
-    enable_interrupts();
+    atomic_dec(&cur_thread->lock_counter);
+    unlock_scheduler();
   } else {
     struct sem_waiter *sw = kcalloc(1, sizeof(struct sem_waiter));
     sw->task = cur_thread;
     list_add_tail(&sw->sibling, &sem->wait_list);
     thread_update(cur_thread, THREAD_WAITING);
-    enable_interrupts();  // make_schedule instead??
+    atomic_dec(&cur_thread->lock_counter); 
+    unlock_scheduler();
     schedule();
   }
 }
@@ -44,22 +46,25 @@ void semaphore_up_val(struct semaphore *sem, int val) {
   if (val == 0)
     return;
 
-  disable_interrupts();
+  lock_scheduler();
   struct thread *cur_thread = get_current_thread();
 
   if (list_empty(&sem->wait_list)) {
     sem->count = min(sem->capacity, sem->count + val);
+    atomic_inc(&cur_thread->lock_counter);
+    unlock_scheduler();
   } else {
     struct sem_waiter *next = list_first_entry(
       &sem->wait_list, struct sem_waiter, sibling
     );
     list_del(&next->sibling);
     thread_update(next->task, THREAD_READY);
+    atomic_inc(&cur_thread->lock_counter);
     kfree(next);
+    unlock_scheduler();
     schedule();
   }
 
-  enable_interrupts();
 }
 
 void semaphore_down(struct semaphore *sem) {

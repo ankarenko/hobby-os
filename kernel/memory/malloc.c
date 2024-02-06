@@ -86,6 +86,7 @@ void *kalign_heap(size_t size) {
 
 	while (padding_size <= KERNEL_HEAP_TOP)
 	{
+    log("padding size: %d", padding_size);
 		if (padding_size > required_size)
 		{
 			struct block_meta *last = _kblocklist;
@@ -96,7 +97,8 @@ void *kalign_heap(size_t size) {
 		}
 		padding_size += size;
 	}
-	return NULL;
+
+  assert_not_reached("kernel heap cannot be exceeded");
 }
 
 struct block_meta *get_block_ptr(void *ptr) {

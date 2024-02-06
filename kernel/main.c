@@ -211,6 +211,8 @@ bool interpret_command(char* cmd_buf) {
       thread_kill(id_num);
     }
   } else if (strcmp(cmd_buf, "lst") == 0) {
+    lock_scheduler();
+    
     struct thread* th = NULL;
     kprintf("\nthreads ready: [ ");
     list_for_each_entry(th, get_ready_threads(), sched_sibling) {
@@ -228,13 +230,19 @@ bool interpret_command(char* cmd_buf) {
     struct process* proc = NULL;
     struct list_head *ls = get_proc_list();
     
+    
     list_for_each_entry(proc, ls, sibling) {
-      kprintf("\n(p%d) %s - gid:%d : ", proc->pid, proc->name, proc->gid);
-
-      list_for_each_entry(th, &proc->threads, child) {
-        kprintf(" %d", th->tid);
+      kprintf(BLU "\n(p%d) " COLOR_RESET " %s "  " - gid:%d - sid: %d ", proc->pid, proc->name, proc->gid, proc->sid);
+      
+      if ((proc->state & (EXIT_ZOMBIE)) == 0) {
+        list_for_each_entry(th, &proc->threads, child) {
+          kprintf(" %d", th->tid);
+        }
+      } else {
+        kprintf(RED "zombie" COLOR_RESET);
       }
     }
+    unlock_scheduler();
 
   } else if (strcmp(cmd_buf, "exit") == 0) {
     kprintf("Goodbuy!");
@@ -259,6 +267,11 @@ bool interpret_command(char* cmd_buf) {
     struct time* t = get_time(0);  // current time
     kprintf("\nCurrent time (UTC): %d:%d:%d, %d.%d.%d", t->hour, t->minute, t->second, t->day, t->month, t->year);
   } else if (strcmp(cmd_buf, "layout") == 0) {
+    log("layout!!!!!!!!!!!!!!!!!");
+    lock_scheduler();
+    kprintf("1234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678-");
+    unlock_scheduler();
+
     kprintf("Kernel start: %X\n", KERNEL_START);
     kprintf("Text start: %X\n", KERNEL_TEXT_START);
     kprintf("Text end: %X\n", KERNEL_TEXT_END);
@@ -267,6 +280,7 @@ bool interpret_command(char* cmd_buf) {
     kprintf("Stack bottom %X\n", STACK_BOTTOM);
     kprintf("Stack top: %X\n", STACK_TOP);
     kprintf("Kernel end: %X\n", KERNEL_END);
+   
   } else if (strcmp(cmd_buf, "dump") == 0) {
     PMM_DEBUG();
   } else if (strcmp(cmd_buf, "clear") == 0) {
@@ -463,6 +477,7 @@ void kybrd_manager() {
   while (true) {
     vfs_fread(kybrd_fd, &ev, sizeof(ev));
 
+    //log("%c", ev.key);
     if (ev.type == KEY_RELEASE) {
       continue;
     }
@@ -486,11 +501,11 @@ void shell_start() {
 
   while (true) {
 newline:
-    
     kprintf("(%s)root@%s: ", 
       strcmp(proc->fs->mnt_root->mnt_devname, "/dev/hda") == 0 ? "ext2" : proc->fs->mnt_root->mnt_devname,
       proc->fs->d_root->d_name
     );
+    
 
     kreadline(command, size);
     interpret_command(command);
@@ -503,6 +518,7 @@ void main_thread() {
   
   if (process_fork(parent) == 0)
     garbage_worker_task();
+
   
   if (process_fork(parent) == 0)
     idle_task();

@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "kernel/util/types.h"
+#include "kernel/util/string/string.h"
 #include "kernel/cpu/idt.h"
 
 #define NSIG 32
@@ -50,6 +51,7 @@
 
 #define SIG_KERNEL_ONLY_MASK (sigmask(SIGKILL) | sigmask(SIGSTOP))
 #define SIG_KERNEL_IGNORE_MASK ( sigmask(SIGCONT) | sigmask(SIGCHLD) | sigmask(SIGWINCH) | sigmask(SIGURG))
+#define SIG_KERNEL_STOP_MASK (sigmask(SIGSTOP) | sigmask(SIGTSTP) | sigmask(SIGTTIN) | sigmask(SIGTTOU))
 
 typedef void (*__sighandler_t)(int);
 
@@ -60,6 +62,20 @@ typedef void (*__sighandler_t)(int);
 #define sig_kernel_only(sig) (((sig) < SIGRTMIN) && siginmask(sig, SIG_KERNEL_ONLY_MASK))
 #define sig_kernel_ignore(sig) (((sig) < SIGRTMIN) && siginmask(sig, SIG_KERNEL_IGNORE_MASK))
 
+#define sig_user_defined(p, signr)                      \
+	(((p)->sighand[(signr)-1].sa_handler != SIG_DFL) && \
+	 ((p)->sighand[(signr)-1].sa_handler != SIG_IGN))
+
+#define sig_default_action(p, signr) ((p)->sighand[(signr)-1].sa_handler == SIG_DFL)
+
+#define sig_fatal(p, signr)                                              \
+	(!siginmask(signr, SIG_KERNEL_IGNORE_MASK | SIG_KERNEL_STOP_MASK) && \
+	 (p)->sighand[(signr)-1].sa_handler == SIG_DFL)
+
+static inline void sigemptyset(sigset_t *set) {
+	memset(set, 0, sizeof(sigset_t));
+}
+
 static inline bool valid_signal(unsigned long sig) {
 	return sig <= NSIG;
 }
@@ -69,6 +85,11 @@ struct sigaction {
 	uint32_t sa_flags;
 	sig_t sa_mask;
 };
+
+static inline int sigismember(sigset_t *set, int _sig) {
+	unsigned long sig = _sig - 1;
+	return 1 & (*set >> sig);
+}
 
 void signal_handler(interrupt_registers *regs);
 void handle_signal(interrupt_registers *regs, sig_t restored_sig);

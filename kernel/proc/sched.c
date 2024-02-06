@@ -6,6 +6,7 @@
 #include "kernel/cpu/gdt.h"
 #include "kernel/ipc/signal.h"
 #include "kernel/system/timer.h"
+#include "kernel/util/math.h"
 #include "kernel/proc/task.h"
 #include "kernel/util/debug.h"
 
@@ -23,15 +24,18 @@ struct thread* _current_thread = NULL;
 extern void switch_to_thread(struct thread* next_task);
 extern void scheduler_tick();
 
-static volatile uint32_t scheduler_lock_counter = 0;
+static int32_t scheduler_lock_counter = 0;
 
 void lock_scheduler() {
-	disable_interrupts();
+  disable_interrupts();
 	scheduler_lock_counter++;
 }
 
 void unlock_scheduler() {
-	scheduler_lock_counter--;
+
+  assert(scheduler_lock_counter > 0, "scheduler lock cannt be < 0");
+
+  scheduler_lock_counter--;
 	if (scheduler_lock_counter == 0)
 		enable_interrupts();
 }
@@ -104,7 +108,7 @@ struct list_head* get_waiting_threads() {
 }
 
 void scheduler_tick() {
-	make_schedule();
+  make_schedule();
 }
 
 void thread_remove_state(struct thread* t, enum thread_state state) {
@@ -113,7 +117,7 @@ void thread_remove_state(struct thread* t, enum thread_state state) {
 
 /* schedule new task to run. */
 void schedule() {
-	__asm volatile("int $32");
+  __asm volatile("int $32");
 }
 
 void thread_set_state(struct thread* t, enum thread_state state) {
@@ -190,14 +194,27 @@ extern uint32_t address_end_of_switch_to_task = 0;
 
 void make_schedule() {
 next_thread:
-  //log("Interrupt\n");
+  //log("make schedule\n");
   
   struct thread* th = pop_next_thread_to_run();
-  if (th->tid == 8 || th->tid == 6) {
-    int bn = 0;
+  /*
+    we can't kill treads with aquired locks, so we wait until they release them
+  */
+
+  int lock_counter = atomic_read(&th->lock_counter);
+  if (th->postpone_kill && lock_counter == 0) {
+    log("sched: thread with tid %d has released al its locks and about will be killed");
+    thread_update(th, THREAD_TERMINATED);
+  }
+
+  if (th->state == THREAD_TERMINATED && lock_counter != 0) {
+    log("sched: thread with tid:%d has %d locks, wait for it to release it", th->tid, lock_counter);
+    th->postpone_kill = true;
+    thread_update(th, THREAD_RUNNING);
   }
 
   if (th->state == THREAD_TERMINATED) {
+    th->postpone_kill = true;
     // put it in a queue for a worker struct thread to purge
     sched_push_queue(th);
     goto next_thread;

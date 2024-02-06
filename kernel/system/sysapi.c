@@ -26,6 +26,7 @@
 #define __NR_setpgid 57
 #define __NR_dup2 63
 #define __NR_getpgrp 65
+#define __NR_setsid 66
 #define __NR_sigaction 67
 #define __NR_sigsuspend 72
 #define __NR_sigreturn 103
@@ -130,6 +131,20 @@ static int32_t sys_setpgid(pid_t pid, pid_t pgid) {
   return setpgid(pid, pgid);
 }
 
+/**
+ * NOTE: incorrect implementation, go to man setsid for more details
+*/
+static int32_t sys_setsid() {
+  struct process *current_process = get_current_process();
+  
+  if (current_process->pid == current_process->gid)
+    return -1;
+
+  current_process->sid = current_process->gid = current_process->pid;
+  current_process->tty = NULL;
+  return 0;
+}
+
 static int32_t sys_getsid() {
   return get_current_process()->sid;
 }
@@ -158,6 +173,7 @@ static void *syscalls[] = {
   [__NR_print] = sys_debug_printf,
   [__NR_lseek] = sys_lseek,
   [__NR_close] = sys_close,
+  [__NR_setsid] = sys_setsid,
   [__NR_getsid] = sys_getsid,
   [__NR_getpgrp] = sys_getpgrp,
   [__NR_getpid] = sys_getpid,

@@ -55,7 +55,7 @@ int32_t vfs_ls(const char* path) {
   struct vfs_inode inode;
 
   for (int i = 0; i < count; ++i) {
-    lock_scheduler();
+    
     char name[12] = "           ";
     struct dirent* iter = &dirs[i];
 
@@ -100,7 +100,7 @@ int32_t vfs_ls(const char* path) {
         kprintf(RED"\n%s"COLOR_RESET, name);
       }
     }
-    unlock_scheduler();
+    
   }
   kfree(dirs);
   return count;

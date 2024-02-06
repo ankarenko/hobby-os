@@ -28,6 +28,7 @@ static void exit_mm(struct process *proc) {
     }
   }
   kfree(proc->mm_mos);
+  proc->mm_mos = NULL;
 }
 
 static void exit_files(struct process *proc) {
@@ -44,31 +45,57 @@ static void exit_files(struct process *proc) {
 			proc->files->fd[i] = 0;
 		}
 	}
+  kfree(proc->files);
+  proc->files = NULL;
 }
 
 static void exit_notify(struct process *proc) {
 }
 
 void exit_process(struct process *proc) {
+  log("exit process %d", proc->pid);
   exit_mm(proc);
   exit_files(proc);
   exit_notify(proc);
 
-  if (proc->parent) {
-    //list_del(&proc->child);
-  }
-  
-  list_del(&proc->sibling);
-  kfree(proc->name);
+  //kfree(proc->name);
   kfree(proc->fs);
-  kfree(proc);
+  proc->fs = NULL;
+
+  proc->state |= EXIT_ZOMBIE;
+
+  /*
+    For a process to be completely released it needs to be 'waited' by its parent,
+    othewise a process descriptor will stay in the memory with ZOMBIE_STATE assigned to it
+    
+    if a parent exits, childs becomes inherited from init process (pid 0) to make sure
+    they are 'waited'
+  */
+ /*
+  struct process *iter, *next = NULL;
+  struct process *init_proc = get_init_proc();
+  list_for_each_entry_safe(iter, next, &proc->childrens, child) {
+    iter->parent = init_proc;
+    list_del(&iter->child);
+    list_add(&iter->child, &init_proc->childrens);
+  }
+  */
+  //kfree(proc); 
 }
 
 // TODO: bug, when kill 2 times and then create
-bool exit_thread(struct thread* th) {
+// NOTE: threads are not allowed to create threads right now.
+int exit_thread(struct thread* th) {
+  log("exit thread");
   lock_scheduler();
-  bool is_user = th->user_esp;
+  
   struct process* parent = th->proc;
+
+  assert(atomic_read(&th->lock_counter) == 0, "freeing thread which holds locks is forbidden");
+  log("Killing thread tid: %d that belongs to process with pid:%d", th->tid, parent->pid);
+  assert(parent != NULL, "zombie threads are not allowed!");
+  
+  bool is_user = !vmm_is_kernel_directory(parent->va_dir);
   
   // to be able to deduct physical address from a virtual one
   // we need to switch to a different address space
@@ -87,10 +114,10 @@ bool exit_thread(struct thread* th) {
   atomic_dec(&parent->thread_count);
   list_del(&th->child);
   list_del(&th->sibling);
-
+  
   // clear userstack
-  if (th->user_esp) {
-    // parent->mm->heap_end - beggining of the stack
+  if (is_user) {
+    // parent->mm->heap_elock_schedund - beggining of the stack
     uint32_t frames = div_ceil(USER_STACK_SIZE, PMM_FRAME_SIZE);
     physical_addr paddr = vmm_get_physical_address(th->virt_ustack_bottom, false);
     pmm_free_frames(paddr, frames);
@@ -100,13 +127,18 @@ bool exit_thread(struct thread* th) {
     }
   }
 
+  kfree(th);
+
   if (atomic_read(&parent->thread_count) == 0) {
+    log("All threads are killed, killing process with pid: %d", parent->pid);
     exit_process(parent);
   }
   
-  kfree(th);
-  wake_up(&parent->parent->wait_chld);
   unlock_scheduler();
+
+  parent->parent->tty->pgrp = parent->parent->gid;
+  wake_up(&parent->parent->wait_chld);
+  
   return true;
 }
 

@@ -5,10 +5,12 @@ typedef struct {
   volatile int counter;
 } atomic_t;
 
+// NOTE: I think it's not really atomic
 #define atomic_read(v) ((v)->counter)
 
 #define atomic_set(v, i) (((v)->counter) = (i))
 
+// NOTE: this as well
 static inline void atomic_add(int i, atomic_t *v) {
   __asm__ __volatile__(
       "addl %1,%0"

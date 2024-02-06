@@ -94,9 +94,17 @@ static int next_signal(sig_t pending, sig_t blocked) {
   */
 }
 
+bool sig_ignored(struct thread *th, int sig) {
+	if (sigismember(&th->blocked, sig))
+		return false;
+
+	__sighandler_t handler = th->proc->sighand[sig - 1].sa_handler;
+	return handler == SIG_IGN || (handler == SIG_DFL && sig_kernel_ignore(sig));
+}
+
 void handle_signal(interrupt_registers *regs, sig_t restored_sig) {
-  struct thread* current_thread = get_current_thread();
-  struct process* current_process= get_current_process();
+  struct thread *current_thread = get_current_thread();
+  struct process *current_process= get_current_process();
   
   int signum;
   if ((signum = next_signal(current_thread->pending, current_thread->blocked)) == 0) {
@@ -109,31 +117,44 @@ void handle_signal(interrupt_registers *regs, sig_t restored_sig) {
 		from_syscall = true;
 	}
 
-  struct signal_frame *signal_frame = (char *)regs->useresp - sizeof(struct signal_frame);
-  signal_frame->sigreturn = &sigreturn;
-  signal_frame->signum = signum;
-  signal_frame->blocked = current_thread->blocked;
-  signal_frame->uregs = *regs;
+  assert(!sig_ignored(current_thread, signum));
+	if (sig_default_action(current_process, signum)) {
+    assert(sig_fatal(current_process, signum));
+    current_process->caused_signal = signum;
+    current_process->flags |= SIGNAL_TERMINATED; 
+		current_process->flags &= ~(SIGNAL_CONTINUED | SIGNAL_STOPED); // ?
+		current_thread->signaling = false;
+		sigemptyset(&current_thread->pending);
+		do_exit(signum);
+  } else if (sig_user_defined(current_process, signum)) {
+    // TODO: too complicated, can be simplified, simply can edit regs
+    struct signal_frame *signal_frame = (char *)regs->useresp - sizeof(struct signal_frame);
+    signal_frame->sigreturn = &sigreturn;
+    signal_frame->signum = signum;
+    signal_frame->blocked = current_thread->blocked;
+    signal_frame->uregs = *regs;
 
-  struct sigaction *sigaction = &current_process->sighand[signum - 1];
-  current_thread->blocked |= sigmask(signum) | sigaction->sa_mask;
-  
-  if (from_syscall) {
-    tss_set_stack(KERNEL_DATA, current_thread->kernel_esp);
-    // NOTE: we don't need to worry about restoring general purpose registers
-    enter_usermode(sigaction->sa_handler, signal_frame, NULL);
+    struct sigaction *sigaction = &current_process->sighand[signum - 1];
+    current_thread->blocked |= sigmask(signum) | sigaction->sa_mask;
+    
+    if (from_syscall) {
+      tss_set_stack(KERNEL_DATA, current_thread->kernel_esp);
+      // NOTE: we don't need to worry about restoring general purpose registers
+      enter_usermode(sigaction->sa_handler, signal_frame, NULL);
+    }
   }
 }
 
 int do_kill(pid_t pid, int32_t signum) {
+  log("do_kill: killing process %d with signum %d", pid, signum);
   //do_kill()
   //do_exit(0);
-  log("Killing %d", pid);
   struct process *proc = find_process_by_pid(-pid);
+  if (proc == NULL) {
+    assert_not_reached("do_kill: process with pid: %d doesn't exist", pid);
+  }
   struct thread *th = list_first_entry(&proc->threads, struct thread, child);
   exit_thread(th);
-
-
 }
 
 void sigreturn(interrupt_registers *regs) {
