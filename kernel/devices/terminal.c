@@ -226,42 +226,39 @@ void terminal_run() {
   setpgid(id, id);
 
   int size = 20;
-  char buf[size];
+  char buf[size + 1];
   
-  char command[10];
+  
 
   while (true) {
   newline:
     char key;
     
-
     kreadterminal(&buf, size);
-
-    for (int i = 0; i < size; ++i) {
+    
+    int i = 0;
+    while (i < size && buf[i] != '\0') {
       key = buf[i];
-
+      
       switch (key) {
         case '\e':
-          // TODO: very dirty implementation, needs to be something like a det machine
+          char command[10];
+          // TODO: very dirty implementation 
           int command_index = 0;
           while (buf[i] != 'm' ) {
             command[command_index] = buf[i];
             ++i;
             ++command_index;
-            if (i >= size) { // read more
+            if (i >= size || buf[i] == '\0') { // read more
               kreadterminal(&buf, size);
               i = 0;
             }
           }
           
-          if (buf[i] == '\0') {
-            err("terminal: invalid parsing of color key");
-            continue;
-          }
-          
           command[command_index] = 'm';
           command[command_index + 1] = '\0';
-          
+
+
           int com_size = strlen(command);
 
           if (memcmp(&command, COLOR_RESET, com_size) == 0) {
@@ -317,6 +314,7 @@ void terminal_run() {
           }
           break;
       }
+      ++i;
     }
   }
 }

@@ -47,11 +47,11 @@ static uint32_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *b
     }
   }
 
-  buf[i] = __DISABLED_CHAR;
+  buf[i] = __DISABLED_CHAR; // \n is substituted with \0
 
   semaphore_up(tty->mutex);
   semaphore_up(read_all? tty->to_write : tty->to_read);
-  return read_all? 0 : i;
+  return i - 1;
 }
 
 static uint32_t echo_buf(struct tty_struct *tty, const char *buf, uint32_t nr) {

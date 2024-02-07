@@ -51,9 +51,11 @@ static uint32_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *b
   int i = 0;
   for (i = 0; i < room; ++i) {
     buf[i] = tty->buffer[tty->read_head];
+    //log("raw read buf[%d] = %c", tty->read_head, buf[i]);
+
     tty->read_head = N_TTY_BUF_ALIGN(tty->read_head + 1);
     if (tty->read_head == tty->read_tail) {
-      read_all = true;
+      //read_all = true;
       ++i;
       break;
     }
@@ -66,7 +68,7 @@ static uint32_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *b
   semaphore_up_val(tty->to_write, room);
 
   //log("update to write to %d", tty->to_write->count);
-  return read_all? 0 : room;
+  return room;
 }
 
 static uint32_t echo_buf(struct tty_struct *tty, const char *buf, uint32_t nr) {

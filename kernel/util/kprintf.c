@@ -3,6 +3,7 @@
 #include "kernel/util/vsprintf.h"
 #include "kernel/util/stdio.h"
 #include "kernel/fs/vfs.h"
+#include "kernel/util/string/string.h"
 #include "kernel/util/math.h"
 #include "kernel/util/debug.h"
 #include "kernel/devices/char/tty.h"
@@ -26,18 +27,18 @@ void kprintf(char *fmt, ...) {
 static void _kreadline(char *buf, uint32_t size, int fd) {
   char *iter = buf;
   int read = 0;
+  int left = size;
 
-  while ((read = vfs_fread(fd, iter, size)) != 0) {
+  while (left > 0 && (read = vfs_fread(fd, iter, left)) == left) {
     if (read < 0) {
       //err("Error while reading command");
       assert_not_reached("kreadline: error while reading command");
     }
-    
-    iter = iter + read;
-    iter[0] = '\0';
 
-    if (iter - buf >= size)
-      break;
+    iter = iter + read;
+    //iter[0] = '\0';
+    
+    left -= read;
   }
 }
 
