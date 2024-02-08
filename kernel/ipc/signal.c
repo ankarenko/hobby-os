@@ -155,7 +155,7 @@ int do_kill(pid_t pid, int32_t signum) {
     assert_not_reached("do_kill: process with pid: %d doesn't exist", pid);
   }
   struct thread *th = list_first_entry(&proc->threads, struct thread, child);
-  exit_thread(th);
+  thread_signal(th->tid, SIGKILL);
 }
 
 void sigreturn(interrupt_registers *regs) {

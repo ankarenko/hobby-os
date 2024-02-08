@@ -218,7 +218,7 @@ next_thread:
   }
 
   if (th->dead_mark && lock_counter != 0) {
-    log("sched: thread tid:%d is keeping %d locks", lock_counter);
+    log("sched: thread tid:%d is keeping %d lock(s)", th->tid, lock_counter);
   }
 
   sched_push_queue(th);

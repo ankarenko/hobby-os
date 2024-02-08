@@ -219,16 +219,20 @@ void exec(void *entry(char**), char* name, char **argv) {
   int pid = 0;
   
   if ((pid = process_fork(parent)) == 0) {
-    get_current_process()->name = name;
+    struct process *cur_proc = get_current_process();
+    cur_proc->name = name;
+    parent->tty->pgrp = cur_proc->pid;
     setpgid(0, 0);
+    
     entry(argv);
     do_exit(0);
   }
   setpgid(pid, pid);
-  //parent->tty->pgrp = pid; // set foreground process
+  parent->tty->pgrp = pid; // set foreground process
 
   struct infop inop;
   do_wait(P_PID, pid, &inop, WEXITED | WSSTOPPED);
+  parent->tty->pgrp = parent->pid;
 }
 
 void cmd_read_file();
