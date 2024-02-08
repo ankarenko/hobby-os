@@ -81,6 +81,7 @@ void exit_process(struct process *proc) {
     list_add(&iter->child, &init_proc->childrens);
     iter->parent = init_proc;
   }
+  log("done exit process");
 }
 
 // TODO: bug, when kill 2 times and then create
@@ -135,9 +136,13 @@ int exit_thread(struct thread *th) {
   }
 
   unlock_scheduler();
-
-  parent->parent->tty->pgrp = parent->parent->gid;
-  wake_up(&parent->parent->wait_chld);
+  if (parent->parent != NULL) {
+    log("waking up parent with id %d", parent->parent->pid);
+    //parent->parent->tty->pgrp = parent->parent->gid;
+    wake_up(&parent->parent->wait_chld);
+  } else  {
+    log("no parent to wake up");
+  }
 
   return true;
 }
@@ -150,6 +155,13 @@ void garbage_worker_task() {
       thread_sleep(1000);
       continue;
     }
+    
+    /*
+    assert(th->state == THREAD_TERMINATED);
+    if (atomic_read(&th->lock_counter) != 0) {
+      th->postpone_kill = true;
+    }
+    */
 
     exit_thread(th);
   }
@@ -169,6 +181,7 @@ void do_exit(int code) {
   current_process->exit_code = code;
 
   unlock_scheduler();
+
   schedule();
 }
 
@@ -192,6 +205,7 @@ int32_t do_wait(id_type_t idtype, id_t id, struct infop *infop, int options) {
     struct process *iter, *tmp;
     // NOTE: careful, other routine can change current_process->childrens
     // maybe it makes sense to disable schedule
+    lock_scheduler();
     list_for_each_entry_safe(iter, tmp, &current_process->childrens, child) {
       if (!(
         (idtype == P_PID && iter->pid == id) ||
@@ -209,10 +223,11 @@ int32_t do_wait(id_type_t idtype, id_t id, struct infop *infop, int options) {
         break;
       }
     }
+    unlock_scheduler();
 
     if (pchild || options & WNOHANG)
       break;
-
+    
     thread_update(current_thread, THREAD_WAITING);
     schedule();
   }
@@ -238,6 +253,7 @@ int32_t do_wait(id_type_t idtype, id_t id, struct infop *infop, int options) {
 		// the next waiting time, we don't find the same one again
 		if (pchild->state & EXIT_ZOMBIE != 0) {
       list_del(&pchild->sibling);
+      list_del(&pchild->child);
       kfree(pchild); // delete zombie process descriptor
     }
 		ret = 1;

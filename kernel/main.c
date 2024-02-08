@@ -153,6 +153,21 @@ void ls(char **argv) {
   }
 }
 
+void write(char **argv) {
+  int32_t fd = vfs_open(argv[0], O_CREAT | O_APPEND, S_IFREG);
+  if (fd < 0) {
+    kprintf("\nunable to open file");
+  }
+
+  // vfs_flseek(fd, 11, SEEK_SET);
+  if (vfs_fwrite(fd, argv[1], strlen(argv[1])) < 0) {
+    kprintf("\nnot a file");
+  } else {
+    kprintf("\nfile updated");
+  }
+  vfs_close(fd);
+}
+
 void cd(char **argv) {
   int ret = vfs_cd(argv[0]);
   if (ret < 0) {
@@ -186,11 +201,16 @@ void cat(char **argv) {
   vfs_close(fd);
 }
  
-void hello() {
+void hello(char **argv) {
   while (1) {
-    kprintf("\nHello");
+    kprintf("\nHello %s", argv[0]);
     thread_sleep(2000);
   }
+}
+
+void print_time(char **argv) {
+  struct time* t = get_time(0);  // current time
+  kprintf("\nCurrent time (UTC): %d:%d:%d, %d.%d.%d", t->hour, t->minute, t->second, t->day, t->month, t->year);
 }
 
 void exec(void *entry(char**), char* name, char **argv) {
@@ -205,14 +225,11 @@ void exec(void *entry(char**), char* name, char **argv) {
     do_exit(0);
   }
   setpgid(pid, pid);
-  parent->tty->pgrp = pid; // set foreground process
+  //parent->tty->pgrp = pid; // set foreground process
 
   struct infop inop;
   do_wait(P_PID, pid, &inop, WEXITED | WSSTOPPED);
-  
-  //kprintf("killed %d", pid);
 }
-
 
 void cmd_read_file();
 
@@ -335,8 +352,7 @@ bool interpret_command(char* line) {
     }
 
   } else if (strcmp(cmd, "time") == 0) {
-    struct time* t = get_time(0);  // current time
-    kprintf("\nCurrent time (UTC): %d:%d:%d, %d.%d.%d", t->hour, t->minute, t->second, t->day, t->month, t->year);
+    exec(print_time, "print_time", argv);
   } else if (strcmp(cmd, "layout") == 0) {
     log("layout!!!!!!!!!!!!!!!!!");
     lock_scheduler();
@@ -369,32 +385,7 @@ bool interpret_command(char* line) {
     }
     vfs_close(fd);
   } else if (strcmp(cmd, "write") == 0) {
-    char text[100];
-
-    kprintf("\npath: ");
-    get_cmd(text, 100);
-
-    int32_t fd = vfs_open(text, O_CREAT | O_APPEND, S_IFREG);
-    if (fd < 0) {
-      kprintf("\nunable to open file");
-    }
-
-    kprintf("\ntext: ");
-    get_cmd(text, 100);
-
-    char* line = "#helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-helloworl-hellowor#";
-
-    // vfs_flseek(fd, 11, SEEK_SET);
-    if (vfs_fwrite(fd, text, strlen(text)) < 0) {
-      kprintf("\nnot a file");
-    } else {
-      kprintf("\nfile updated");
-    }
-    vfs_close(fd);
-    // vfs_flseek(fd, 80, SEEK_SET);
-    // vfs_fwrite(fd, line, 100);
-    // vfs_fwrite(fd, "!", 1);
-
+    exec(write, "write", argv);
   } else if (strcmp(cmd, "test") == 0) {
     kprintf("\nStart:");
     uint8_t* program = vfs_read("calc.exe");

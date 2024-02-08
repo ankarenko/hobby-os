@@ -133,7 +133,7 @@ void thread_update(struct thread *t, enum thread_state state) {
   sched_remove_queue(t);
   t->state = state;
   sched_push_queue(t);
-
+  
   unlock_scheduler();
 }
 
@@ -225,6 +225,7 @@ next_thread:
 do_switch:
   // INFO: SA switch to trhead invokes tss_set_stack implicitly
   // tss_set_stack(KERNEL_DATA, th->kernel_esp);
+  //log("next process pid: %d, process name %s", th->proc->pid, th->proc->name);
   switch_to_thread(th);
 
   if (_current_thread->pending /*&& !(_current_thread->flags & TIF_SIGNAL_MANUAL)*/) {
