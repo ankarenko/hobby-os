@@ -142,7 +142,7 @@ struct wait_queue_head;
 #define EXIT_DEAD      0b0010
 
 struct process {
-  int32_t pid;
+  pid_t pid;
 
   int32_t priority;
   struct pdirectory* va_dir;
@@ -191,6 +191,7 @@ int32_t dup2(int oldfd, int newfd);
 struct process *find_process_by_pid(pid_t pid);
 int32_t setpgid(pid_t pid, pid_t pgid);
 struct process *get_init_proc();
+int32_t process_execve(const char *path, char *const argv[], char *const envp[]);
 
 // sched.c
 void lock_scheduler();
@@ -212,5 +213,6 @@ struct list_head* get_waiting_threads();
 void garbage_worker_task();
 void do_exit(int code);
 int exit_thread(struct thread* th);
+int32_t do_wait(id_type_t idtype, id_t id, struct infop *infop, int options);
 
 #endif

@@ -1,8 +1,7 @@
-#include "kernel/util/string/string.h"
-#include "kernel/util/debug.h"
+#include <stdlib.h>
+#include <string.h>
 
-char *strchrnul(const char *s, int c_in)
-{
+char *strchrnul(const char *s, int c_in) {
 	const unsigned char *char_ptr;
 	const unsigned long int *longword_ptr;
 	unsigned long int longword, magic_bits, charmask;
@@ -39,10 +38,8 @@ char *strchrnul(const char *s, int c_in)
 	if (sizeof(longword) > 4)
 		/* Do the shift in two steps to avoid a warning if long has 32 bits.  */
 		charmask |= (charmask << 16) << 16;
-	if (sizeof(longword) > 8) {
-		assert_not_reached("strchrnul.c");
-    //abort();
-  }
+	if (sizeof(longword) > 8)
+		abort();
 
 	/* Instead of the traditional loop which tests each character,
      we will test a longword at a time.  The tricky part is testing

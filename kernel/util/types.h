@@ -4,7 +4,9 @@
 #include <sys/types.h>
 
 typedef unsigned int sig_t;
+typedef int id_type_t;
 
+//typedef int idtype_t;
 /*
 typedef unsigned int dev_t;
 typedef unsigned short umode_t;

@@ -1,4 +1,5 @@
-#include <string.h>
+#include "kernel/util/math.h"
+#include "kernel/util/string/string.h"
 
 size_t strcspn(const char *str, const char *reject) {
   if (reject[0] == '\0' ||

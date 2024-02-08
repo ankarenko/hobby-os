@@ -11,6 +11,7 @@
 #define BUF_SIZE (max(N_TTY_BUF_SIZE, 100))
 
 void kprintf(char *fmt, ...) {
+  
   char buf[BUF_SIZE];
   va_list args;
   va_start(args, fmt);
@@ -21,6 +22,29 @@ void kprintf(char *fmt, ...) {
 
   if ((status = vfs_fwrite(0, &buf, i)) < 0) {
     err("kprintf: unable to write to file");
+  }
+}
+
+void kprintformat(char *fmt, int size, char *color, ...) {
+  
+  char buf[BUF_SIZE];
+  va_list args;
+  va_start(args, fmt);
+	int i = vsnprintf(&buf, BUF_SIZE, fmt, args);
+	va_end(args);
+  int status = 0;
+
+  memset(&buf[i], ' ', size - i);
+  buf[size] = '\0';
+
+  if (color) {
+    vfs_fwrite(0, color, strlen(color));
+  }
+  if ((status = vfs_fwrite(0, &buf, size)) < 0) {
+    err("kprintf: unable to write to file");
+  }
+  if (color) {
+    vfs_fwrite(0, COLOR_RESET, strlen(COLOR_RESET));
   }
 }
 

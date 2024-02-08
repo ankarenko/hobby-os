@@ -52,7 +52,11 @@
 #define SIG_KERNEL_ONLY_MASK (sigmask(SIGKILL) | sigmask(SIGSTOP))
 #define SIG_KERNEL_IGNORE_MASK ( sigmask(SIGCONT) | sigmask(SIGCHLD) | sigmask(SIGWINCH) | sigmask(SIGURG))
 #define SIG_KERNEL_STOP_MASK (sigmask(SIGSTOP) | sigmask(SIGTSTP) | sigmask(SIGTTIN) | sigmask(SIGTTOU))
-
+#define SIG_KERNEL_COREDUMP_MASK (                                             \
+	sigmask(SIGQUIT) | sigmask(SIGILL) | sigmask(SIGTRAP) | sigmask(SIGABRT) | \
+	sigmask(SIGFPE) | sigmask(SIGSEGV) | sigmask(SIGBUS) | sigmask(SIGSYS) |   \
+	sigmask(SIGXCPU) | sigmask(SIGXFSZ))
+  
 typedef void (*__sighandler_t)(int);
 
 #define SIG_DFL ((__sighandler_t)0)	 /* default signal handling */
@@ -61,6 +65,8 @@ typedef void (*__sighandler_t)(int);
 
 #define sig_kernel_only(sig) (((sig) < SIGRTMIN) && siginmask(sig, SIG_KERNEL_ONLY_MASK))
 #define sig_kernel_ignore(sig) (((sig) < SIGRTMIN) && siginmask(sig, SIG_KERNEL_IGNORE_MASK))
+#define sig_kernel_coredump(sig) \
+	(((sig) < SIGRTMIN) && siginmask(sig, SIG_KERNEL_COREDUMP_MASK))
 
 #define sig_user_defined(p, signr)                      \
 	(((p)->sighand[(signr)-1].sa_handler != SIG_DFL) && \

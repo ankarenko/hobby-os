@@ -506,6 +506,28 @@ int32_t setpgid(pid_t pid, pid_t pgid) {
   return 0;
 }
 
+int count_array_of_pointers(void *arr) {
+	if (!arr)
+		return 0;
+
+	const int32_t *a = arr;
+	for (; *a; a++)
+		;
+	return a - (int32_t *)arr;
+}
+
+int32_t process_execve(const char *path, char *const argv[], char *const envp[]) {
+  log("Task: Exec %s", path);
+
+  int argv_length = count_array_of_pointers(argv); //?
+	char **kernel_argv = kcalloc(argv_length, sizeof(char *));
+	for (int i = 0; i < argv_length; ++i) {
+		int ilength = strlen(argv[i]);
+		kernel_argv[i] = kcalloc(ilength + 1, sizeof(char));
+		memcpy(kernel_argv[i], argv[i], ilength);
+	}
+}
+
 bool initialise_multitasking(virtual_addr entry) {
   INIT_LIST_HEAD(&all_threads);
 

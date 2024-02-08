@@ -40,7 +40,7 @@ int strcmp(const char *p1, const char *p2);
 int strcoll(const char *s1, const char *s2);
 //int strcoll_l(const char *s1, const char *s2, locale_t locale);
 char *strcpy(char *dest, const char *src);
-size_t strcspn(const char *str, const char *reject);
+//size_t strcspn(const char *str, const char *reject);
 char *strdup(const char *s);
 char *strerror(int errnum);
 //char *strerror_l(int errnum, locale_t locale);

@@ -3,12 +3,44 @@
 
 #include "kernel/util/debug.h"
 #include "kernel/util/list.h"
+#include "kernel/util/types.h"
+
+#define WNOHANG 0x00000001
+#define WUNTRACED 0x00000002
+#define WSTOPPED WUNTRACED
+#define WEXITED 0x00000004
+#define WCONTINUED 0x00000008
+#define WNOWAIT 0x01000000 /* Don't reap, just poll status.  */
+
+#define CLD_EXITED 1	/* child has exited */
+#define CLD_KILLED 2	/* child was killed */
+#define CLD_DUMPED 3	/* child terminated abnormally */
+#define CLD_TRAPPED 4	/* traced child has trapped */
+#define CLD_STOPPED 5	/* child has stopped */
+#define CLD_CONTINUED 6 /* stopped child has continued */
+
+#define P_ALL 0
+#define P_PID 1
+#define P_PGID 2
+
+#define WSEXITED 0x0001
+#define WSSIGNALED 0x0002
+#define WSCOREDUMP 0x0004
+#define WSSTOPPED 0x0008
+#define WSCONTINUED 0x0010
 
 struct thread;
 void thread_wake(struct thread *th);
 void thread_wait(struct thread *th);
 
 typedef void (*wait_queue_callback)(struct thread *);
+
+struct infop {
+	pid_t si_pid;
+	int32_t si_signo;
+	int32_t si_status;
+	int32_t si_code;
+};
 
 struct wait_queue_head {
 	struct list_head list;

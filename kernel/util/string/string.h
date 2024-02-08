@@ -23,4 +23,11 @@ int32_t strliof(const char *s1, const char *s2);
 char *strrstr(char *string, char *find);
 char *strstr(const char* haystack, const char* needle);
 
+char *strchrnul(const char *s, int c_in);
+
+size_t strspn(const char *str, const char *accept) ;
+size_t strcspn(const char *str, const char *reject);
+char *strtok_r(char *s, const char *delim, char **save_ptr);
+char *strtok(char *s, const char *delim);
+
 #endif
