@@ -162,6 +162,6 @@ struct termios {
 	reprint=^R	discard=^U	werase=^W	lnext=^V
 	eol2=\0
 */
-#define INIT_C_CC "\003\034\008\025\004\0\1\0\021\023\032\0\022\017\027\026\0"
+#define INIT_C_CC "\003\034\177\025\004\0\1\0\021\023\032\0\022\017\027\026\0"
 
 #endif

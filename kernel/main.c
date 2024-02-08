@@ -153,6 +153,79 @@ void ls(char **argv) {
   }
 }
 
+void signal(char **argv) {
+  if (argv[0] && argv[1] && thread_signal(atoi(argv[0]), atoi(argv[1]))) {
+    kprintf("Signal %s: sent to thread: %s", argv[1], argv[0]);
+  } else {
+    kprintf("Unable to find thread with id %s", argv[0]);
+  }
+}
+
+void makekdir(char **argv) {
+  if (vfs_mkdir(argv[0], 0) < 0) {
+    kprintf("\ncannot create directory");
+  }
+}
+
+void touch(char **argv) {
+  int fd = 0;
+  if ((fd = vfs_open(argv[0], O_CREAT, S_IFREG)) < 0) {
+    kprintf("\ndirectory not found");
+    return;
+  }
+  vfs_close(fd);
+}
+
+void ps(char **argv) {
+  lock_scheduler();
+    
+  struct thread* th = NULL;
+  kprintf("\nthreads ready: [ ");
+  list_for_each_entry(th, get_ready_threads(), sched_sibling) {
+    kprintf("%d ", th->tid);
+  }
+  kprintf("]");
+  kprintf("\nthreads waiting: [ ");
+  list_for_each_entry(th, get_waiting_threads(), sched_sibling) {
+    kprintf("%d ", th->tid);
+  }
+  kprintf("]");
+  
+
+  kprintf("\nprocesses:");
+  struct process* proc = NULL;
+  struct list_head *ls = get_proc_list();
+  
+  kprintf("\n");
+  kprintformat("PID", 5, BLU);
+  kprintformat("NAME", 10, NULL);
+  kprintformat("GID", 5, NULL);
+  kprintformat("SID", 5, NULL);
+  kprintformat("PARENT", 10, NULL);
+  kprintformat("THREADS", 10, NULL);
+  
+  list_for_each_entry(proc, ls, sibling) {
+    kprintf("\n");
+    kprintformat("%d", 5, BLU, proc->pid);
+    kprintformat("%s", 10, NULL, proc->name);
+    kprintformat("%d", 5, NULL, proc->gid);
+    kprintformat("%d", 5, NULL, proc->sid);
+    kprintformat("%d", 10, CYN, proc->parent? proc->parent->pid : -1);
+    
+    if ((proc->state & (EXIT_ZOMBIE)) == 0) {
+      kprintf("[");
+      list_for_each_entry(th, &proc->threads, child) {
+        kprintf(" %d", th->tid);
+      }
+      kprintf(" ]" COLOR_RESET);
+    } else {
+      kprintformat("%s", 10, RED, "zombie");
+    }
+  }
+  unlock_scheduler();
+
+}
+
 void write(char **argv) {
   int32_t fd = vfs_open(argv[0], O_CREAT | O_APPEND, S_IFREG);
   if (fd < 0) {
@@ -168,6 +241,12 @@ void write(char **argv) {
   vfs_close(fd);
 }
 
+void rm(char **argv) {
+  if (vfs_unlink(argv[0], 0) < 0) {
+    kprintf("\nfile or directory not found");
+  }
+}
+
 void cd(char **argv) {
   int ret = vfs_cd(argv[0]);
   if (ret < 0) {
@@ -177,6 +256,24 @@ void cd(char **argv) {
   struct process *cur = get_current_process();
   cur->parent->fs->d_root = cur->fs->d_root;
   cur->parent->fs->mnt_root = cur->fs->mnt_root;
+}
+
+void info(char **argv) {
+  if (strcmp(argv[0], "layout") == 0) {
+    kprintf("Kernel start: %X\n", KERNEL_START);
+    kprintf("Text start: %X\n", KERNEL_TEXT_START);
+    kprintf("Text end: %X\n", KERNEL_TEXT_END);
+    kprintf("Data start: %X\n", KERNEL_DATA_START);
+    kprintf("Data end: %X\n", KERNEL_DATA_END);
+    kprintf("Stack bottom %X\n", STACK_BOTTOM);
+    kprintf("Stack top: %X\n", STACK_TOP);
+    kprintf("Kernel end: %X\n", KERNEL_END);
+  } else if (strcmp(argv[0], "memory") == 0) { 
+    PMM_DEBUG();
+  } else {
+    kprintf("Invalid param: %s", argv[0]);
+  }
+  
 }
 
 void cat(char **argv) {
@@ -246,8 +343,6 @@ bool interpret_command(char* line) {
     argv[i] = NULL;
   }
 
-  char str[] = "ls   /diary         all";
-  
   // Returns first token
   char* token = strtok(line, " ");
   cmd = strdup(token);
@@ -278,134 +373,29 @@ bool interpret_command(char* line) {
     init_consumer_producer();
     create_system_process(&producer, "producer");
     create_system_process(&consumer, "consumer");
-  } else if (strcmp(cmd, "lst") == 0) {
-    lock_scheduler();
-    
-    struct thread* th = NULL;
-    kprintf("\nthreads ready: [ ");
-    list_for_each_entry(th, get_ready_threads(), sched_sibling) {
-      kprintf("%d ", th->tid);
-    }
-    kprintf("]");
-    kprintf("\nthreads waiting: [ ");
-    list_for_each_entry(th, get_waiting_threads(), sched_sibling) {
-      kprintf("%d ", th->tid);
-    }
-    kprintf("]");
-    
-
-    kprintf("\nprocesses:");
-    struct process* proc = NULL;
-    struct list_head *ls = get_proc_list();
-    
-    kprintf("\n");
-    kprintformat("PID", 5, BLU);
-    kprintformat("NAME", 10, NULL);
-    kprintformat("GID", 5, NULL);
-    kprintformat("SID", 5, NULL);
-    kprintformat("PARENT", 10, NULL);
-    kprintformat("THREADS", 10, NULL);
-    
-    list_for_each_entry(proc, ls, sibling) {
-      kprintf("\n");
-      kprintformat("%d", 5, BLU, proc->pid);
-      kprintformat("%s", 10, NULL, proc->name);
-      kprintformat("%d", 5, NULL, proc->gid);
-      kprintformat("%d", 5, NULL, proc->sid);
-      kprintformat("%d", 10, CYN, proc->parent? proc->parent->pid : -1);
-      
-      if ((proc->state & (EXIT_ZOMBIE)) == 0) {
-        kprintf("[");
-        list_for_each_entry(th, &proc->threads, child) {
-          kprintf(" %d", th->tid);
-        }
-        kprintf(" ]" COLOR_RESET);
-      } else {
-        kprintformat("%s", 10, RED, "zombie");
-      }
-    }
-    unlock_scheduler();
-
+  } else if (strcmp(cmd, "ps") == 0) {
+    exec(ps, "ps", argv);
   } else if (strcmp(cmd, "exit") == 0) {
     kprintf("Goodbuy!");
     return true;
   } else if (strcmp(cmd, "signal") == 0) {
-    char id[10];
-    char signal[10];
-
-    kprintf("\nid: ");
-    get_cmd(id, 10);
-
-    kprintf("\nsignal: ");
-    get_cmd(signal, 10);
-    
-    if (id && signal && thread_signal(atoi(id), atoi(signal))) {
-      log("Signal: sent to thread: %s", id);
-    } else {
-      kprintf("Unable to find thread with id %s", id);
-    }
-
+    exec(signal, "signal", argv);
   } else if (strcmp(cmd, "time") == 0) {
     exec(print_time, "print_time", argv);
-  } else if (strcmp(cmd, "layout") == 0) {
-    log("layout!!!!!!!!!!!!!!!!!");
-    lock_scheduler();
-    kprintf("1234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678-");
-    unlock_scheduler();
-
-    kprintf("Kernel start: %X\n", KERNEL_START);
-    kprintf("Text start: %X\n", KERNEL_TEXT_START);
-    kprintf("Text end: %X\n", KERNEL_TEXT_END);
-    kprintf("Data start: %X\n", KERNEL_DATA_START);
-    kprintf("Data end: %X\n", KERNEL_DATA_END);
-    kprintf("Stack bottom %X\n", STACK_BOTTOM);
-    kprintf("Stack top: %X\n", STACK_TOP);
-    kprintf("Kernel end: %X\n", KERNEL_END);
-   
-  } else if (strcmp(cmd, "dump") == 0) {
-    PMM_DEBUG();
+  } else if (strcmp(cmd, "info") == 0) {
+    exec(info, "info", argv);
   } else if (strcmp(cmd, "clear") == 0) {
     terminal_clrscr();
   } else if (strcmp(cmd, "cd") == 0) {
     exec(cd, "cd", argv);
-  } else if (strcmp(cmd, "mfile") == 0) {
-    char filepath[100];
-
-    kprintf("\npath: ");
-    get_cmd(filepath, 100);
-    int fd = 0;
-    if ((fd = vfs_open(filepath, O_CREAT, S_IFREG)) < 0) {
-      kprintf("\ndirectory not found");
-    }
-    vfs_close(fd);
+  } else if (strcmp(cmd, "touch") == 0) {
+    exec(touch, "touch", argv);
   } else if (strcmp(cmd, "write") == 0) {
     exec(write, "write", argv);
-  } else if (strcmp(cmd, "test") == 0) {
-    kprintf("\nStart:");
-    uint8_t* program = vfs_read("calc.exe");
-    kfree(program);
-
-    kprintf("\nEnd");
   } else if (strcmp(cmd, "rm") == 0) {
-    char filepath[100];
-
-    kprintf("path: ");
-    get_cmd(filepath, 100);
-
-    if (vfs_unlink(filepath, 0) < 0) {
-      kprintf("\nfile or directory not found");
-    }
+    exec(rm, "rm", argv);
   } else if (strcmp(cmd, "mkdir") == 0) {
-    char filepath[100];
-
-    kprintf("\npath: ");
-    get_cmd(filepath, 100);
-
-    if (vfs_mkdir(filepath, 0) < 0) {
-      kprintf("\ncannot create directory");
-    }
-  } else if (strcmp(cmd, "read") == 0) {
-    cmd_read_sect();
+    exec(makekdir, "mkdir", argv);
   } else if (strcmp(cmd, "cat") == 0) {
     exec(cat, "cat", argv);
   } else if (strcmp(cmd, "dcat") == 0) {
@@ -421,9 +411,8 @@ bool interpret_command(char* line) {
   } else if (strcmp(cmd, "") == 0) {
     goto clean;
   } else {
-    kprintf("\ninvalid command");
+    kprintf("\ncommand not found: %s", cmd);
   }
-
 
   kprintf("\n");
 clean:
@@ -544,7 +533,7 @@ newline:
   kfree(command);
 }
 
-void main_thread() {
+void init_process() {
   struct process *parent = get_current_process();
   
   if (process_fork(parent) == 0)
@@ -604,7 +593,7 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   syscall_init();
 
   timer_init();
-  initialise_multitasking(&main_thread);
+  initialise_multitasking(&init_process);
 
   return 0;
 }
