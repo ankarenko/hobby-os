@@ -197,6 +197,7 @@ void exec(void *entry(char**), char* name, char **argv) {
   // TODO: FORBID 0 DEREFERENCE!
   struct process *parent = get_current_process();
   int pid = 0;
+  
   if ((pid = process_fork(parent)) == 0) {
     get_current_process()->name = name;
     setpgid(0, 0);
@@ -206,7 +207,10 @@ void exec(void *entry(char**), char* name, char **argv) {
   setpgid(pid, pid);
   parent->tty->pgrp = pid; // set foreground process
 
-  wait_until_wakeup(&parent->wait_chld);
+  struct infop inop;
+  do_wait(P_PID, pid, &inop, WEXITED | WSSTOPPED);
+  
+  //kprintf("killed %d", pid);
 }
 
 

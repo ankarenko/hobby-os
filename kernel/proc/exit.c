@@ -62,6 +62,8 @@ void exit_process(struct process *proc) {
   kfree(proc->fs);
   proc->fs = NULL;
 
+  proc->flags |= SIGNAL_TERMINATED; 
+  proc->flags &= ~(SIGNAL_CONTINUED | SIGNAL_STOPED); // ?
   proc->state |= EXIT_ZOMBIE;
 
   /*
@@ -234,7 +236,10 @@ int32_t do_wait(id_type_t idtype, id_t id, struct infop *infop, int options) {
 		// NOTE: MQ 2020-11-25
 		// After waiting for terminated child, we remove it from parent
 		// the next waiting time, we don't find the same one again
-		list_del(&pchild->sibling);
+		if (pchild->state & EXIT_ZOMBIE != 0) {
+      list_del(&pchild->sibling);
+      kfree(pchild); // delete zombie process descriptor
+    }
 		ret = 1;
 	}
 	else
