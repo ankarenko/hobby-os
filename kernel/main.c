@@ -274,16 +274,6 @@ bool interpret_command(char* line) {
     init_consumer_producer();
     create_system_process(&producer, "producer");
     create_system_process(&consumer, "consumer");
-  } else if (strcmp(cmd, "kill") == 0) {
-    char id[10];
-
-    kprintf("\nid: ");
-    get_cmd(id, 10);
-
-    if (id) {
-      int32_t id_num = atoi(id);
-      thread_kill(id_num);
-    }
   } else if (strcmp(cmd, "lst") == 0) {
     lock_scheduler();
     
@@ -554,11 +544,10 @@ void main_thread() {
   struct process *parent = get_current_process();
   
   if (process_fork(parent) == 0)
-    garbage_worker_task();
+    garbage_worker_task();   // 1
 
-  
   if (process_fork(parent) == 0)
-    idle_task();
+    idle_task(); // 2
 
   vfs_init(&ext2_fs_type, "/dev/hda");
   chrdev_init();
@@ -568,7 +557,7 @@ void main_thread() {
   tty_init();
 
   if (process_fork(parent) == 0)
-    kybrd_manager();
+    kybrd_manager(); // 3
   
   pid_t id = 0;
 

@@ -125,8 +125,8 @@ void handle_signal(interrupt_registers *regs, sig_t restored_sig) {
 		current_process->flags &= ~(SIGNAL_CONTINUED | SIGNAL_STOPED); // ?
 		current_thread->signaling = false;
 		sigemptyset(&current_thread->pending);
-    thread_update(current_thread, THREAD_TERMINATED);
-		//do_exit(signum);
+    thread_mark_dead(current_thread);
+    schedule();
   } else if (sig_user_defined(current_process, signum)) {
     // TODO: too complicated, can be simplified, simply can edit regs
     struct signal_frame *signal_frame = (char *)regs->useresp - sizeof(struct signal_frame);
@@ -172,7 +172,7 @@ void sigreturn(interrupt_registers *regs) {
     |-------------------------| <- trap frame esp
   */
 
-  struct process* current_process= get_current_process();
+  struct process*  current_process= get_current_process();
   struct thread* current_thread = get_current_thread();
   log("Signal: Return from signal handler %s(p%d)", current_process->name, current_process->pid);
   

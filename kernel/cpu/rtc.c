@@ -100,7 +100,7 @@ static void rtc_irq_handler(struct interrupt_registers *regs) {
 }
 
 void rtc_init() {
-  // log("RTC: Initializing");
+  log("RTC: Initializing");
 
   uint8_t rate = log2(32768 / RTC_TICKS_PER_SECOND) + 1;
   disable_interrupts();
@@ -114,8 +114,17 @@ void rtc_init() {
   outportb(CMOS_ADDRESS, 0x8B);         // set the index again (a read will reset the index to register D)
   outportb(CMOS_DATA, prev | 0x40);  // write the previous value ORed with 0x40. This turns on bit 6 of register B
   register_interrupt_handler(IRQ8, rtc_irq_handler);
+
+
+  uint16_t year;
+  uint8_t second, minute, hour, day, month;
+
+  // init time
+  rtc_get_datetime(&year, &month, &day, &hour, &minute, &second);
+  set_current_time(year, month, day, hour, minute, second);
+
   enable_interrupts();
   //pic_clear_mask(IRQ8);
 
-  // log("RTC: Done");
+  log("RTC: Done");
 }

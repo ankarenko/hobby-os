@@ -171,6 +171,7 @@ bool thread_signal(uint32_t tid, int32_t signum) {
   return false;
 }
 
+/*
 bool thread_kill(uint32_t tid) {
   struct thread* th = NULL;
   list_for_each_entry(th, sched_get_list(THREAD_READY), sched_sibling) {
@@ -189,35 +190,35 @@ bool thread_kill(uint32_t tid) {
   
   return false;
 }
+*/
 
 extern uint32_t address_end_of_switch_to_task = 0;
 
+void thread_mark_dead(struct thread *th) {
+  th->dead_mark = true;
+}
+
 void make_schedule() {
 next_thread:
-  //log("make schedule\n");
-  
+
   struct thread* th = pop_next_thread_to_run();
   /*
     we can't kill treads with aquired locks, so we wait until they release them
   */
 
   int lock_counter = atomic_read(&th->lock_counter);
-  if (th->postpone_kill && lock_counter == 0) {
-    log("sched: thread with tid %d has released al its locks and about will be killed");
-    thread_update(th, THREAD_TERMINATED);
-  }
-
-  if (th->state == THREAD_TERMINATED && lock_counter != 0) {
-    log("sched: thread with tid:%d has %d locks, wait for it to release it", th->tid, lock_counter);
-    th->postpone_kill = true;
-    thread_update(th, THREAD_RUNNING);
-  }
-
-  if (th->state == THREAD_TERMINATED) {
-    th->postpone_kill = true;
-    // put it in a queue for a worker struct thread to purge
+  if (th->dead_mark && lock_counter == 0) {
+    log("sched: thread with tid %d has released al its locks and about will be killed", th->tid);
+    th->state = THREAD_TERMINATED;
     sched_push_queue(th);
+    struct process *gw = get_garbage_worker();
+    assert(gw != NULL);
+    wake_up(&gw->wait_chld);
     goto next_thread;
+  }
+
+  if (th->dead_mark && lock_counter != 0) {
+    log("sched: thread tid:%d is keeping %d locks", lock_counter);
   }
 
   sched_push_queue(th);
@@ -225,7 +226,6 @@ next_thread:
 do_switch:
   // INFO: SA switch to trhead invokes tss_set_stack implicitly
   // tss_set_stack(KERNEL_DATA, th->kernel_esp);
-  //log("next process pid: %d, process name %s", th->proc->pid, th->proc->name);
   switch_to_thread(th);
 
   if (_current_thread->pending /*&& !(_current_thread->flags & TIF_SIGNAL_MANUAL)*/) {

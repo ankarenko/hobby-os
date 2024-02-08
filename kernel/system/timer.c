@@ -48,6 +48,7 @@ bool is_actived_timer(struct sleep_timer *timer) {
 }
 
 static int32_t timer_schedule_handler(interrupt_registers *regs) {
+  
   struct sleep_timer *iter, *next;
 	uint64_t cms = get_seconds(NULL) * 1000;
   

@@ -92,6 +92,7 @@ int exit_thread(struct thread *th) {
 
   struct process *parent = th->proc;
 
+  assert(th->state == THREAD_TERMINATED);
   assert(atomic_read(&th->lock_counter) == 0, "freeing thread which holds locks is forbidden");
   log("Killing thread tid: %d that belongs to process with pid:%d", th->tid, parent->pid);
   assert(parent != NULL, "zombie threads are not allowed!");
@@ -108,7 +109,7 @@ int exit_thread(struct thread *th) {
   }
   */
 
-  thread_update(th, THREAD_TERMINATED);
+  //thread_update(th, THREAD_TERMINATED);
   del_timer(&th->s_timer);
 
   kfree(th->kernel_esp - KERNEL_STACK_SIZE);
@@ -147,12 +148,20 @@ int exit_thread(struct thread *th) {
   return true;
 }
 
+struct process *garbage_worker = NULL;
+
+struct process *get_garbage_worker() {
+  return garbage_worker;
+}
+
 void garbage_worker_task() {
+  garbage_worker = get_current_process();
+  
   while (1) {
     struct thread *th = pop_next_thread_to_terminate();
 
     if (th == NULL) {
-      thread_sleep(1000);
+      wait_until_wakeup(&get_current_process()->wait_chld);
       continue;
     }
     
@@ -169,19 +178,10 @@ void garbage_worker_task() {
 
 void do_exit(int code) {
   lock_scheduler();
-  struct process *current_process = get_current_process();
-  struct thread *current_thread = get_current_thread();
-
-  log("process: exit %s(p%d)", current_process->name, current_process->pid);
-
-  if (!exit_thread(current_thread)) {
-    err("exit: unable to exit trhead");
-  }
-
-  current_process->exit_code = code;
+  
+  thread_signal(get_current_thread()->tid, SIGKILL);
 
   unlock_scheduler();
-
   schedule();
 }
 

@@ -115,7 +115,7 @@ struct thread {
   
   struct sleep_timer s_timer;
   atomic_t lock_counter;
-  bool postpone_kill;
+  bool dead_mark;
 };
 
 typedef struct _files_struct {
@@ -202,8 +202,9 @@ void schedule();
 struct list_head* get_ready_threads();
 void sched_push_queue(struct thread* th);
 struct thread* pop_next_thread_to_terminate();
-bool thread_kill(uint32_t id);
+//bool thread_kill(uint32_t id);
 void thread_wake(struct thread *th);
+void thread_mark_dead(struct thread *th);
 bool thread_signal(uint32_t tid, int32_t signal);
 void thread_wait(struct thread *th);
 void thread_update(struct thread *t, enum thread_state state);
@@ -214,5 +215,6 @@ void garbage_worker_task();
 void do_exit(int code);
 int exit_thread(struct thread* th);
 int32_t do_wait(id_type_t idtype, id_t id, struct infop *infop, int options);
+struct process *get_garbage_worker();
 
 #endif
