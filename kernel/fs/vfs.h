@@ -8,6 +8,7 @@
 #include "kernel/util/atomic.h"
 #include "kernel/util/stat.h"
 #include "kernel/util/ctype.h"
+#include "kernel/fs/pipefs/pipe.h"
 #include "kernel/system/time.h"
 #include "kernel/util/list.h"
 
@@ -122,7 +123,12 @@ struct vfs_inode {
 	uint32_t i_flags;
 	uint32_t i_size;
 	//struct semaphore i_sem;
-	//struct pipe *i_pipe;
+  
+  union {
+		struct pipe	*i_pipe;
+		void *i_cdev;
+	};
+
 	//struct address_space i_data;
 	struct vfs_inode_operations *i_op;
 	struct vfs_file_operations *i_fop;
@@ -205,6 +211,7 @@ struct vfs_file *alloc_vfs_file();
 int generic_memory_readdir(struct vfs_file *file, struct dirent **dirent);
 int vfs_mknod(const char *path, int mode, int32_t dev);
 struct vfs_dentry *vfs_search_virt_subdirs(struct vfs_dentry *dir, const char *name);
+int32_t find_unused_fd_slot();
 
 // read_write.c
 int32_t vfs_fread(int32_t fd, char* buf, uint32_t count);

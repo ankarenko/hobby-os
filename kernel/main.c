@@ -35,15 +35,6 @@ extern struct vfs_file_system_type ext2_fs_type;
 void cmd_init();
 void idle_task();
 
-//! sleeps a little bit. This uses the HALs get_tick_count() which in turn uses the PIT
-/*
-void sleep(uint32_t ms) {
-  int32_t ticks = ms + get_tick_count();
-  while (ticks > get_tick_count())
-    ;
-}
-*/
-
 static struct vfs_file* _cur_dir = NULL;
 
 //! gets next command
@@ -310,7 +301,7 @@ void print_time(char **argv) {
   kprintf("\nCurrent time (UTC): %d:%d:%d, %d.%d.%d", t->hour, t->minute, t->second, t->day, t->month, t->year);
 }
 
-void exec(void *entry(char**), char* name, char **argv) {
+int exec(void *entry(char**), char* name, char **argv) {
   // TODO: FORBID 0 DEREFERENCE!
   struct process *parent = get_current_process();
   int pid = 0;
@@ -318,7 +309,7 @@ void exec(void *entry(char**), char* name, char **argv) {
   if ((pid = process_fork(parent)) == 0) {
     struct process *cur_proc = get_current_process();
     cur_proc->name = name;
-    parent->tty->pgrp = cur_proc->pid;
+    parent->tty->pgrp = cur_proc->gid;
     setpgid(0, 0);
     
     entry(argv);
@@ -327,101 +318,155 @@ void exec(void *entry(char**), char* name, char **argv) {
   setpgid(pid, pid);
   parent->tty->pgrp = pid; // set foreground process
 
-  struct infop inop;
-  do_wait(P_PID, pid, &inop, WEXITED | WSSTOPPED);
-  parent->tty->pgrp = parent->pid;
+  return pid;
 }
 
 void cmd_read_file();
 
-//! our simple command parser
-bool interpret_command(char* line) {
+#define CMD_MAX 5
+#define PARAM_MAX 10
+
+struct cmd_t {
+  char *argv[PARAM_MAX];
   char *cmd;
-  int param_size = 10;
-  char *argv[param_size];
-  for (int i = 0; i < param_size; ++i) {
-    argv[i] = NULL;
+};
+
+static struct cmd_t commands[CMD_MAX];
+
+//! our simple command parser
+bool interpret_line(char* line) {
+  int param_size = PARAM_MAX;
+  for (int i = 0; i < CMD_MAX; ++i) {
+    commands[i].cmd = NULL;
+    for (int j = 0; j < param_size; ++j) {
+      commands[i].argv[j] = NULL;
+    }
   }
 
+  
+  
   // Returns first token
   char* token = strtok(line, " ");
-  cmd = strdup(token);
-  log("command: %s", cmd);
-
-  // Keep printing tokens while one of the
-  // delimiters present in str[].
-  int i = 0;
-  while (token != NULL) {
-    token = strtok(NULL, " ");
-    
-    if (token == NULL)
-      break;
-
-    assert(i < param_size, "too many params");
-    argv[i] = strdup(token);
-    log("param: %s", argv[i]);
-    ++i;
-  }
   
-  struct thread* th = get_current_thread();
-  if (strcmp(cmd, "hello") == 0) {
-    exec(hello, "hello", argv);
-  } else if (strcmp(cmd, "create") == 0) {
-    kprintf("\nnew struct thread: ");
-    execve(kthread_fork);
-  } if (strcmp(cmd, "play") == 0) {
-    init_consumer_producer();
-    create_system_process(&producer, "producer");
-    create_system_process(&consumer, "consumer");
-  } else if (strcmp(cmd, "ps") == 0) {
-    exec(ps, "ps", argv);
-  } else if (strcmp(cmd, "exit") == 0) {
-    kprintf("Goodbuy!");
-    return true;
-  } else if (strcmp(cmd, "signal") == 0) {
-    exec(signal, "signal", argv);
-  } else if (strcmp(cmd, "time") == 0) {
-    exec(print_time, "print_time", argv);
-  } else if (strcmp(cmd, "info") == 0) {
-    exec(info, "info", argv);
-  } else if (strcmp(cmd, "clear") == 0) {
-    terminal_clrscr();
-  } else if (strcmp(cmd, "cd") == 0) {
-    exec(cd, "cd", argv);
-  } else if (strcmp(cmd, "touch") == 0) {
-    exec(touch, "touch", argv);
-  } else if (strcmp(cmd, "write") == 0) {
-    exec(write, "write", argv);
-  } else if (strcmp(cmd, "rm") == 0) {
-    exec(rm, "rm", argv);
-  } else if (strcmp(cmd, "mkdir") == 0) {
-    exec(makekdir, "mkdir", argv);
-  } else if (strcmp(cmd, "cat") == 0) {
-    exec(cat, "cat", argv);
-  } else if (strcmp(cmd, "dcat") == 0) {
-    cmd_read_kybrd();
-  } else if (strcmp(cmd, "ls") == 0) {
-    exec(ls, "ls", argv);
-  } else if (strcmp(cmd, "run") == 0) {
-    char filepath[100];
-    kprintf("path: ");
-    get_cmd(filepath, 100);
-    struct process* cur_proc = get_current_process();
-    create_elf_process(cur_proc, filepath);
-  } else if (strcmp(cmd, "") == 0) {
-    goto clean;
-  } else {
-    kprintf("\ncommand not found: %s", cmd);
+  
+  int param_i = 0;
+  int command_i = -1;
+  bool parse_command = true;
+
+  while (token != NULL) {
+    if (parse_command) {
+      command_i++;
+      commands[command_i].cmd = strdup(token);
+      log("command: %s", token);
+      param_i = 0;
+      parse_command = false;
+      continue;
+    }
+
+    token = strtok(NULL, " ");
+
+    if (
+      (strlen(token) == 1 && strcmp(token, "|") == 0) ||
+      (strlen(token) == 2 && strcmp(token, "&&") == 0) || 
+      (strlen(token) == 2 && strcmp(token, "||") == 0)
+    ) {
+      command_i++;
+      commands[command_i].cmd = strdup(token);
+      parse_command = true;
+      token = strtok(NULL, " ");
+      continue;
+    } else if (token == NULL) {
+      break;
+    } else {
+      assert(param_i < param_size, "too many params");
+      commands[command_i].argv[param_i] = strdup(token);
+      log("param[%d]: %s", param_i, commands[command_i].argv[param_i]);
+      ++param_i;
+    }
   }
 
+  command_i++;
+  int gid = -1;
+  for (int i = 0; i < command_i; ++i) {
+    struct cmd_t com = commands[i];
+
+    struct thread* th = get_current_thread();
+    if (strcmp(com.cmd, "|") == 0) {
+      log("pipe");
+      continue;
+    } else if (strcmp(com.cmd, "hello") == 0) {
+      gid = exec(hello, "hello", com.argv);
+    } else if (strcmp(com.cmd, "create") == 0) {
+      kprintf("\nnew struct thread: ");
+      execve(kthread_fork);
+    } if (strcmp(com.cmd, "play") == 0) {
+      init_consumer_producer();
+      create_system_process(&producer, "producer");
+      create_system_process(&consumer, "consumer");
+    } else if (strcmp(com.cmd, "ps") == 0) {
+      gid = exec(ps, "ps", com.argv);
+    } else if (strcmp(com.cmd, "exit") == 0) {
+      kprintf("Goodbuy!");
+      return true;
+    } else if (strcmp(com.cmd, "signal") == 0) {
+      gid = exec(signal, "signal", com.argv);
+    } else if (strcmp(com.cmd, "time") == 0) {
+      gid = exec(print_time, "print_time", com.argv);
+    } else if (strcmp(com.cmd, "info") == 0) {
+      gid = exec(info, "info", com.argv);
+    } else if (strcmp(com.cmd, "clear") == 0) {
+      terminal_clrscr();
+    } else if (strcmp(com.cmd, "cd") == 0) {
+      gid = exec(cd, "cd", com.argv);
+    } else if (strcmp(com.cmd, "touch") == 0) {
+      gid = exec(touch, "touch", com.argv);
+    } else if (strcmp(com.cmd, "write") == 0) {
+      gid = exec(write, "write", com.argv);
+    } else if (strcmp(com.cmd, "rm") == 0) {
+      gid = exec(rm, "rm", com.argv);
+    } else if (strcmp(com.cmd, "mkdir") == 0) {
+      gid = exec(makekdir, "mkdir", com.argv);
+    } else if (strcmp(com.cmd, "cat") == 0) {
+      gid = exec(cat, "cat", com.argv);
+    } else if (strcmp(com.cmd, "dcat") == 0) {
+      cmd_read_kybrd();
+    } else if (strcmp(com.cmd, "ls") == 0) {
+      gid = exec(ls, "ls", com.argv);
+    } else if (strcmp(com.cmd, "run") == 0) {
+      char filepath[100];
+      kprintf("path: ");
+      get_cmd(filepath, 100);
+      struct process* cur_proc = get_current_process();
+      create_elf_process(cur_proc, filepath);
+    } else if (strcmp(com.cmd, "") == 0) {
+      goto clean;
+    } else {
+      kprintf("\ncommand not found: %s", com.cmd);
+    }
+    log("%d", gid);
+  }
+
+  struct infop inop;
+  struct process *shell_proc = get_current_process();
+  
+  do_wait(P_PID, gid, &inop, WEXITED | WSSTOPPED);
+  shell_proc->tty->pgrp = shell_proc->pid;
+  
   kprintf("\n");
 clean:
-  kfree(cmd);
-  for (int i = 0; i < param_size; ++i) {
-    if (argv[i] != NULL) {
-      kfree(argv[i]);
-      argv[i] = NULL;
+  for (int i = 0; i < CMD_MAX; ++i) {
+    struct cmd_t com = commands[i];
+    if (com.cmd) {
+      for (int j = 0; j < param_size; ++j) {
+        if (com.argv[j] != NULL) {
+          kfree(com.argv[j]);
+          com.argv[j] = NULL;
+        }
+      }
+      kfree(com.cmd);
+      com.cmd = NULL;
     }
+    
   }
   return false;
 }
@@ -516,7 +561,7 @@ void kybrd_manager() {
 
 void shell_start() {
   int size = N_TTY_BUF_SIZE - 1;
-  char *command = kcalloc(size, sizeof(char));
+  char *line = kcalloc(size, sizeof(char));
   struct process* proc = get_current_process();
 
   while (true) {
@@ -527,10 +572,10 @@ newline:
     );
     
 
-    kreadline(command, size);
-    interpret_command(command);
+    kreadline(line, size);
+    interpret_line(line);
   }
-  kfree(command);
+  kfree(line);
 }
 
 void init_process() {

@@ -1,0 +1,2 @@
+1. cat diary/day1.txt crashes with page fault
+cd diary && cd .. && cd ..

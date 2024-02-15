@@ -395,7 +395,11 @@ void i86_kybrd_irq() {
 
       
       kybrd_set_event_state();
-      kybrd_notify_readers(&current_kybrd_event);
+
+      if (current_kybrd_event.key != KEY_LSHIFT && current_kybrd_event.key != KEY_LCTRL) {
+        kybrd_notify_readers(&current_kybrd_event);
+      }
+      
     }
 
     //! watch for errors
@@ -519,6 +523,10 @@ char kkybrd_key_to_ascii(enum KEYCODE code) {
 
     if (key == KEY_BACKSPACE)
       return 127;
+
+    if (_shift && key == KEY_BAR) {
+      return '|';
+    }
 
     if (_shift && !_capslock)
       if (key >= '0' && key <= '9')

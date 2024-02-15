@@ -20,7 +20,7 @@ struct vfs_dentry *alloc_dentry(struct vfs_dentry *parent, char *name) {
   return d;
 }
 
-static int32_t find_unused_fd_slot() {
+int32_t find_unused_fd_slot() {
   struct process* proc = get_current_process();
 
   for (uint32_t i = 0; i < MAX_FD; ++i)

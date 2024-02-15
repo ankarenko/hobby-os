@@ -170,14 +170,6 @@ void assert_superblock(ext2_superblock* sb) {
   assert(sb->s_creator_os == EXT2_OS_LINUX); 
 }
 
-struct vfs_inode* init_inode() {
-	struct vfs_inode *i = kcalloc(1, sizeof(struct vfs_inode));
-	i->i_blocks = 0;
-	i->i_size = 0;
-	//semaphore_alloc(&i->i_sem, 1);
-	return i;
-}
-
 struct vfs_inode* ext2_alloc_inode(struct vfs_superblock* sb) {
 	struct vfs_inode *i = init_inode();
 	i->i_sb = sb;

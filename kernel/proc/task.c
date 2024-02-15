@@ -423,6 +423,7 @@ static void child_return_fork() {
   return;
 }
 
+// probably it's better to rename the kernel fork to spawn
 pid_t process_fork(struct process* parent) {
   lock_scheduler();
 

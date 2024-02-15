@@ -106,6 +106,14 @@ int32_t vfs_ls(const char* path) {
   return count;
 }
 
+struct vfs_inode* init_inode() {
+	struct vfs_inode *i = kcalloc(1, sizeof(struct vfs_inode));
+	i->i_blocks = 0;
+	i->i_size = 0;
+	//semaphore_alloc(&i->i_sem, 1);
+	return i;
+}
+
 int32_t vfs_cd(const char* path) {
   struct nameidata nd;
   int32_t ret = 0;
