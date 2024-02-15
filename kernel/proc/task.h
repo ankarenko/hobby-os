@@ -191,6 +191,7 @@ int32_t dup2(int oldfd, int newfd);
 struct process *find_process_by_pid(pid_t pid);
 int32_t setpgid(pid_t pid, pid_t pgid);
 struct process *get_init_proc();
+uint32_t get_next_sid();
 int32_t process_execve(const char *path, char *const argv[], char *const envp[]);
 
 // sched.c

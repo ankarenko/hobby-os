@@ -301,7 +301,20 @@ void print_time(char **argv) {
   kprintf("\nCurrent time (UTC): %d:%d:%d, %d.%d.%d", t->hour, t->minute, t->second, t->day, t->month, t->year);
 }
 
-int exec(void *entry(char**), char* name, char **argv) {
+void pipe_ask() {
+
+}
+
+void pipe_answer() {
+
+}
+
+int clear(char **argv) {
+  terminal_clrscr();
+}
+
+
+int exec(void *entry(char**), char* name, char **argv, int gid) {
   // TODO: FORBID 0 DEREFERENCE!
   struct process *parent = get_current_process();
   int pid = 0;
@@ -310,12 +323,12 @@ int exec(void *entry(char**), char* name, char **argv) {
     struct process *cur_proc = get_current_process();
     cur_proc->name = name;
     parent->tty->pgrp = cur_proc->gid;
-    setpgid(0, 0);
+    setpgid(0, gid == -1? 0 : gid);
     
     entry(argv);
     do_exit(0);
   }
-  setpgid(pid, pid);
+  setpgid(pid, gid == -1? pid : gid);
   parent->tty->pgrp = pid; // set foreground process
 
   return pid;
@@ -331,6 +344,60 @@ struct cmd_t {
   char *cmd;
 };
 
+int search_and_run(struct cmd_t *com, int gid) {
+  int ret = -1;
+  if (strcmp(com->cmd, "hello") == 0) {
+    ret = exec(hello, "hello", com->argv, gid);
+  } else if (strcmp(com->cmd, "create") == 0) {
+    kprintf("\nnew struct thread: ");
+    execve(kthread_fork);
+  } if (strcmp(com->cmd, "play") == 0) {
+    init_consumer_producer();
+    create_system_process(&producer, "producer");
+    create_system_process(&consumer, "consumer");
+  } else if (strcmp(com->cmd, "ps") == 0) {
+    ret = exec(ps, "ps", com->argv, gid);
+  } if (strcmp(com->cmd, "signal") == 0) {
+    ret = exec(signal, "signal", com->argv, gid);
+  } else if (strcmp(com->cmd, "time") == 0) {
+    ret = exec(print_time, "print_time", com->argv, gid);
+  } else if (strcmp(com->cmd, "info") == 0) {
+    ret = exec(info, "info", com->argv, gid);
+  } else if (strcmp(com->cmd, "clear") == 0) {
+    ret = exec(clear, "clear", com->argv, gid);
+  } else if (strcmp(com->cmd, "cd") == 0) {
+    ret = exec(cd, "cd", com->argv, gid);
+  } else if (strcmp(com->cmd, "touch") == 0) {
+    ret = exec(touch, "touch", com->argv, gid);
+  } else if (strcmp(com->cmd, "write") == 0) {
+    ret = exec(write, "write", com->argv, gid);
+  } else if (strcmp(com->cmd, "rm") == 0) {
+    ret = exec(rm, "rm", com->argv, gid);
+  } else if (strcmp(com->cmd, "mkdir") == 0) {
+    ret = exec(makekdir, "mkdir", com->argv, gid);
+  } else if (strcmp(com->cmd, "cat") == 0) {
+    ret = exec(cat, "cat", com->argv, gid);
+  } else if (strcmp(com->cmd, "dcat") == 0) {
+    cmd_read_kybrd();
+  } else if (strcmp(com->cmd, "ls") == 0) {
+    ret = exec(ls, "ls", com->argv, gid);
+  } else if (strcmp(com->cmd, "run") == 0) {
+    char filepath[100];
+    kprintf("path: ");
+    get_cmd(filepath, 100);
+    struct process* cur_proc = get_current_process();
+    create_elf_process(cur_proc, filepath);
+  } else if (strcmp(com->cmd, "") == 0) {
+    goto clean;
+  } else {
+    kprintf("\ncommand not found: %s", com->cmd);
+    goto clean;
+  }
+clean:
+  return ret;
+}
+
+
 static struct cmd_t commands[CMD_MAX];
 
 //! our simple command parser
@@ -343,11 +410,8 @@ bool interpret_line(char* line) {
     }
   }
 
-  
-  
   // Returns first token
   char* token = strtok(line, " ");
-  
   
   int param_i = 0;
   int command_i = -1;
@@ -386,72 +450,44 @@ bool interpret_line(char* line) {
   }
 
   command_i++;
+  if (command_i == 0)
+    goto clean;
+
+  struct infop inop;
   int gid = -1;
+  log("start command");
+  int pid = -1;
   for (int i = 0; i < command_i; ++i) {
     struct cmd_t com = commands[i];
 
-    struct thread* th = get_current_thread();
     if (strcmp(com.cmd, "|") == 0) {
-      log("pipe");
       continue;
-    } else if (strcmp(com.cmd, "hello") == 0) {
-      gid = exec(hello, "hello", com.argv);
-    } else if (strcmp(com.cmd, "create") == 0) {
-      kprintf("\nnew struct thread: ");
-      execve(kthread_fork);
-    } if (strcmp(com.cmd, "play") == 0) {
-      init_consumer_producer();
-      create_system_process(&producer, "producer");
-      create_system_process(&consumer, "consumer");
-    } else if (strcmp(com.cmd, "ps") == 0) {
-      gid = exec(ps, "ps", com.argv);
-    } else if (strcmp(com.cmd, "exit") == 0) {
-      kprintf("Goodbuy!");
-      return true;
-    } else if (strcmp(com.cmd, "signal") == 0) {
-      gid = exec(signal, "signal", com.argv);
-    } else if (strcmp(com.cmd, "time") == 0) {
-      gid = exec(print_time, "print_time", com.argv);
-    } else if (strcmp(com.cmd, "info") == 0) {
-      gid = exec(info, "info", com.argv);
-    } else if (strcmp(com.cmd, "clear") == 0) {
-      terminal_clrscr();
-    } else if (strcmp(com.cmd, "cd") == 0) {
-      gid = exec(cd, "cd", com.argv);
-    } else if (strcmp(com.cmd, "touch") == 0) {
-      gid = exec(touch, "touch", com.argv);
-    } else if (strcmp(com.cmd, "write") == 0) {
-      gid = exec(write, "write", com.argv);
-    } else if (strcmp(com.cmd, "rm") == 0) {
-      gid = exec(rm, "rm", com.argv);
-    } else if (strcmp(com.cmd, "mkdir") == 0) {
-      gid = exec(makekdir, "mkdir", com.argv);
-    } else if (strcmp(com.cmd, "cat") == 0) {
-      gid = exec(cat, "cat", com.argv);
-    } else if (strcmp(com.cmd, "dcat") == 0) {
-      cmd_read_kybrd();
-    } else if (strcmp(com.cmd, "ls") == 0) {
-      gid = exec(ls, "ls", com.argv);
-    } else if (strcmp(com.cmd, "run") == 0) {
-      char filepath[100];
-      kprintf("path: ");
-      get_cmd(filepath, 100);
-      struct process* cur_proc = get_current_process();
-      create_elf_process(cur_proc, filepath);
-    } else if (strcmp(com.cmd, "") == 0) {
-      goto clean;
-    } else {
-      kprintf("\ncommand not found: %s", com.cmd);
+    } else if (strcmp(com.cmd, "&&") == 0) {
+      do_wait(P_PID, pid, &inop, WEXITED | WSSTOPPED);
+      continue;
     }
-    log("%d", gid);
-  }
 
-  struct infop inop;
+    pid = search_and_run(&com, gid);
+    
+    if (gid == -1) {
+      gid = pid;
+    }
+
+    log("run gid: %d", gid);
+    if (gid == -1) {
+      goto clean;
+    }
+
+  }
+  log("end command");
+
+ 
   struct process *shell_proc = get_current_process();
-  
-  do_wait(P_PID, gid, &inop, WEXITED | WSSTOPPED);
-  shell_proc->tty->pgrp = shell_proc->pid;
-  
+  int ret = 0;
+
+  // wait all childs
+  while ((ret = do_wait(P_PGID, gid, &inop, WEXITED | WSSTOPPED)) > 0) {}
+  shell_proc->tty->pgrp = shell_proc->gid;
   kprintf("\n");
 clean:
   for (int i = 0; i < CMD_MAX; ++i) {
@@ -581,11 +617,15 @@ newline:
 void init_process() {
   struct process *parent = get_current_process();
   
-  if (process_fork(parent) == 0)
+  if (process_fork(parent) == 0) {
+    get_current_process()->name = strdup("garbage");
     garbage_worker_task();   // 1
+  }
 
-  if (process_fork(parent) == 0)
+  if (process_fork(parent) == 0) {
+    get_current_process()->name = strdup("idle");
     idle_task(); // 2
+  }
 
   vfs_init(&ext2_fs_type, "/dev/hda");
   chrdev_init();
@@ -594,8 +634,10 @@ void init_process() {
   
   tty_init();
 
-  if (process_fork(parent) == 0)
+  if (process_fork(parent) == 0) {
+    get_current_process()->name = strdup("kybrd");
     kybrd_manager(); // 3
+  }
   
   pid_t id = 0;
 
@@ -603,6 +645,8 @@ void init_process() {
   // caused by not knowing whether the parent or the child is selected by the scheduler
   if ((id = process_fork(parent)) == 0) {
     setpgid(0, 0);
+    get_current_process()->sid = get_next_sid();
+    get_current_process()->name = strdup("term");
     terminal_run();
   }
   setpgid(id, id); 

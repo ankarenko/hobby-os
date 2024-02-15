@@ -409,6 +409,10 @@ static files_struct *clone_file_descriptor_table(files_struct *fs_src) {
 extern void load_trap_frame(trap_frame *);
 extern void set_eax(int32_t v);
 
+uint32_t get_next_sid() {
+  return ++next_sid;
+}
+
 int32_t dup2(int oldfd, int newfd) {
   struct process *current_process = get_current_process();
   current_process->files->fd[newfd] = current_process->files->fd[oldfd];
@@ -500,8 +504,14 @@ int32_t setpgid(pid_t pid, pid_t pgid) {
   struct process *p = !pid ? current_process : find_process_by_pid(pid);
   struct process *l = !pgid ? p : find_process_by_pid(pgid);
 
-  if (l->sid != p->sid)
+
+  // TODO: rewrite this hack
+  if (l->sid != p->sid) {
+    log("Unable to find process groupd: %d", pgid);
+    p->gid = pgid;
+    return 0;
     return -1;
+  }
 
   p->gid = l->pid;
   return 0;

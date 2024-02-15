@@ -16,12 +16,14 @@
 #define __NR_write 4
 #define __NR_open 5
 #define __NR_close 6
+#define __NR_waitpid 7
 #define __NR_sbrk 10
 #define __NR_execve 11
 #define __NR_time 13
 #define __NR_lseek 19
 #define __NR_getpid 20
 #define __NR_kill 37
+#define __NR_pipe 42
 #define __NR_signal 48
 #define __NR_setpgid 57
 #define __NR_dup2 63
@@ -32,10 +34,15 @@
 #define __NR_sigreturn 103
 #define __NR_fstat 108
 #define __NR_sigprocmask 126
+#define __NR_getpgid 132
 #define __NR_getsid 147
 #define __NR_nanosleep 162
+#define __NR_waitid 284
 #define __NR_print 0
 
+static int32_t sys_pipe(int32_t *fd) {
+  return do_pipe(fd);
+}
 
 static int32_t sys_debug_printf(const char *format, va_list args) {
   int i = vprintf(format, args);
@@ -60,6 +67,11 @@ static int32_t sys_fstat(int32_t fd, struct kstat *stat) {
 
 static int32_t sys_write(uint32_t fd, char *buf, size_t count) {
 	return vfs_fwrite(fd, buf, count);
+}
+
+static int32_t sys_waitid(id_type_t idtype, id_t id, struct infop *infop, int options) {
+  int ret = do_wait(idtype, id, infop, options);
+  return ret >= 0 ? 0 : ret;
 }
 
 static void* sys_sbrk(size_t n) {
@@ -96,6 +108,52 @@ static pid_t sys_fork() {
 
 	return child->pid;
   */
+}
+
+static int32_t sys_waitpid(pid_t pid, int *wstatus, int options) {
+  id_type_t idtype;
+  struct process *current_process = get_current_process();
+
+  if (pid < -1) {
+    idtype = P_PGID;
+    pid = -pid;
+  } else if (pid == -1)
+    idtype = P_ALL;
+  else if (pid == 0) {
+    idtype = P_PGID;
+    pid = current_process->gid;
+  } else
+    idtype = P_PID;
+
+  if (options & WUNTRACED) {
+    options &= ~WUNTRACED;
+    options |= /*WED |*/ WSTOPPED;
+  }
+
+  struct infop ifp;
+  int ret = do_wait(idtype, pid, &ifp, options);
+  if (ret <= 0)
+    return ret;
+
+  if (wstatus) {
+    /*
+    if (ifp.si_code & CLD_ED)
+      *wstatus = WSED | (ifp.si_status << 8);
+    else
+    */ 
+    if (ifp.si_code & CLD_KILLED || ifp.si_code & CLD_DUMPED) {
+      *wstatus = WSSIGNALED;
+      if (ifp.si_code & CLD_KILLED)
+        *wstatus |= (ifp.si_status << 8);
+      if (ifp.si_code & CLD_DUMPED)
+        *wstatus |= WSCOREDUMP;
+    } else if (ifp.si_code & CLD_STOPPED)
+      *wstatus = WSSTOPPED | (ifp.si_status << 8);
+    else if (ifp.si_code & CLD_CONTINUED)
+      *wstatus = WSCONTINUED;
+  }
+
+  return ifp.si_pid;
 }
  
 static int32_t sys_nanosleep(const struct timespec *req, struct timespec *rem) {
@@ -148,6 +206,18 @@ static int32_t sys_setsid() {
   return 0;
 }
 
+static int32_t sys_getpgid(pid_t pid) {
+  struct process *current_process = get_current_process();
+  if (!pid)
+    return current_process->gid;
+
+  struct process *p = find_process_by_pid(pid);
+  if (!p)
+    return -ESRCH;
+
+  return current_process->gid;
+}
+
 static int32_t sys_getsid() {
   return get_current_process()->sid;
 }
@@ -167,15 +237,19 @@ static void *syscalls[] = {
   [__NR_write] = sys_write,
   [__NR_open] = sys_open,
   [__NR_sbrk] = sys_sbrk,
+  [__NR_getpgid] = sys_getpgid,
   [__NR_execve] = sys_execve,
   [__NR_fork] = sys_fork,
+  [__NR_pipe] = sys_pipe,
   [__NR_time] = sys_time,
   [__NR_fstat] = sys_fstat,
   [__NR_dup2] = sys_dup2,
+  [__NR_waitpid] = sys_waitpid,
   [__NR_setpgid] = sys_setpgid,
   [__NR_print] = sys_debug_printf,
   [__NR_lseek] = sys_lseek,
   [__NR_close] = sys_close,
+  [__NR_waitid] = sys_waitid,
   [__NR_setsid] = sys_setsid,
   [__NR_getsid] = sys_getsid,
   [__NR_getpgrp] = sys_getpgrp,

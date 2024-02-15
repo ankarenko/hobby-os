@@ -225,7 +225,7 @@ int32_t do_wait(id_type_t idtype, id_t id, struct infop *infop, int options) {
     }
     unlock_scheduler();
 
-    if (pchild || options & WNOHANG)
+    if (!child_exist || pchild || options & WNOHANG)
       break;
     
     thread_update(current_thread, THREAD_WAITING);

@@ -200,6 +200,7 @@ extern void shell_start();
 
 void terminal_run() {
   log("terminal: initializing");
+  
   terminal_initialize();
   int tty_master = 0;
   // returns fd of a master terminal
@@ -221,6 +222,7 @@ void terminal_run() {
   int32_t id = 0;
   if ((id = process_fork(parent)) == 0) {
     setpgid(0, 0);
+    get_current_process()->name = strdup("shell");
     shell_start();
   }
   setpgid(id, id);
