@@ -20,7 +20,7 @@ void kprintf(char *fmt, ...) {
   buf[i] = '\0';
   int status = 0;
 
-  if ((status = vfs_fwrite(0, &buf, i)) < 0) {
+  if ((status = vfs_fwrite(stdout, &buf, i)) < 0) {
     err("kprintf: unable to write to file");
   }
 }
@@ -38,13 +38,13 @@ void kprintformat(char *fmt, int size, char *color, ...) {
   buf[size] = '\0';
 
   if (color) {
-    vfs_fwrite(0, color, strlen(color));
+    vfs_fwrite(stdout, color, strlen(color));
   }
-  if ((status = vfs_fwrite(0, &buf, size)) < 0) {
+  if ((status = vfs_fwrite(stdout, &buf, size)) < 0) {
     err("kprintf: unable to write to file");
   }
   if (color) {
-    vfs_fwrite(0, COLOR_RESET, strlen(COLOR_RESET));
+    vfs_fwrite(stdout, COLOR_RESET, strlen(COLOR_RESET));
   }
 }
 
@@ -67,17 +67,17 @@ static void _kreadline(char *buf, uint32_t size, int fd) {
 }
 
 void kreadline(char *buf, uint32_t size) {
-  _kreadline(buf, size, 1);
+  _kreadline(buf, size, stdin);
 }
 
 void kreadterminal(char *buf, uint32_t size) {
-  _kreadline(buf, size, 0);
+  _kreadline(buf, size, stdin);
 }
 
 char kreadchar() {
   char *buf[2];
   
-  _kreadline(buf, 1, 1);
+  _kreadline(buf, 1, stdin);
 
   return buf[0];
 }

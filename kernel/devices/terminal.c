@@ -213,8 +213,14 @@ void terminal_run() {
     err("Cannot open keyboard");
   }
 
-  dup2(1, 0);
-  dup2(2, 1);
+  int copy_tty_master = dup(tty_master);
+  int copy_input_fd = dup(input_fd);
+  
+  dup2(copy_tty_master, stdin);
+  dup2(copy_input_fd, stdout);
+  
+  vfs_close(copy_tty_master);
+  vfs_close(copy_input_fd);
 
   struct key_event ev;
   struct process *parent = get_current_process();
@@ -222,7 +228,9 @@ void terminal_run() {
   int32_t id = 0;
   if ((id = process_fork(parent)) == 0) {
     setpgid(0, 0);
-    get_current_process()->name = strdup("shell");
+    struct process *proc_child = get_current_process();
+    assert(dswap(stdin, stdout) == 0);
+    proc_child->name = strdup("shell");
     shell_start();
   }
   setpgid(id, id);
@@ -230,8 +238,6 @@ void terminal_run() {
   int size = 20;
   char buf[size + 1];
   
-  
-
   while (true) {
   newline:
     char key;

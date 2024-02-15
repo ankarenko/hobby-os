@@ -313,6 +313,22 @@ int clear(char **argv) {
   terminal_clrscr();
 }
 
+int ask(char **argv) {
+  int size = 20;
+  char buf[size];
+  kprintf("To print: ");
+  vfs_fread(1, &buf, size);
+  vfs_fwrite(0, &buf, size);
+  return 0;
+}
+
+int answer(char **argv) {
+  int size = 20;
+  char buf[size];
+  vfs_fread(1, &buf, 20);
+  vfs_fwrite(1, buf, size);
+  return 0;
+}
 
 int exec(void *entry(char**), char* name, char **argv, int gid) {
   // TODO: FORBID 0 DEREFERENCE!
@@ -332,6 +348,10 @@ int exec(void *entry(char**), char* name, char **argv, int gid) {
   parent->tty->pgrp = pid; // set foreground process
 
   return pid;
+}
+
+void test_pipe() {
+  
 }
 
 void cmd_read_file();
@@ -356,7 +376,7 @@ int search_and_run(struct cmd_t *com, int gid) {
     create_system_process(&producer, "producer");
     create_system_process(&consumer, "consumer");
   } else if (strcmp(com->cmd, "ps") == 0) {
-    ret = exec(ps, "ps", com->argv, gid);
+    ret = exec(ps, "ps", com->argv, gid); 
   } if (strcmp(com->cmd, "signal") == 0) {
     ret = exec(signal, "signal", com->argv, gid);
   } else if (strcmp(com->cmd, "time") == 0) {
@@ -367,6 +387,10 @@ int search_and_run(struct cmd_t *com, int gid) {
     ret = exec(clear, "clear", com->argv, gid);
   } else if (strcmp(com->cmd, "cd") == 0) {
     ret = exec(cd, "cd", com->argv, gid);
+  } else if (strcmp(com->cmd, "ask") == 0) {
+    ret = exec(ask, "ask", com->argv, gid);
+  } else if (strcmp(com->cmd, "answer") == 0) {
+    ret = exec(answer, "answer", com->argv, gid);
   } else if (strcmp(com->cmd, "touch") == 0) {
     ret = exec(touch, "touch", com->argv, gid);
   } else if (strcmp(com->cmd, "write") == 0) {
@@ -390,7 +414,7 @@ int search_and_run(struct cmd_t *com, int gid) {
   } else if (strcmp(com->cmd, "") == 0) {
     goto clean;
   } else {
-    kprintf("\ncommand not found: %s", com->cmd);
+    kprintf("\ncommand not found: %s\n", com->cmd);
     goto clean;
   }
 clean:
@@ -457,17 +481,23 @@ bool interpret_line(char* line) {
   int gid = -1;
   log("start command");
   int pid = -1;
+  struct process *shell_proc = get_current_process();
+  
   for (int i = 0; i < command_i; ++i) {
-    struct cmd_t com = commands[i];
+    struct cmd_t *com = &commands[i];
 
-    if (strcmp(com.cmd, "|") == 0) {
+    if (strcmp(com->cmd, "|") == 0) {
+      //int fd[2];
+      //do_pipe(&fd);
+      
       continue;
-    } else if (strcmp(com.cmd, "&&") == 0) {
+    } else if (strcmp(com->cmd, "&&") == 0) {
       do_wait(P_PID, pid, &inop, WEXITED | WSSTOPPED);
+      
       continue;
     }
 
-    pid = search_and_run(&com, gid);
+    pid = search_and_run(com, gid);
     
     if (gid == -1) {
       gid = pid;
@@ -482,7 +512,7 @@ bool interpret_line(char* line) {
   log("end command");
 
  
-  struct process *shell_proc = get_current_process();
+  
   int ret = 0;
 
   // wait all childs
@@ -599,7 +629,7 @@ void shell_start() {
   int size = N_TTY_BUF_SIZE - 1;
   char *line = kcalloc(size, sizeof(char));
   struct process* proc = get_current_process();
-
+  
   while (true) {
 newline:
     kprintf("(%s)root@%s: ", 

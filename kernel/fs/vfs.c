@@ -335,14 +335,22 @@ struct vfs_mount* do_mount(const char* fstype, int flags, const char* path) {
 }
 
 int32_t vfs_mkdir(const char* path, mode_t mode) {
-  int ret = vfs_open(path, O_RDONLY);
-  if (ret < 0 && ret != -ENOENT)
-    return ret;
-  else if (ret >= 0)
-    return -EEXIST;
+  int ret = -1;
+  int fd = vfs_open(path, O_RDONLY);
+  
+  if (fd < 0 && fd != -ENOENT) {
+    ret = fd;
+    goto close;
+  } else if (fd >= 0) {
+    ret = -EEXIST;
+    goto close;
+  }
 
   struct nameidata nd;
-  return vfs_jmp(&nd, path, O_CREAT, mode | S_IFDIR);
+  ret = vfs_jmp(&nd, path, O_CREAT, mode | S_IFDIR);
+close:
+  vfs_close(fd);
+  return ret;
 }
 
 void vfs_init(struct vfs_file_system_type* fs, char* dev_name) {

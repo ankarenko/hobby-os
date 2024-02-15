@@ -415,8 +415,25 @@ uint32_t get_next_sid() {
 
 int32_t dup2(int oldfd, int newfd) {
   struct process *current_process = get_current_process();
+  if (current_process->files->fd[newfd]) {
+    vfs_close(newfd);
+  }
   current_process->files->fd[newfd] = current_process->files->fd[oldfd];
+  atomic_inc(&current_process->files->fd[oldfd]->f_count);
   return newfd;
+}
+
+int32_t dup(int oldfd) {
+  int newfd = find_unused_fd_slot();
+  return dup2(oldfd, newfd);
+}
+
+int32_t dswap(int fd1, int fd2) {
+  int tmp = dup(fd1);
+  dup2(fd2, fd1);
+  dup2(tmp, fd2);
+  vfs_close(tmp);
+  return 0;
 }
 
 static void child_return_fork() {
