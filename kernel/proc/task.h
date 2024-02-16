@@ -196,6 +196,9 @@ uint32_t get_next_sid();
 int32_t dup(int oldfd);
 int32_t process_execve(const char *path, char *const argv[], char *const envp[]);
 
+#define process_for_each_entry(iter) \
+  list_for_each_entry(iter, get_proc_list(), sibling)
+
 // sched.c
 void lock_scheduler();
 void unlock_scheduler();

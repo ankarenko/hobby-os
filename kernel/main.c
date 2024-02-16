@@ -306,21 +306,28 @@ int clear(char **argv) {
 }
 
 int ask(char **argv) {
-  int size = 20;
-  char buf[size];
-  int read = -1;
-  vfs_fwrite(stderr, "To print: ", 10);
-  vfs_fread(stdin, &buf, size);
-  vfs_fwrite(stdout, &buf, size);
+  while (true) {
+    int size = 20;
+    char buf[size];
+    buf[0] = '\0';
+    int read = -1;
+    vfs_fwrite(stderr, "\nto print: ", 11);
+    vfs_fread(stdin, &buf, size);
+    vfs_fwrite(stdout, &buf, size);
+    thread_sleep(1000);
+  }
   return 0;
 }
 
 int answer(char **argv) {
-  int size = 20;
-  char buf[size];
-  int read = vfs_fread(stdin, &buf, size);
-  vfs_fwrite(stdout, "answer:", 7);
-  vfs_fwrite(stdout, buf, read);
+  while (true) {
+    int size = 20;
+    char buf[size];
+    buf[0] = '\0';
+    int read = vfs_fread(stdin, &buf, size);
+    vfs_fwrite(stdout, "\nanswer:", 8);
+    vfs_fwrite(stdout, buf, read);
+  }
   return 0;
 }
 
@@ -332,14 +339,14 @@ int exec(void *entry(char**), char* name, char **argv, int gid) {
   if ((pid = process_fork(parent)) == 0) {
     struct process *cur_proc = get_current_process();
     cur_proc->name = name;
-    parent->tty->pgrp = cur_proc->gid;
     setpgid(0, gid == -1? 0 : gid);
-    
+    parent->tty->pgrp = cur_proc->gid;
     entry(argv);
     do_exit(0);
   }
-  setpgid(pid, gid == -1? pid : gid);
-  parent->tty->pgrp = pid; // set foreground process
+  int id = gid == -1? pid : gid;
+  setpgid(pid, id);
+  parent->tty->pgrp = id; // set foreground process
 
   return pid;
 }

@@ -1,14 +1,14 @@
 #include <stdint.h>
 
-#include "kernel/util/list.h"
+#include "kernel/cpu/gdt.h"
 #include "kernel/cpu/hal.h"
 #include "kernel/cpu/tss.h"
-#include "kernel/cpu/gdt.h"
 #include "kernel/ipc/signal.h"
-#include "kernel/system/timer.h"
-#include "kernel/util/math.h"
 #include "kernel/proc/task.h"
+#include "kernel/system/timer.h"
 #include "kernel/util/debug.h"
+#include "kernel/util/list.h"
+#include "kernel/util/math.h"
 
 struct list_head process_list;
 
@@ -28,16 +28,15 @@ static int32_t scheduler_lock_counter = 0;
 
 void lock_scheduler() {
   disable_interrupts();
-	scheduler_lock_counter++;
+  scheduler_lock_counter++;
 }
 
 void unlock_scheduler() {
-
   assert(scheduler_lock_counter > 0, "scheduler lock cannt be < 0");
 
   scheduler_lock_counter--;
-	if (scheduler_lock_counter == 0)
-		enable_interrupts();
+  if (scheduler_lock_counter == 0)
+    enable_interrupts();
 }
 
 static struct list_head* sched_get_list(enum thread_state state) {
@@ -56,46 +55,46 @@ static struct list_head* sched_get_list(enum thread_state state) {
 static struct thread* get_next_thread_from_list(enum thread_state state) {
   struct list_head* list = sched_get_list(state);
 
-	if (list_empty(list))
-		return NULL;
+  if (list_empty(list))
+    return NULL;
 
-	return list_entry(list->next, struct thread, sched_sibling);
+  return list_entry(list->next, struct thread, sched_sibling);
 }
 
-void sched_push_queue(struct thread *th) {
-  struct list_head *h = sched_get_list(th->state);
+void sched_push_queue(struct thread* th) {
+  struct list_head* h = sched_get_list(th->state);
 
-	if (h)
-		list_add_tail(&th->sched_sibling, h);
+  if (h)
+    list_add_tail(&th->sched_sibling, h);
 }
 
 void sched_remove_queue(struct thread* th) {
-  struct list_head *h = &ready_threads;
+  struct list_head* h = &ready_threads;
 
-	if (h)
-		list_del(&th->sched_sibling);
+  if (h)
+    list_del(&th->sched_sibling);
 }
 
-static struct thread *get_next_thread_to_run() {
-	return get_next_thread_from_list(THREAD_READY);
+static struct thread* get_next_thread_to_run() {
+  return get_next_thread_from_list(THREAD_READY);
 }
 
-static struct thread *pop_next_thread_from_list(enum thread_state state) {
+static struct thread* pop_next_thread_from_list(enum thread_state state) {
   struct list_head* list = sched_get_list(state);
 
-	if (list_empty(list))
-		return NULL;
+  if (list_empty(list))
+    return NULL;
 
-	struct thread* th = list_entry(list->next, struct thread, sched_sibling);
-	list_del(&th->sched_sibling);
-	return th;
+  struct thread* th = list_entry(list->next, struct thread, sched_sibling);
+  list_del(&th->sched_sibling);
+  return th;
 }
 
-static struct thread *pop_next_thread_to_run() {
-	return pop_next_thread_from_list(THREAD_READY);
+static struct thread* pop_next_thread_to_run() {
+  return pop_next_thread_from_list(THREAD_READY);
 }
 
-struct thread *pop_next_thread_to_terminate() {
+struct thread* pop_next_thread_to_terminate() {
   return pop_next_thread_from_list(THREAD_TERMINATED);
 }
 
@@ -112,7 +111,7 @@ void scheduler_tick() {
 }
 
 void thread_remove_state(struct thread* t, enum thread_state state) {
-	t->state &= ~state;
+  t->state &= ~state;
 }
 
 /* schedule new task to run. */
@@ -121,34 +120,34 @@ void schedule() {
 }
 
 void thread_set_state(struct thread* t, enum thread_state state) {
-	t->state = state;
+  t->state = state;
 }
 
-void thread_update(struct thread *t, enum thread_state state) {
+void thread_update(struct thread* t, enum thread_state state) {
   if (t->state == state)
-		return;
+    return;
 
-	lock_scheduler();
-  
+  lock_scheduler();
+
   sched_remove_queue(t);
   t->state = state;
   sched_push_queue(t);
-  
+
   unlock_scheduler();
 }
 
 void thread_sleep(uint32_t ms) {
-	uint32_t exp = get_seconds(NULL) * 1000 + ms;
+  uint32_t exp = get_seconds(NULL) * 1000 + ms;
   mod_timer(&_current_thread->s_timer, exp);
   thread_update(_current_thread, THREAD_WAITING);
   schedule();
 }
 
-void thread_wake(struct thread *th) {
+void thread_wake(struct thread* th) {
   thread_update(th, THREAD_READY);
 }
 
-void thread_wait(struct thread *th) {
+void thread_wait(struct thread* th) {
   thread_update(th, THREAD_WAITING);
 }
 
@@ -167,7 +166,7 @@ bool thread_signal(uint32_t tid, int32_t signum) {
       return true;
     }
   }
-  
+
   return false;
 }
 
@@ -187,14 +186,14 @@ bool thread_kill(uint32_t tid) {
       return true;
     }
   }
-  
+
   return false;
 }
 */
 
 extern uint32_t address_end_of_switch_to_task = 0;
 
-void thread_mark_dead(struct thread *th) {
+void thread_mark_dead(struct thread* th) {
   th->dead_mark = true;
 }
 
@@ -211,7 +210,7 @@ next_thread:
     log("sched: thread with tid %d has released al its locks and about will be killed", th->tid);
     th->state = THREAD_TERMINATED;
     sched_push_queue(th);
-    struct process *gw = get_garbage_worker();
+    struct process* gw = get_garbage_worker();
     assert(gw != NULL);
     wake_up(&gw->wait_chld);
     goto next_thread;
@@ -230,11 +229,11 @@ do_switch:
 
   if (_current_thread->pending /*&& !(_current_thread->flags & TIF_SIGNAL_MANUAL)*/) {
     //_current_thread->handles_signal = true;
-    // allocate space for signal handler trap  
+    // allocate space for signal handler trap
     // kernel_esp always points to the start of kernel stack for a struct thread
-		interrupt_registers *regs = (interrupt_registers *)(_current_thread->kernel_esp - sizeof(interrupt_registers));
-		handle_signal(regs, _current_thread->blocked);
-	}
+    interrupt_registers* regs = (interrupt_registers*)(_current_thread->kernel_esp - sizeof(interrupt_registers));
+    handle_signal(regs, _current_thread->blocked);
+  }
 }
 
 void sched_init() {

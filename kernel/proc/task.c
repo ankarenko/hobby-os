@@ -122,7 +122,7 @@ static void thread_wakeup_timer(struct sleep_timer *timer) {
 
 struct process *find_process_by_pid(pid_t pid) {
 	struct process *iter;
-  list_for_each_entry(iter, get_proc_list(), sibling) {
+  process_for_each_entry(iter) {
     if (iter->pid == pid)
       return iter;
   }

@@ -146,16 +146,39 @@ void handle_signal(interrupt_registers *regs, sig_t restored_sig) {
   }
 }
 
-int do_kill(pid_t pid, int32_t signum) {
-  log("do_kill: killing process %d with signum %d", pid, signum);
-  //do_kill()
-  //do_exit(0);
-  struct process *proc = find_process_by_pid(-pid);
-  if (proc == NULL) {
-    assert_not_reached("do_kill: process with pid: %d doesn't exist", pid);
-  }
+static void kill_process(struct process *proc) {
+  log("Send kill signal to pid: %d in gid: %d", proc->pid, proc->gid);
   struct thread *th = list_first_entry(&proc->threads, struct thread, child);
   thread_signal(th->tid, SIGKILL);
+}
+
+int do_kill(pid_t pid, int32_t signum) {
+  lock_scheduler();
+  bool is_pgid = false;
+  if (pid < 0) {
+    log("do_kill: killing GROUP PROCESS %d with signum %d", -pid, signum);
+    
+    struct process *iter = NULL;
+    process_for_each_entry(iter) {
+      if (iter->gid == -pid) {
+        kill_process(iter);
+      }
+    }
+
+  } else if (pid == 0) {
+    assert_not_reached();
+  } else if (pid > 0) {
+    log("do_kill: killing PROCESS %d with signum %d", pid, signum);
+    struct process *proc = find_process_by_pid(-pid);
+    if (proc == NULL) {
+      assert_not_reached("do_kill: process with pid: %d doesn't exist", pid);
+    }
+
+    kill_process(proc);
+  } 
+  
+  unlock_scheduler();
+  
 }
 
 void sigreturn(interrupt_registers *regs) {

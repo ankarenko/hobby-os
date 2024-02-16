@@ -94,6 +94,7 @@ struct vfs_file_operations {
   int32_t (*close)(struct vfs_file*);
   off_t (*llseek)(struct vfs_file* file, off_t ppos, int);
   int (*release)(struct vfs_inode *inode, struct vfs_file *file);
+  int (*ioctl)(struct vfs_inode *inode, struct vfs_file *file, unsigned int cmd, unsigned long arg);
 };
 
 struct vfs_filesystem {
