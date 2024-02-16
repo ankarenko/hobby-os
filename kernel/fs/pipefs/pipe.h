@@ -9,7 +9,8 @@
 
 struct pipe {
 	struct circular_buf_t *buf;
-	struct semaphore* mutex;
+	struct semaphore *mutex;
+  struct semaphore *to_read;
 	uint32_t files;
 	uint32_t readers;
 	uint32_t writers;

@@ -213,14 +213,22 @@ void terminal_run() {
     err("Cannot open keyboard");
   }
 
+  int err_fd;
+  if ((err_fd = vfs_open("/dev/serial0", O_WRONLY)) < 0) {
+    err("Cannot open serial");
+  }
+
   int copy_tty_master = dup(tty_master);
   int copy_input_fd = dup(input_fd);
+  int copy_error_fd = dup(err_fd);
   
   dup2(copy_tty_master, stdin);
   dup2(copy_input_fd, stdout);
+  dup2(copy_error_fd, stderr);
   
   vfs_close(copy_tty_master);
   vfs_close(copy_input_fd);
+  vfs_close(copy_error_fd);
 
   struct key_event ev;
   struct process *parent = get_current_process();

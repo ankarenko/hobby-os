@@ -301,14 +301,6 @@ void print_time(char **argv) {
   kprintf("\nCurrent time (UTC): %d:%d:%d, %d.%d.%d", t->hour, t->minute, t->second, t->day, t->month, t->year);
 }
 
-void pipe_ask() {
-
-}
-
-void pipe_answer() {
-
-}
-
 int clear(char **argv) {
   terminal_clrscr();
 }
@@ -316,17 +308,19 @@ int clear(char **argv) {
 int ask(char **argv) {
   int size = 20;
   char buf[size];
-  kprintf("To print: ");
-  vfs_fread(1, &buf, size);
-  vfs_fwrite(0, &buf, size);
+  int read = -1;
+  vfs_fwrite(stderr, "To print: ", 10);
+  vfs_fread(stdin, &buf, size);
+  vfs_fwrite(stdout, &buf, size);
   return 0;
 }
 
 int answer(char **argv) {
   int size = 20;
   char buf[size];
-  vfs_fread(1, &buf, 20);
-  vfs_fwrite(1, buf, size);
+  int read = vfs_fread(stdin, &buf, size);
+  vfs_fwrite(stdout, "answer:", 7);
+  vfs_fwrite(stdout, buf, read);
   return 0;
 }
 
@@ -350,10 +344,6 @@ int exec(void *entry(char**), char* name, char **argv, int gid) {
   return pid;
 }
 
-void test_pipe() {
-  
-}
-
 void cmd_read_file();
 
 #define CMD_MAX 5
@@ -363,6 +353,55 @@ struct cmd_t {
   char *argv[PARAM_MAX];
   char *cmd;
 };
+
+void test_pipe() {
+  struct infop inop;
+  struct process *shell_proc = get_current_process();
+
+  int pipe_fd[2];
+
+  if (do_pipe(&pipe_fd) != 0) {
+    assert_not_reached();
+  }
+
+  int pid = 0;
+  int gid = 0;
+  
+  if ((pid = process_fork(shell_proc)) == 0) {
+    struct process *cur_proc = get_current_process();
+    cur_proc->name = strdup("ask");
+    setpgid(0, 0);
+    shell_proc->tty->pgrp = cur_proc->gid;
+    int fd_out = dup(stdout);
+    dup2(pipe_fd[1], stdout);
+    dup2(fd_out, stderr);
+
+    vfs_close(pipe_fd[0]);
+    vfs_close(fd_out);
+    
+    ask(NULL);
+    do_exit(0);
+  }
+  gid = pid;
+  setpgid(pid, gid);
+
+  if ((pid = process_fork(shell_proc)) == 0) {
+    struct process *cur_proc = get_current_process();
+    cur_proc->name = strdup("answer");
+    setpgid(0, gid);
+    dup2(pipe_fd[0], stdin);
+    vfs_close(pipe_fd[1]);
+    answer(NULL);
+    do_exit(0);
+  }
+  setpgid(pid, gid);
+  shell_proc->tty->pgrp = gid; // set foreground process group
+  
+  // wait all childs
+  int ret = -1;
+  while ((ret = do_wait(P_PGID, gid, &inop, WEXITED | WSSTOPPED)) > 0) {}
+  shell_proc->tty->pgrp = shell_proc->gid;
+}
 
 int search_and_run(struct cmd_t *com, int gid) {
   int ret = -1;
@@ -377,7 +416,7 @@ int search_and_run(struct cmd_t *com, int gid) {
     create_system_process(&consumer, "consumer");
   } else if (strcmp(com->cmd, "ps") == 0) {
     ret = exec(ps, "ps", com->argv, gid); 
-  } if (strcmp(com->cmd, "signal") == 0) {
+  } else if (strcmp(com->cmd, "signal") == 0) {
     ret = exec(signal, "signal", com->argv, gid);
   } else if (strcmp(com->cmd, "time") == 0) {
     ret = exec(print_time, "print_time", com->argv, gid);
@@ -420,6 +459,7 @@ int search_and_run(struct cmd_t *com, int gid) {
 clean:
   return ret;
 }
+
 
 
 static struct cmd_t commands[CMD_MAX];
@@ -487,13 +527,14 @@ bool interpret_line(char* line) {
     struct cmd_t *com = &commands[i];
 
     if (strcmp(com->cmd, "|") == 0) {
-      //int fd[2];
-      //do_pipe(&fd);
       
       continue;
     } else if (strcmp(com->cmd, "&&") == 0) {
       do_wait(P_PID, pid, &inop, WEXITED | WSSTOPPED);
       
+      continue;
+    } else if (strcmp(com->cmd, "pipe") == 0) {
+      test_pipe();
       continue;
     }
 

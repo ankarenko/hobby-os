@@ -11,14 +11,18 @@ static int32_t pipe_read(struct vfs_file* file, uint8_t* buffer, uint32_t length
 	struct pipe *p = file->f_dentry->d_inode->i_pipe;
 
   int i = 0;
+  semaphore_down(p->to_read);
 	semaphore_up(p->mutex);
-  for (int i = 0; i < length; ++i) {
+  for (i = 0; i < length; ++i) {
     if (circular_buf_get(p->buf, buffer + i) < 0) {
       break;
     }
   }
 	semaphore_down(p->mutex);
-
+  if (!circular_buf_empty(p->buf)) {
+    semaphore_up(p->to_read);
+  }
+  buffer[i] = '\0';
   return i;
 }
 
@@ -32,7 +36,13 @@ static uint32_t pipe_write(struct vfs_file *file, const char *buf, size_t count,
   for (int i = 0; i < count; ++i) {
     circular_buf_put(p->buf, buf[i]);
   }
+  
+  if (!circular_buf_empty(p->buf)) {
+    semaphore_up(p->to_read);
+  }
+
   semaphore_down(p->mutex);
+
   return count;
 }
 
@@ -60,6 +70,7 @@ static int pipe_release(struct vfs_inode *inode, struct vfs_file *file) {
 		inode->i_pipe = NULL;
 		circular_buf_free(p->buf);
     semaphore_free(p->mutex);
+    semaphore_free(p->to_read);
 		kfree(p);
 	}
 

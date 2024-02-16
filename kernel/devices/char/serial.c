@@ -64,7 +64,7 @@ static struct tty_operations serial_ops = {
 void serial_init() {
   serial_driver = alloc_tty_driver(sizeof(serports) / sizeof(int));
   serial_driver->driver_name = "serial";
-  serial_driver->name = "tty";
+  serial_driver->name = "serial";
   serial_driver->major = TTY_MAJOR;
   serial_driver->minor_start = SERIAL_MINOR_BASE;
   serial_driver->type = TTY_DRIVER_TYPE_SERIAL;
