@@ -192,7 +192,6 @@ int32_t dswap(int fd1, int fd2);
 struct process *find_process_by_pid(pid_t pid);
 int32_t setpgid(pid_t pid, pid_t pgid);
 struct process *get_init_proc();
-uint32_t get_next_sid();
 int32_t dup(int oldfd);
 int32_t process_execve(const char *path, char *const argv[], char *const envp[]);
 

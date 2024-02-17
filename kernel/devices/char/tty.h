@@ -157,7 +157,7 @@ struct tty_ldisc {
 	uint32_t (*write)(struct tty_struct *tty, struct vfs_file *file, const char *buf, size_t nr);
 	int (*receive_room)(struct tty_struct *tty);
 	void (*receive_buf)(struct tty_struct *tty, const char *cp, int count);
-	//unsigned int (*poll)(struct tty_struct *tty, struct vfs_file *, struct poll_table *);
+	unsigned int (*poll)(struct tty_struct *tty, struct vfs_file *, struct poll_table *);
 };
 
 struct tty_driver {

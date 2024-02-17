@@ -20,4 +20,9 @@
 #define TIOCMIWAIT 0x5491	   /* wait for a change on serial input line(s) */
 #define TIOCGICOUNT 0x5492	   /* read serial port inline interrupt counts */
 
+
+/* TODO: rewrite accotding to POSIX */
+#define TIOCSPGRP 1 //_IOW('t', 118, int) /* set pgrp of tty */
+#define TIOCGPGRP 2 //_IOR('t', 119, int) /* get pgrp of tty */
+
 #endif

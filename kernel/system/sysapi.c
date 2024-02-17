@@ -9,6 +9,7 @@
 #include "kernel/system/time.h"
 #include "kernel/cpu/hal.h"
 #include "kernel/ipc/signal.h"
+#include "kernel/fs/poll.h"
 
 #define __NR_exit 1
 #define __NR_fork 2
@@ -25,6 +26,7 @@
 #define __NR_kill 37
 #define __NR_pipe 42
 #define __NR_signal 48
+#define __NR_ioctl 54
 #define __NR_setpgid 57
 #define __NR_dup2 63
 #define __NR_getpgrp 65
@@ -37,6 +39,7 @@
 #define __NR_getpgid 132
 #define __NR_getsid 147
 #define __NR_nanosleep 162
+#define __NR_poll 168
 #define __NR_waitid 284
 #define __NR_print 0
 
@@ -230,6 +233,20 @@ static int32_t sys_getpid() {
   return get_current_process()->pid;
 }
 
+static int32_t sys_ioctl(int fd, unsigned int cmd, unsigned long arg) {
+  struct process *current_process = get_current_process();
+  struct vfs_file *file = current_process->files->fd[fd];
+
+  if (file && file->f_op->ioctl)
+    return file->f_op->ioctl(file->f_dentry->d_inode, file, cmd, arg);
+
+  return -EINVAL;
+}
+
+static int32_t sys_poll(struct pollfd *fds, uint32_t nfds, int timeout) {
+  return do_poll(fds, nfds, timeout);
+}
+
 static void *syscalls[] = {
   [__NR_exit] = sys_exit,
   [__NR_nanosleep] = sys_nanosleep,
@@ -248,6 +265,8 @@ static void *syscalls[] = {
   [__NR_setpgid] = sys_setpgid,
   [__NR_print] = sys_debug_printf,
   [__NR_lseek] = sys_lseek,
+  [__NR_poll] = sys_poll,
+  [__NR_ioctl] = sys_ioctl,
   [__NR_close] = sys_close,
   [__NR_waitid] = sys_waitid,
   [__NR_setsid] = sys_setsid,

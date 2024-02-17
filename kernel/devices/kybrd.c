@@ -4,6 +4,7 @@
 #include "kernel/cpu/idt.h"
 #include "kernel/util/debug.h"
 #include "kernel/proc/wait.h"
+#include "kernel/fs/poll.h"
 #include "kernel/util/fcntl.h"
 #include "kybrd.h"
 #include "kernel/fs/vfs.h"
@@ -681,9 +682,17 @@ static uint32_t kybrd_read(struct vfs_file *file, char *buf, size_t count, off_t
 	return 0;
 }
 
+static unsigned int kybrd_poll(struct vfs_file *file, struct poll_table *pt) {
+	struct kybrd_inode *mi = (struct kybrd_inode *)file->private_data;
+	poll_wait(file, &hwait, pt);
+
+	return mi->ready ? (POLLIN | POLLRDNORM) : 0;
+}
+
 struct vfs_file_operations kybrd_fops = {
   .open = kybrd_open,
 	.read = kybrd_read,
+  .poll = kybrd_poll
 };
 
 static struct char_device cdev_kybrd = (struct char_device)DECLARE_CHRDEV("kybrd", KYBRD_MAJOR, 1, 1, &kybrd_fops);

@@ -62,25 +62,14 @@ static struct tty_struct *create_tty_struct(struct tty_driver *driver, int idx) 
   return tty;
 }
 
-static int ptmx_open(struct vfs_inode *inode, struct vfs_file *file) {
-  int index = get_next_pty_number();
-  // master
-  struct tty_struct *ttym = create_tty_struct(ptm_driver, index);
-  file->private_data = ttym;
-  ttym->driver->tops->open(ttym, file);
-  // tiocsctty(ttym, 0);
+static unsigned int tty_poll(struct vfs_file *file, struct poll_table *pt) {
+	struct tty_struct *tty = (struct tty_struct *)file->private_data;
+	struct tty_ldisc *ld = tty->ldisc;
 
-  // slave
-  struct tty_struct *ttys = create_tty_struct(pts_driver, index);
-  ttym->link = ttys;
-  ttys->link = ttym;
+	if (!tty || !ld->poll)
+		return -EIO;
 
-  char path[sizeof(PATH_DEV) + SPECNAMELEN] = {0};
-  sprintf(path, "/dev/%s", ttys->name);
-  int dev = MKDEV(UNIX98_PTY_SLAVE_MAJOR, index);
-  vfs_mknod(path, S_IFCHR, dev);
-
-  return 0;
+	return ld->poll(tty, file, pt);
 }
 
 static int tiocsctty(struct tty_struct *tty, int arg) {
@@ -109,6 +98,50 @@ static int tiocsctty(struct tty_struct *tty, int arg) {
   return 0;
 }
 
+static int ptmx_open(struct vfs_inode *inode, struct vfs_file *file) {
+  int index = get_next_pty_number();
+  // master
+  struct tty_struct *ttym = create_tty_struct(ptm_driver, index);
+  file->private_data = ttym;
+  ttym->driver->tops->open(ttym, file);
+  assert(tiocsctty(ttym, 0) == 0);
+
+  // slave
+  struct tty_struct *ttys = create_tty_struct(pts_driver, index);
+  ttym->link = ttys;
+  ttys->link = ttym;
+
+  char path[sizeof(PATH_DEV) + SPECNAMELEN] = {0};
+  sprintf(path, "/dev/%s", ttys->name);
+  int dev = MKDEV(UNIX98_PTY_SLAVE_MAJOR, index);
+  vfs_mknod(path, S_IFCHR, dev);
+
+  return 0;
+}
+
+static int tiocgpgrp(struct tty_struct *tty, int arg) {
+  pid_t *pgrp = (pid_t *)arg;
+
+  if (get_current_process()->tty != tty)
+    return -ENOTTY;
+
+  if (pgrp)
+    *pgrp = tty->pgrp;
+  return 0;
+}
+
+static int tiocspgrp(struct tty_struct *tty, int arg) {
+  pid_t pgrp = *(uint32_t *)arg;
+  struct process *p = find_process_by_pid(pgrp);
+
+  if (!p)
+    return -EINVAL;
+  if (tty->session != p->sid)
+    return -EPERM;
+  tty->pgrp = pgrp;
+  return 0;
+}
+
 /*
   https://man7.org/linux/man-pages/man2/ioctl_tty.2.html
 */
@@ -119,9 +152,9 @@ static int tty_ioctl(struct vfs_inode *inode, struct vfs_file *file, unsigned in
     return -ENODEV;
 
   switch (cmd) {
-    //case TCGETS:
-    //  return tcgets(tty, arg);
-    // TODO: 2020-11-26 Implement different actions based on TCSETS, TCSETSW and TCSETSF
+    // case TCGETS:
+    //   return tcgets(tty, arg);
+    //  TODO: 2020-11-26 Implement different actions based on TCSETS, TCSETSW and TCSETSF
     /*
     case TCSETS:
     case TCSETSW:
@@ -130,11 +163,14 @@ static int tty_ioctl(struct vfs_inode *inode, struct vfs_file *file, unsigned in
     */
     case TIOCSCTTY:
       return tiocsctty(tty, arg);
-    /*
+
     case TIOCGPGRP:
       return tiocgpgrp(tty, arg);
+    
     case TIOCSPGRP:
       return tiocspgrp(tty, arg);
+
+    /*
     case FIONREAD:
       return fionread(tty, arg);
     case TIOCGWINSZ:
@@ -160,8 +196,9 @@ static int tty_open(struct vfs_inode *inode, struct vfs_file *file) {
     tty = current_process->tty;
   else if (MAJOR(dev) == TTY_MAJOR && MINOR(dev) >= SERIAL_MINOR_BASE) {
     tty = find_tty_from_driver(serial_driver, MINOR(dev));
-    if (!tty)
+    if (!tty) {
       tty = create_tty_struct(serial_driver, MINOR(dev) - SERIAL_MINOR_BASE);
+    }
   }
 
   if (tty && tty->driver->tops->open)
@@ -198,14 +235,16 @@ static struct vfs_file_operations tty_fops = {
   .open = tty_open,
   .read = tty_read,
   .write = tty_write,
-  .ioctl = tty_ioctl
+  .ioctl = tty_ioctl,
+  .poll = tty_poll
 };
 
 static struct vfs_file_operations ptmx_fops = {
   .open = ptmx_open,
   .read = tty_read,
   .write = tty_write,
-  .ioctl = tty_ioctl
+  .ioctl = tty_ioctl,
+  .poll = tty_poll
 };
 
 int tty_register_driver(struct tty_driver *driver) {

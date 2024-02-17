@@ -19,6 +19,7 @@
 #include "kernel/proc/task.h"
 #include "kernel/system/sysapi.h"
 #include "kernel/system/time.h"
+#include "kernel/util/ioctls.h"
 #include "kernel/util/ctype.h"
 #include "kernel/util/debug.h"
 #include "kernel/util/errno.h"
@@ -331,6 +332,19 @@ int answer(char **argv) {
   return 0;
 }
 
+void make_foreground() {
+  struct process *current_process = get_current_process();
+  struct vfs_file *file_in = current_process->files->fd[stdin];
+  struct vfs_file *file_out = current_process->files->fd[stdout];
+  
+  if (
+    file_in->f_op->ioctl(NULL, file_in, TIOCSPGRP, 0) < 0 && 
+    file_out->f_op->ioctl(NULL, file_out, TIOCSPGRP, 0) < 0
+  ) {
+    assert_not_reached();
+  }
+}
+
 int exec(void *entry(char**), char* name, char **argv, int gid) {
   // TODO: FORBID 0 DEREFERENCE!
   struct process *parent = get_current_process();
@@ -340,6 +354,7 @@ int exec(void *entry(char**), char* name, char **argv, int gid) {
     struct process *cur_proc = get_current_process();
     cur_proc->name = name;
     setpgid(0, gid == -1? 0 : gid);
+    
     parent->tty->pgrp = cur_proc->gid;
     entry(argv);
     do_exit(0);
@@ -722,9 +737,11 @@ void init_process() {
   // NOTE: calling setpgid twice seems redudant but it eluminates race conditions
   // caused by not knowing whether the parent or the child is selected by the scheduler
   if ((id = process_fork(parent)) == 0) {
+    struct process *cur_proc = get_current_process();
     setpgid(0, 0);
-    get_current_process()->sid = get_next_sid();
-    get_current_process()->name = strdup("term");
+    cur_proc->sid = cur_proc->pid;
+    cur_proc->name = strdup("term");
+    assert(cur_proc->sid == cur_proc->gid && cur_proc->gid == cur_proc->pid);
     terminal_run();
   }
   setpgid(id, id); 

@@ -200,16 +200,17 @@ extern void shell_start();
 
 void terminal_run() {
   log("terminal: initializing");
+  struct process *parent = get_current_process();
   
   terminal_initialize();
-  int tty_master = 0;
+  int master_fd = 0;
   // returns fd of a master terminal
-  if ((tty_master = vfs_open("/dev/ptmx", O_RDONLY)) < 0) {
+  if ((master_fd = vfs_open("/dev/ptmx", O_RDONLY)) < 0) {
     err("Unable to open ptmx");
   }
 
-  int input_fd;
-  if ((input_fd = vfs_open("/dev/pts/0", O_RDONLY)) < 0) {
+  int slave_fd;
+  if ((slave_fd = vfs_open("/dev/pts/0", O_RDONLY)) < 0) {
     err("Cannot open keyboard");
   }
 
@@ -218,26 +219,26 @@ void terminal_run() {
     err("Cannot open serial");
   }
 
-  int copy_tty_master = dup(tty_master);
-  int copy_input_fd = dup(input_fd);
-  int copy_error_fd = dup(err_fd);
+  int copy_master_fd = dup(master_fd);
+  int copy_slave_fd = dup(slave_fd);
+  int copy_serial_fd = dup(err_fd);
   
-  dup2(copy_tty_master, stdin);
-  dup2(copy_input_fd, stdout);
-  dup2(copy_error_fd, stderr);
+  dup2(copy_master_fd, stdin);
+  dup2(copy_slave_fd, stdout);
+  dup2(copy_serial_fd, stderr);
   
-  vfs_close(copy_tty_master);
-  vfs_close(copy_input_fd);
-  vfs_close(copy_error_fd);
+  vfs_close(copy_master_fd);
+  vfs_close(copy_slave_fd);
+  vfs_close(copy_serial_fd);
 
   struct key_event ev;
-  struct process *parent = get_current_process();
 
   int32_t id = 0;
   if ((id = process_fork(parent)) == 0) {
     setpgid(0, 0);
     struct process *proc_child = get_current_process();
     assert(dswap(stdin, stdout) == 0);
+    
     proc_child->name = strdup("shell");
     shell_start();
   }

@@ -164,11 +164,16 @@ static uint32_t ntty_write(struct tty_struct *tty, struct vfs_file *file, const 
   return nr;
 }
 
+static unsigned int ntty_poll(struct tty_struct *tty, struct vfs_file *file, struct poll_table *ptable) {
+	assert_not_implemented();
+}
+
 struct tty_ldisc tty_ldisc_N_TTY_canon = {
   .magic = TTY_LDISC_MAGIC,
   .open = ntty_open,
   .read = ntty_read,
   .write = ntty_write,
   .receive_buf = ntty_receive_buf,
-  .close = ntty_close
+  .close = ntty_close,
+  .poll = ntty_poll
 };

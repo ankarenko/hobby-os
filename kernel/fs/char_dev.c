@@ -28,6 +28,17 @@ static struct char_device *get_chrdev(dev_t dev) {
   return NULL;
 }
 
+static int chrdev_ioctl(struct vfs_inode *inode, struct vfs_file *file, unsigned int cmd, unsigned long arg) {
+	struct char_device *cdev = get_chrdev(file->f_dentry->d_inode->i_rdev);
+	if (cdev == NULL)
+		return -ENODEV;
+
+	if (cdev->f_ops->ioctl)
+		return cdev->f_ops->ioctl(inode, file, cmd, arg);
+
+	return -EINVAL;
+}
+
 int register_chrdev(struct char_device *new_cdev) {
   struct char_device *exist = get_chrdev(new_cdev->dev);
   if (exist == NULL) {
@@ -94,7 +105,8 @@ struct vfs_file_operations def_chr_fops = {
   .open = chrdev_open,
   .read = chrdev_read,
   .write = chrdev_write,
-  .llseek = chrdev_llseek
+  .llseek = chrdev_llseek,
+  .ioctl = chrdev_ioctl
 };
 
 void chrdev_init() {

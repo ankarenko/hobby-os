@@ -409,10 +409,6 @@ static files_struct *clone_file_descriptor_table(files_struct *fs_src) {
 extern void load_trap_frame(trap_frame *);
 extern void set_eax(int32_t v);
 
-uint32_t get_next_sid() {
-  return ++next_sid;
-}
-
 int32_t dup2(int oldfd, int newfd) {
   struct process *current_process = get_current_process();
   if (current_process->files->fd[newfd]) {
