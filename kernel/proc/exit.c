@@ -164,13 +164,6 @@ void garbage_worker_task() {
       wait_until_wakeup(&get_current_process()->wait_chld);
       continue;
     }
-    
-    /*
-    assert(th->state == THREAD_TERMINATED);
-    if (atomic_read(&th->lock_counter) != 0) {
-      th->postpone_kill = true;
-    }
-    */
 
     exit_thread(th);
   }

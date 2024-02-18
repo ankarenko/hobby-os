@@ -8,9 +8,7 @@ static struct pipe *alloc_pipe() {
 	p->writers = 0;
 
   p->mutex = semaphore_alloc(1);
-  p->to_read = semaphore_alloc(1);
-  semaphore_set_zero(p->to_read);
-
+  
 	char *buf = kcalloc(PIPE_SIZE, sizeof(char));
 	p->buf = circular_buf_init(buf, PIPE_SIZE);
 

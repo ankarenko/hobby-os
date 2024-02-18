@@ -193,6 +193,8 @@ struct process *find_process_by_pid(pid_t pid);
 int32_t setpgid(pid_t pid, pid_t pgid);
 struct process *get_init_proc();
 int32_t dup(int oldfd);
+void enter_critical_section();
+void leave_critical_section();
 int32_t process_execve(const char *path, char *const argv[], char *const envp[]);
 
 #define process_for_each_entry(iter) \

@@ -45,6 +45,7 @@ int32_t vfs_fread(int32_t fd, char *buf, uint32_t count) {
 off_t vfs_generic_llseek(struct vfs_file *file, off_t offset, int whence) {
   struct process* cur_proc = get_current_process();
   semaphore_down(cur_proc->files->lock);
+  enter_critical_section();
 	struct vfs_inode *inode = file->f_dentry->d_inode;
 	off_t foffset;
 
@@ -62,12 +63,14 @@ off_t vfs_generic_llseek(struct vfs_file *file, off_t offset, int whence) {
 	file->f_pos = foffset;
 
   semaphore_up(cur_proc->files->lock);
+  leave_critical_section();
 	return foffset;
 }
 
 off_t vfs_flseek(int32_t fd, off_t offset, int whence) {
   struct process* proc = get_current_process();
   semaphore_down(proc->files->lock);
+  enter_critical_section();
   struct vfs_file* file = proc->files->fd[fd];
   int ret = 0;
 
@@ -79,12 +82,14 @@ off_t vfs_flseek(int32_t fd, off_t offset, int whence) {
     ret = -EINVAL;
 
   semaphore_up(proc->files->lock);
+  leave_critical_section();
 	return ret;
 }
 
 uint32_t vfs_fwrite(int32_t fd, char* buf, int32_t count) {
   struct process* cur_proc = get_current_process();
   semaphore_down(cur_proc->files->lock);
+  enter_critical_section();
   struct vfs_file *file = cur_proc->files->fd[fd];
 
   int ret = 0;
@@ -115,5 +120,6 @@ uint32_t vfs_fwrite(int32_t fd, char* buf, int32_t count) {
   */
 exit:
   semaphore_up(cur_proc->files->lock);
+  leave_critical_section();
 	return ret;
 }

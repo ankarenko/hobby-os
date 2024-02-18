@@ -25,6 +25,7 @@
 #define __NR_getpid 20
 #define __NR_kill 37
 #define __NR_pipe 42
+#define __NR_times 43
 #define __NR_signal 48
 #define __NR_ioctl 54
 #define __NR_fcntl 55   
@@ -88,7 +89,7 @@ static void* sys_sbrk(size_t n) {
 }
 
 static int32_t sys_exit() {
-  assert_not_implemented("sys_exit is not implemented");
+  assert_not_implemented("sys_exit");
   /*
   struct thread* cur_thread = get_current_thread();
   thread_kill(cur_thread->tid);
@@ -237,7 +238,7 @@ static int32_t sys_ioctl(int fd, unsigned int cmd, unsigned long arg) {
 
 
 static int32_t sys_execve(const char *pathname, char *const argv[], char *const envp[]) {
-  assert_not_implemented();
+  assert_not_implemented("sys_execve");
   //return process_execve(pathname, argv, envp);
 }
 
@@ -253,6 +254,10 @@ static int32_t sys_fcntl(int fd, int cmd, unsigned long arg) {
   return do_fcntl(fd, cmd, arg);
 }
 
+static int32_t sys_times(struct tms *buffer) {
+  assert_not_implemented("sys_times");
+}
+
 static void *syscalls[] = {
   [__NR_exit] = sys_exit,
   [__NR_nanosleep] = sys_nanosleep,
@@ -265,6 +270,7 @@ static void *syscalls[] = {
   [__NR_fork] = sys_fork,
   [__NR_pipe] = sys_pipe,
   [__NR_time] = sys_time,
+  [__NR_times] = sys_times,
   [__NR_fstat] = sys_fstat,
   [__NR_dup2] = sys_dup2,
   [__NR_waitpid] = sys_waitpid,

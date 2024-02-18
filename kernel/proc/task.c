@@ -519,6 +519,20 @@ pid_t process_fork(struct process* parent) {
   return proc->pid;
 }
 
+/*
+  used to keep track of locks aquired by a thread
+*/
+void enter_critical_section() {
+  atomic_inc(&get_current_thread()->lock_counter);
+}
+
+/*
+  used to keep track of locks aquired by a thread
+*/
+void leave_critical_section() {
+  atomic_dec(&get_current_thread()->lock_counter);
+}
+
 int32_t setpgid(pid_t pid, pid_t pgid) {
   struct process *current_process = get_current_process();
   struct process *p = !pid ? current_process : find_process_by_pid(pid);

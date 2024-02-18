@@ -8,9 +8,9 @@
 #include "kernel/devices/terminal.h"
 #include "kernel/fs/char_dev.h"
 #include "kernel/fs/ext2/ext2.h"
-#include "kernel/locking/semaphore.h"
 #include "kernel/fs/fat32/fat32.h"
 #include "kernel/fs/vfs.h"
+#include "kernel/locking/semaphore.h"
 #include "kernel/memory/kernel_info.h"
 #include "kernel/memory/malloc.h"
 #include "kernel/memory/pmm.h"
@@ -19,15 +19,15 @@
 #include "kernel/proc/task.h"
 #include "kernel/system/sysapi.h"
 #include "kernel/system/time.h"
-#include "kernel/util/ioctls.h"
+#include "kernel/system/timer.h"
 #include "kernel/util/ctype.h"
 #include "kernel/util/debug.h"
 #include "kernel/util/errno.h"
 #include "kernel/util/fcntl.h"
+#include "kernel/util/ioctls.h"
 #include "kernel/util/list.h"
-#include "kernel/system/timer.h"
 #include "kernel/util/math.h"
-
+#include "kernel/util/vsprintf.h"
 #include "multiboot.h"
 #include "test/greatest.h"
 
@@ -36,10 +36,10 @@ extern struct vfs_file_system_type ext2_fs_type;
 void cmd_init();
 void idle_task();
 
-static struct vfs_file* _cur_dir = NULL;
+static struct vfs_file *_cur_dir = NULL;
 
 //! gets next command
-void get_cmd(char* buf, int n) {
+void get_cmd(char *buf, int n) {
   vfs_fread(1, buf, n);
   buf[n] = '\0';
 }
@@ -56,7 +56,7 @@ void kthread() {
 void kthread_fork() {
   int col = 0;
   bool dir = true;
-  
+
   struct process *current_process = get_current_process();
   int parent_id = current_process->pid;
 
@@ -78,7 +78,7 @@ void execve(void *entry()) {
   if (process_fork(parent) == 0) {
     entry();
   }
-  
+
   wait_until_wakeup(&parent->wait_chld);
 }
 
@@ -113,8 +113,8 @@ void touch(char **argv) {
 
 void ps(char **argv) {
   lock_scheduler();
-    
-  struct thread* th = NULL;
+
+  struct thread *th = NULL;
   kprintf("\nthreads ready: [ ");
   list_for_each_entry(th, get_ready_threads(), sched_sibling) {
     kprintf("%d ", th->tid);
@@ -125,12 +125,11 @@ void ps(char **argv) {
     kprintf("%d ", th->tid);
   }
   kprintf("]");
-  
 
   kprintf("\nprocesses:");
-  struct process* proc = NULL;
+  struct process *proc = NULL;
   struct list_head *ls = get_proc_list();
-  
+
   kprintf("\n");
   kprintformat("PID", 5, BLU);
   kprintformat("NAME", 10, NULL);
@@ -138,15 +137,15 @@ void ps(char **argv) {
   kprintformat("SID", 5, NULL);
   kprintformat("PARENT", 10, NULL);
   kprintformat("THREADS", 10, NULL);
-  
+
   list_for_each_entry(proc, ls, sibling) {
     kprintf("\n");
     kprintformat("%d", 5, BLU, proc->pid);
     kprintformat("%s", 10, NULL, proc->name);
     kprintformat("%d", 5, NULL, proc->gid);
     kprintformat("%d", 5, NULL, proc->sid);
-    kprintformat("%d", 10, CYN, proc->parent? proc->parent->pid : -1);
-    
+    kprintformat("%d", 10, CYN, proc->parent ? proc->parent->pid : -1);
+
     if ((proc->state & (EXIT_ZOMBIE)) == 0) {
       kprintf("[");
       list_for_each_entry(th, &proc->threads, child) {
@@ -158,7 +157,6 @@ void ps(char **argv) {
     }
   }
   unlock_scheduler();
-
 }
 
 void write(char **argv) {
@@ -203,12 +201,11 @@ void info(char **argv) {
     kprintf("Stack bottom %X\n", STACK_BOTTOM);
     kprintf("Stack top: %X\n", STACK_TOP);
     kprintf("Kernel end: %X\n", KERNEL_END);
-  } else if (strcmp(argv[0], "memory") == 0) { 
+  } else if (strcmp(argv[0], "memory") == 0) {
     PMM_DEBUG();
   } else {
     kprintf("Invalid param: %s", argv[0]);
   }
-  
 }
 
 void cat(char **argv) {
@@ -222,7 +219,7 @@ void cat(char **argv) {
   }
 
   uint32_t size = 5;
-  uint8_t* buf = kcalloc(size + 1, sizeof(uint8_t));
+  uint8_t *buf = kcalloc(size + 1, sizeof(uint8_t));
   kprintf("\n_____________________________________________\n");
   while (vfs_fread(fd, buf, size) == size) {
     buf[size] = '\0';
@@ -232,7 +229,7 @@ void cat(char **argv) {
 
   vfs_close(fd);
 }
- 
+
 void hello(char **argv) {
   while (1) {
     kprintf("\nHello %s", argv[0]);
@@ -241,7 +238,7 @@ void hello(char **argv) {
 }
 
 void print_time(char **argv) {
-  struct time* t = get_time(0);  // current time
+  struct time *t = get_time(0);  // current time
   kprintf("\nCurrent time (UTC): %d:%d:%d, %d.%d.%d", t->hour, t->minute, t->second, t->day, t->month, t->year);
 }
 
@@ -250,27 +247,35 @@ int clear(char **argv) {
 }
 
 int ask(char **argv) {
+  int i = 0;
+  int size = 64;
+  char buf[size];
+  char question[size];
+  struct process *cur_proc = get_current_process();
+
   while (true) {
-    int size = 20;
-    char buf[size];
-    buf[0] = '\0';
-    int read = -1;
-    vfs_fwrite(stderr, "\nto print: ", 11);
-    vfs_fread(stdin, &buf, size);
-    vfs_fwrite(stdout, &buf, size);
+    snprintf(&buf, size, "\np(%d) %d: question: ", cur_proc->pid, ++i);
+    vfs_fwrite(stderr, buf, strlen(buf));
+    int read = vfs_fread(stdin, &question, size);
+    question[read] = '\0';
+    vfs_fwrite(stdout, &question, read);
     thread_sleep(1000);
   }
   return 0;
 }
 
 int answer(char **argv) {
+  int i = 0;
+  int size = 64;
+  char buf[size];
+  char answ[size];
+  struct process *cur_proc = get_current_process();
+
   while (true) {
-    int size = 20;
-    char buf[size];
-    buf[0] = '\0';
-    int read = vfs_fread(stdin, &buf, size);
-    vfs_fwrite(stdout, "\nanswer:", 8);
-    vfs_fwrite(stdout, buf, read);
+    int read = vfs_fread(stdin, &answ, size);
+    answ[read] = '\0';
+    snprintf(&buf, size, "\np(%d) %d: answer: %s", cur_proc->pid, ++i, answ);
+    vfs_fwrite(stdout, buf, strlen(buf));
   }
   return 0;
 }
@@ -279,32 +284,44 @@ void make_foreground() {
   struct process *current_process = get_current_process();
   struct vfs_file *file_in = current_process->files->fd[stdin];
   struct vfs_file *file_out = current_process->files->fd[stdout];
-  
+
   if (
-    file_in->f_op->ioctl(NULL, file_in, TIOCSPGRP, 0) < 0 && 
-    file_out->f_op->ioctl(NULL, file_out, TIOCSPGRP, 0) < 0
-  ) {
+      file_in->f_op->ioctl(NULL, file_in, TIOCSPGRP, 0) < 0 &&
+      file_out->f_op->ioctl(NULL, file_out, TIOCSPGRP, 0) < 0) {
     assert_not_reached();
   }
 }
 
-int exec(void *entry(char**), char* name, char **argv, int gid) {
+int run_userprogram(char **argv) {
+  struct process *cur_proc = get_current_process();
+  create_elf_process(cur_proc, argv[0]);
+  return 0;
+}
+
+int exec(void *entry(char **), char *name, char **argv, int gid) {
   // TODO: FORBID 0 DEREFERENCE!
   struct process *parent = get_current_process();
   int pid = 0;
-  
+
   if ((pid = process_fork(parent)) == 0) {
+    setpgid(0, gid == -1 ? 0 : gid);
+
     struct process *cur_proc = get_current_process();
-    cur_proc->name = name;
-    setpgid(0, gid == -1? 0 : gid);
-    
+    struct vfs_file *file = cur_proc->files->fd[stdin];
+    assert(file == cur_proc->files->fd[stdout]);
+    cur_proc->name = strdup(name);
+
+    if (file->f_op->ioctl(file->f_dentry->d_inode, file, TIOCSPGRP, &cur_proc->gid) < 0) {
+      assert_not_reached("unable to set foreground process");
+    }
+
     parent->tty->pgrp = cur_proc->gid;
     entry(argv);
     do_exit(0);
   }
-  int id = gid == -1? pid : gid;
+  int id = gid == -1 ? pid : gid;
   setpgid(pid, id);
-  parent->tty->pgrp = id; // set foreground process
+  parent->tty->pgrp = id;  // set foreground process
 
   return pid;
 }
@@ -331,7 +348,7 @@ void test_pipe() {
 
   int pid = 0;
   int gid = 0;
-  
+
   if ((pid = process_fork(shell_proc)) == 0) {
     struct process *cur_proc = get_current_process();
     cur_proc->name = strdup("ask");
@@ -343,7 +360,7 @@ void test_pipe() {
 
     vfs_close(pipe_fd[0]);
     vfs_close(fd_out);
-    
+
     ask(NULL);
     do_exit(0);
   }
@@ -360,11 +377,12 @@ void test_pipe() {
     do_exit(0);
   }
   setpgid(pid, gid);
-  shell_proc->tty->pgrp = gid; // set foreground process group
-  
+  shell_proc->tty->pgrp = gid;  // set foreground process group
+
   // wait all childs
   int ret = -1;
-  while ((ret = do_wait(P_PGID, gid, &inop, WEXITED | WSSTOPPED)) > 0) {}
+  while ((ret = do_wait(P_PGID, gid, &inop, WEXITED | WSSTOPPED)) > 0) {
+  }
   shell_proc->tty->pgrp = shell_proc->gid;
 }
 
@@ -376,7 +394,7 @@ int search_and_run(struct cmd_t *com, int gid) {
     kprintf("\nnew struct thread: ");
     execve(kthread_fork);
   } else if (strcmp(com->cmd, "ps") == 0) {
-    ret = exec(ps, "ps", com->argv, gid); 
+    ret = exec(ps, "ps", com->argv, gid);
   } else if (strcmp(com->cmd, "signal") == 0) {
     ret = exec(signal, "signal", com->argv, gid);
   } else if (strcmp(com->cmd, "time") == 0) {
@@ -406,11 +424,7 @@ int search_and_run(struct cmd_t *com, int gid) {
   } else if (strcmp(com->cmd, "ls") == 0) {
     ret = exec(ls, "ls", com->argv, gid);
   } else if (strcmp(com->cmd, "run") == 0) {
-    char filepath[100];
-    kprintf("path: ");
-    get_cmd(filepath, 100);
-    struct process* cur_proc = get_current_process();
-    create_elf_process(cur_proc, filepath);
+    ret = exec(run_userprogram, com->argv[0], com->argv, gid);
   } else if (strcmp(com->cmd, "") == 0) {
     goto clean;
   } else {
@@ -421,12 +435,10 @@ clean:
   return ret;
 }
 
-
-
 static struct cmd_t commands[CMD_MAX];
 
 //! our simple command parser
-bool interpret_line(char* line) {
+bool interpret_line(char *line) {
   int param_size = PARAM_MAX;
   for (int i = 0; i < CMD_MAX; ++i) {
     commands[i].cmd = NULL;
@@ -436,8 +448,8 @@ bool interpret_line(char* line) {
   }
 
   // Returns first token
-  char* token = strtok(line, " ");
-  
+  char *token = strtok(line, " ");
+
   int param_i = 0;
   int command_i = -1;
   bool parse_command = true;
@@ -455,10 +467,9 @@ bool interpret_line(char* line) {
     token = strtok(NULL, " ");
 
     if (
-      (strlen(token) == 1 && strcmp(token, "|") == 0) ||
-      (strlen(token) == 2 && strcmp(token, "&&") == 0) || 
-      (strlen(token) == 2 && strcmp(token, "||") == 0)
-    ) {
+        (strlen(token) == 1 && strcmp(token, "|") == 0) ||
+        (strlen(token) == 2 && strcmp(token, "&&") == 0) ||
+        (strlen(token) == 2 && strcmp(token, "||") == 0)) {
       command_i++;
       commands[command_i].cmd = strdup(token);
       parse_command = true;
@@ -483,16 +494,15 @@ bool interpret_line(char* line) {
   log("start command");
   int pid = -1;
   struct process *shell_proc = get_current_process();
-  
+
   for (int i = 0; i < command_i; ++i) {
     struct cmd_t *com = &commands[i];
 
     if (strcmp(com->cmd, "|") == 0) {
-      
       continue;
     } else if (strcmp(com->cmd, "&&") == 0) {
       do_wait(P_PID, pid, &inop, WEXITED | WSSTOPPED);
-      
+
       continue;
     } else if (strcmp(com->cmd, "pipe") == 0) {
       test_pipe();
@@ -500,7 +510,7 @@ bool interpret_line(char* line) {
     }
 
     pid = search_and_run(com, gid);
-    
+
     if (gid == -1) {
       gid = pid;
     }
@@ -509,16 +519,14 @@ bool interpret_line(char* line) {
     if (gid == -1) {
       goto clean;
     }
-
   }
   log("end command");
 
- 
-  
   int ret = 0;
 
   // wait all childs
-  while ((ret = do_wait(P_PGID, gid, &inop, WEXITED | WSSTOPPED)) > 0) {}
+  while ((ret = do_wait(P_PGID, gid, &inop, WEXITED | WSSTOPPED)) > 0) {
+  }
   shell_proc->tty->pgrp = shell_proc->gid;
   kprintf("\n");
 clean:
@@ -534,7 +542,6 @@ clean:
       kfree(com.cmd);
       com.cmd = NULL;
     }
-    
   }
   return false;
 }
@@ -553,7 +560,7 @@ void cmd_read_kybrd() {
   }
 
   uint32_t size = sizeof(struct key_event);
-  uint8_t* buf = kcalloc(1, size);
+  uint8_t *buf = kcalloc(1, size);
   kprintf("\n_____________________________________________\n");
   while (vfs_fread(fd, buf, size) >= 0) {
     struct key_event *ev = buf;
@@ -569,7 +576,7 @@ void cmd_read_kybrd() {
 void cmd_read_sect() {
   uint32_t sectornum = 0;
   char sectornumbuf[4];
-  uint8_t* sector = 0;
+  uint8_t *sector = 0;
 
   kprintf("\nPlease type in the sector number [0 is default] \n");
   get_cmd(sectornumbuf, 3);
@@ -589,7 +596,7 @@ void cmd_read_sect() {
       i += 128;
 
       kprintf("\nPress any key to continue\n");
-      //getch();
+      // getch();
     }
   } else
     kprintf("\n*** Error reading sector from disk\n");
@@ -599,6 +606,7 @@ void cmd_read_sect() {
 
 GREATEST_MAIN_DEFS();
 
+/*
 void kybrd_manager() {
   int kybrd_fd = 0;
   if ((kybrd_fd = vfs_open("/dev/input/kybrd", O_RDONLY)) < 0) {
@@ -614,41 +622,40 @@ void kybrd_manager() {
     if (ev.type == KEY_RELEASE) {
       continue;
     }
-    
+
     char c = kkybrd_key_to_ascii(ev.key);
     //log("%c", c);
-    
+
     if (pts_driver) {
       struct tty_struct *pts = list_first_entry(&pts_driver->ttys, struct tty_struct, sibling);
       if (pts != NULL) {
         pts->ldisc->write(pts, NULL, &c, 1);
       }
-    } 
+    }
 
-    
+
     if (ptm_driver) {
       struct tty_struct *ptm = list_first_entry(&ptm_driver->ttys, struct tty_struct, sibling);
       if (ptm != NULL) {
         ptm->ldisc->write(ptm, NULL, &c, 1);
       }
     }
-    
-    
+
+
   }
 }
+*/
 
 void shell_start() {
   int size = N_TTY_BUF_SIZE - 1;
   char *line = kcalloc(size, sizeof(char));
-  struct process* proc = get_current_process();
-  
+  struct process *proc = get_current_process();
+
   while (true) {
-newline:
-    kprintf("\n(%s)root@%s: ", 
-      strcmp(proc->fs->mnt_root->mnt_devname, "/dev/hda") == 0 ? "ext2" : proc->fs->mnt_root->mnt_devname,
-      proc->fs->d_root->d_name
-    );
-    
+  newline:
+    kprintf("\n(%s)root@%s: ",
+            strcmp(proc->fs->mnt_root->mnt_devname, "/dev/hda") == 0 ? "ext2" : proc->fs->mnt_root->mnt_devname,
+            proc->fs->d_root->d_name);
 
     kreadline(line, size);
     interpret_line(line);
@@ -658,22 +665,22 @@ newline:
 
 void init_process() {
   struct process *parent = get_current_process();
-  
+
   if (process_fork(parent) == 0) {
     get_current_process()->name = strdup("garbage");
-    garbage_worker_task();   // 1
+    garbage_worker_task();  // 1
   }
 
   if (process_fork(parent) == 0) {
     get_current_process()->name = strdup("idle");
-    idle_task(); // 2
+    idle_task();  // 2
   }
 
   vfs_init(&ext2_fs_type, "/dev/hda");
   chrdev_init();
 
   kkybrd_install(IRQ1);
-  
+
   tty_init();
 
   /*
@@ -682,7 +689,7 @@ void init_process() {
     kybrd_manager(); // 3
   }
   */
-  
+
   pid_t id = 0;
 
   // NOTE: calling setpgid twice seems redudant but it eluminates race conditions
@@ -695,15 +702,15 @@ void init_process() {
     assert(cur_proc->sid == cur_proc->gid && cur_proc->gid == cur_proc->pid);
     terminal_run();
   }
-  setpgid(id, id); 
-  
+  setpgid(id, id);
+
   // wait until is waken up (should not be waken up)
   wait_until_wakeup(&parent->wait_chld);
-  assert_not_reached(); // no, please no!
+  assert_not_reached();  // no, please no!
 }
 
-void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
-  char** argv = 0;
+void kernel_main(multiboot_info_t *mbd, uint32_t magic) {
+  char **argv = 0;
   int argc = 0;
 
   // setup serial port A for debug
@@ -714,7 +721,7 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
   i86_idt_initialize(0x8);
   install_tss(5, 0x10, 0);
   enable_interrupts();
-  
+
   log("Kernel size: %dKB", (int)(KERNEL_END - KERNEL_START) / 1024);
   log("Ends in 0x%x (DIR: %d, INDEX: %d)", KERNEL_END, PAGE_DIRECTORY_INDEX(KERNEL_END), PAGE_TABLE_INDEX(KERNEL_END));
 
@@ -723,7 +730,7 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic) {
 
   exception_init();
   hal_initialize();
-  
+
   pata_init();
   syscall_init();
 

@@ -1,6 +1,7 @@
 #include "kernel/devices/char/tty.h"
 #include "kernel/locking/semaphore.h"
 #include "kernel/memory/malloc.h"
+#include "kernel/proc/task.h"
 #include "kernel/fs/poll.h"
 #include "kernel/util/debug.h"
 #include "kernel/ipc/signal.h"
@@ -50,7 +51,7 @@ static void ntty_pop_char(struct tty_struct *tty, char *ch) {
 
   semaphore_down(tty->to_read);
   semaphore_down(tty->mutex);
-
+  enter_critical_section();
   *ch = tty->buffer[tty->read_head];
   tty->read_head = N_TTY_BUF_ALIGN(tty->read_head + 1);
   int to_write = !L_ICANON(tty)? 1 : 0;
@@ -62,6 +63,7 @@ static void ntty_pop_char(struct tty_struct *tty, char *ch) {
     semaphore_up_val(tty->to_write, to_write);
     wake_up(&tty->write_wait.list);
   }
+  leave_critical_section();
 }
 
 static uint32_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *buf, size_t nr) {
@@ -87,19 +89,21 @@ static uint32_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *b
 static uint32_t push_buf_raw(struct tty_struct *tty, char c) {
   semaphore_down(tty->to_write);
   semaphore_down(tty->mutex);
+  enter_critical_section();
 
   tty->buffer[tty->read_tail] = c;
   tty->read_tail = N_TTY_BUF_ALIGN(tty->read_tail + 1);
 
   semaphore_up(tty->mutex);
   semaphore_up(tty->to_read);
+  leave_critical_section();
   wake_up(&tty->read_wait.list);
 }
 
 static uint32_t push_buf_canon(struct tty_struct *tty, char c) {
   semaphore_down(tty->to_write);
   semaphore_down(tty->mutex);
-
+  enter_critical_section();
   tty->buffer[tty->read_tail] = c;
   tty->read_tail = N_TTY_BUF_ALIGN(tty->read_tail + 1);
 
@@ -116,14 +120,17 @@ static uint32_t push_buf_canon(struct tty_struct *tty, char c) {
     semaphore_up_val(tty->to_read, to_read);
     wake_up(&tty->read_wait.list);
   }
+  leave_critical_section();
 }
 
 static void eraser(struct tty_struct *tty, char ch) {
   semaphore_down(tty->mutex);
+  enter_critical_section();
   if (tty->read_tail != tty->read_head) {
     tty->read_tail = N_TTY_BUF_ALIGN(tty->read_tail - 1);
   }
   semaphore_up(tty->mutex);
+  leave_critical_section();
 }
 
 static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
@@ -154,8 +161,10 @@ static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
           sig = SIGTSTP;
 
         if (valid_signal(sig) && sig > 0) {
-          if (tty->pgrp > 0) 
+          if (tty->pgrp > 0) {
+            // TODO: doesnt work with producer - consumer and leads to infinite block
             do_kill(-tty->pgrp, sig);
+          }
           continue;
         }
       }

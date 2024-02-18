@@ -225,6 +225,7 @@ next_thread:
 do_switch:
   // INFO: SA switch to trhead invokes tss_set_stack implicitly
   // tss_set_stack(KERNEL_DATA, th->kernel_esp);
+  // log("sched: tid: %d, name: %s", th->tid, th->proc->name);
   switch_to_thread(th);
 
   if (_current_thread->pending /*&& !(_current_thread->flags & TIF_SIGNAL_MANUAL)*/) {

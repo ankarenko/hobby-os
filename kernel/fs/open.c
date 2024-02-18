@@ -43,6 +43,7 @@ int32_t vfs_close(int32_t fd) {
   struct vfs_file *file = cur_proc->files->fd[fd];
 
   semaphore_down(cur_proc->files->lock);
+  enter_critical_section();
 
   int ret = 0;
   if (file) {
@@ -58,6 +59,7 @@ int32_t vfs_close(int32_t fd) {
   }
 
   semaphore_up(cur_proc->files->lock);
+  leave_critical_section();
 
   return ret;
 }

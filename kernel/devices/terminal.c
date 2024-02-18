@@ -229,6 +229,12 @@ void terminal_run() {
   
   if ((id = process_fork(parent)) == 0) {
     setpgid(0, 0);
+    struct process *proc_child = get_current_process();
+    
+    proc_child->sid = proc_child->pid;
+    proc_child->tty = NULL;
+    assert(proc_child->sid == proc_child->gid && proc_child->gid == proc_child->pid);
+
     int slave_fd;
     if ((slave_fd = vfs_open("/dev/pts/0", O_RDONLY)) < 0) {
       err("Cannot open slave tty");
@@ -241,7 +247,6 @@ void terminal_run() {
       vfs_close(slave_fd);
     }
 
-    struct process *proc_child = get_current_process();
     proc_child->name = strdup("shell");
     shell_start();
   }
@@ -281,7 +286,7 @@ void terminal_run() {
           vfs_fread(poll_fd[i].fd, &ev, sizeof(struct key_event));
 
           if (ev.type == KEY_RELEASE) {
-            goto newline;
+            buf[0] = '\0';
             continue;
           }
           
@@ -294,6 +299,9 @@ void terminal_run() {
           int read = vfs_fread(poll_fd[i].fd, buf, size);
           if (read > 0) {
             buf[read] = '\0';
+          } else {
+            buf[0] = '\0';
+            continue;
           }
         }
       }
@@ -321,7 +329,6 @@ void terminal_run() {
           
           command[command_index] = 'm';
           command[command_index + 1] = '\0';
-
 
           int com_size = strlen(command);
 

@@ -1,6 +1,7 @@
 #include "kernel/fs/pipefs/pipe.h"
 #include "kernel/util/debug.h"
 #include "kernel/util/errno.h"
+#include "kernel/proc/task.h"
 #include "kernel/util/fcntl.h"
 
 static int32_t pipe_read(struct vfs_file *file, uint8_t *buffer, uint32_t length, off_t ppos) {
@@ -10,17 +11,15 @@ static int32_t pipe_read(struct vfs_file *file, uint8_t *buffer, uint32_t length
   struct pipe *p = file->f_dentry->d_inode->i_pipe;
 
   int i = 0;
-  semaphore_down(p->to_read);
-  semaphore_up(p->mutex);
+
   for (i = 0; i < length; ++i) {
-    if (circular_buf_get(p->buf, buffer + i) < 0) {
+    circular_buf_get(p->buf, buffer + i);
+    if (circular_buf_empty(p->buf)) {
+      ++i;
       break;
     }
   }
-  semaphore_down(p->mutex);
-  if (!circular_buf_empty(p->buf)) {
-    semaphore_up(p->to_read);
-  }
+
   buffer[i] = '\0';
   return i;
 }
@@ -30,25 +29,23 @@ static uint32_t pipe_write(struct vfs_file *file, const char *buf, size_t count,
     return -EINVAL;
 
   struct pipe *p = file->f_dentry->d_inode->i_pipe;
-
-  semaphore_up(p->mutex);
-  for (int i = 0; i < count; ++i) {
+  
+  int i = 0;
+  for (i = 0; i < count; ++i) {
     circular_buf_put(p->buf, buf[i]);
+    if (circular_buf_full(p->buf)) {
+      break;
+    }
   }
 
-  if (!circular_buf_empty(p->buf)) {
-    semaphore_up(p->to_read);
-  }
-
-  semaphore_down(p->mutex);
-
-  return count;
+  return i;
 }
 
 static int pipe_release(struct vfs_inode *inode, struct vfs_file *file) {
   struct pipe *p = inode->i_pipe;
 
   semaphore_down(p->mutex);
+  enter_critical_section();
   p->files--;
   switch (file->f_flags) {
     case O_RDONLY:
@@ -64,12 +61,11 @@ static int pipe_release(struct vfs_inode *inode, struct vfs_file *file) {
       break;
   }
   semaphore_up(p->mutex);
+  leave_critical_section();
 
   if (!p->files && !p->writers && !p->readers) {
     inode->i_pipe = NULL;
     circular_buf_free(p->buf);
-    semaphore_free(p->mutex);
-    semaphore_free(p->to_read);
     kfree(p);
   }
 
@@ -80,6 +76,7 @@ static int pipe_open(struct vfs_inode *inode, struct vfs_file *file) {
   struct pipe *p = inode->i_pipe;
 
   semaphore_down(p->mutex);
+  enter_critical_section();
   switch (file->f_flags) {
     case O_RDONLY:
       p->readers++;
@@ -94,6 +91,7 @@ static int pipe_open(struct vfs_inode *inode, struct vfs_file *file) {
       break;
   }
   semaphore_up(p->mutex);
+  leave_critical_section();
   return 0;
 }
 

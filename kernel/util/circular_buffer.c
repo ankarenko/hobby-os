@@ -1,12 +1,18 @@
 #include "kernel/memory/malloc.h"
-
+#include "kernel/locking/semaphore.h"
 #include "kernel/util/circular_buffer.h"
+#include "kernel/proc/task.h"
 
 // The definition of our circular buffer structure is hidden from the user
 struct circular_buf_t {
   char *buffer;
   size_t head;
   size_t tail;
+
+  struct semaphore *to_read;
+  struct semaphore *to_write;
+  struct semaphore *mutex;
+  
   size_t max;  // of the buffer
   bool full;
 };
@@ -32,6 +38,11 @@ struct circular_buf_t *circular_buf_init(char *buffer, size_t size) {
 
   cbuf->buffer = buffer;
   cbuf->max = size;
+  
+  cbuf->to_read = semaphore_alloc(size);
+  cbuf->to_write = semaphore_alloc(size);
+  cbuf->mutex = semaphore_alloc(1);
+
   circular_buf_reset(cbuf);
 
   return cbuf;
@@ -39,18 +50,38 @@ struct circular_buf_t *circular_buf_init(char *buffer, size_t size) {
 
 void circular_buf_free(struct circular_buf_t *cbuf) {
   kfree(cbuf->buffer);
+  semaphore_free(cbuf->to_read);
+  semaphore_free(cbuf->to_write);
+  semaphore_free(cbuf->mutex);
 }
 
 void circular_buf_reset(struct circular_buf_t *cbuf) {
+  semaphore_down(cbuf->mutex);
+  enter_critical_section();
+
   cbuf->full = false;
   cbuf->head = 0;
   cbuf->tail = 0;
+  
+  semaphore_set_zero(cbuf->to_read);
+  semaphore_free(cbuf->to_write);
+  cbuf->to_write = semaphore_alloc(cbuf->max);
+
+  semaphore_up(cbuf->mutex);
+  leave_critical_section();
 }
 
 void circular_buf_put(struct circular_buf_t *cbuf, char data) {
-  cbuf->buffer[cbuf->head] = data;
+  semaphore_down(cbuf->to_write);
+  semaphore_down(cbuf->mutex);
+  enter_critical_section();
 
+  cbuf->buffer[cbuf->head] = data;
   advance_pointer(cbuf);
+
+  semaphore_up(cbuf->mutex);
+  semaphore_up(cbuf->to_read);
+  leave_critical_section();
 }
 
 int circular_buf_put2(struct circular_buf_t *cbuf, char data) {
@@ -66,16 +97,16 @@ int circular_buf_put2(struct circular_buf_t *cbuf, char data) {
 }
 
 int circular_buf_get(struct circular_buf_t *cbuf, char *data) {
-  int r = -1;
+	semaphore_down(cbuf->to_read);
+  semaphore_down(cbuf->mutex);
+  enter_critical_section();
+  
+	*data = cbuf->buffer[cbuf->tail];
+	retreat_pointer(cbuf);
 
-	if (!circular_buf_empty(cbuf)) {
-		*data = cbuf->buffer[cbuf->tail];
-		retreat_pointer(cbuf);
-
-		r = 0;
-	}
-
-	return r;
+  semaphore_up(cbuf->mutex);
+  semaphore_up(cbuf->to_write);
+  leave_critical_section();
 }
 
 bool circular_buf_empty(struct circular_buf_t *cbuf) {

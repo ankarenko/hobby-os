@@ -30,14 +30,12 @@ void semaphore_down(struct semaphore *sem) {
   
   if (sem->count > 0) {
     sem->count -= 1;
-    atomic_add(&cur_thread->lock_counter, 1);
     unlock_scheduler();
   } else {
     struct sem_waiter *sw = kcalloc(1, sizeof(struct sem_waiter));
     sw->task = cur_thread;
     list_add_tail(&sw->sibling, &sem->wait_list);
     thread_update(cur_thread, THREAD_WAITING);
-    atomic_add(&cur_thread->lock_counter, 1); 
     unlock_scheduler();
     schedule();
   }
@@ -60,7 +58,6 @@ void semaphore_up(struct semaphore *sem) {
 
   if (list_empty(&sem->wait_list)) {
     sem->count = min(sem->capacity, sem->count + 1);
-    atomic_sub(&cur_thread->lock_counter, 1);
     unlock_scheduler();
   } else {
     struct sem_waiter *next = list_first_entry(
@@ -68,10 +65,9 @@ void semaphore_up(struct semaphore *sem) {
     );
     list_del(&next->sibling);
     thread_update(next->task, THREAD_READY);
-    atomic_sub(&cur_thread->lock_counter, 1);
     kfree(next);
     unlock_scheduler();
-    //schedule();
+    schedule();
   }
 
 }

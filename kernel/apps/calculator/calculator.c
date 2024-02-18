@@ -29,6 +29,12 @@ void custom_signal_handler_SIGALRMP(int signum) {
 }
 
 void main(int argc, char** argv) {
+  while (1) {
+    fprintf(stdout, "hello my man");
+    sleep(3);
+  }
+
+  /*
   stream = fopen("dev/tty0", "ab+");
   fputs("Hello user main! \n!", stream);
 
@@ -48,7 +54,7 @@ void main(int argc, char** argv) {
   if (old_action.sa_handler != SIG_IGN) {
     sigaction(SIGALRM, &new_action, NULL);
   }
-  
+  */
 
 
 
