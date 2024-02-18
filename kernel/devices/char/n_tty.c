@@ -1,6 +1,7 @@
 #include "kernel/devices/char/tty.h"
 #include "kernel/locking/semaphore.h"
 #include "kernel/memory/malloc.h"
+#include "kernel/fs/poll.h"
 #include "kernel/util/debug.h"
 #include "kernel/ipc/signal.h"
 #include "kernel/util/math.h"
@@ -48,7 +49,7 @@ static void ntty_pop_char(struct tty_struct *tty, char *ch) {
   semaphore_down(tty->mutex);
 
   *ch = tty->buffer[tty->read_head];
-  tty->read_head = N_TTY_BUF_CANON_ALIGN(tty->read_head + 1);
+  tty->read_head = N_TTY_BUF_ALIGN(tty->read_head + 1);
   int to_write = !L_ICANON(tty)? 1 : 0;
   if (L_ICANON(tty) && tty->read_head == tty->read_tail) {
     to_write = N_TTY_BUF_SIZE;
@@ -95,10 +96,10 @@ static uint32_t push_buf_canon(struct tty_struct *tty, char c) {
   semaphore_down(tty->mutex);
 
   tty->buffer[tty->read_tail] = c;
-  tty->read_tail = N_TTY_BUF_CANON_ALIGN(tty->read_tail + 1);
+  tty->read_tail = N_TTY_BUF_ALIGN(tty->read_tail + 1);
 
   if (tty->read_head == tty->read_tail) {
-    tty->read_head = N_TTY_BUF_CANON_ALIGN(tty->read_head + 1);
+    tty->read_head = N_TTY_BUF_ALIGN(tty->read_head + 1);
   }
 
   int to_read = LINE_SEPARATOR(tty, c)? ntty_available_to_read(tty) : 0;
@@ -203,7 +204,19 @@ static uint32_t ntty_write(struct tty_struct *tty, struct vfs_file *file, const 
 }
 
 static unsigned int ntty_poll(struct tty_struct *tty, struct vfs_file *file, struct poll_table *ptable) {
-	assert_not_implemented();
+	uint32_t mask = 0;
+
+	//poll_wait(file, &tty->read_wait, ptable);
+	//poll_wait(file, &tty->write_wait, ptable);
+  
+  /*
+	if (tty->read_count)
+		mask |= POLLIN | POLLRDNORM;
+	if (tty->read_count < N_TTY_BUF_SIZE)
+		mask |= POLLOUT | POLLWRNORM;
+  */
+
+	return mask;
 }
 
 struct tty_ldisc tty_ldisc_N_TTY = {

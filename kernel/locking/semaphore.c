@@ -71,7 +71,7 @@ void semaphore_up(struct semaphore *sem) {
     atomic_sub(&cur_thread->lock_counter, 1);
     kfree(next);
     unlock_scheduler();
-    schedule();
+    //schedule();
   }
 
 }
