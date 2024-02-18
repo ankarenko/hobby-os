@@ -44,63 +44,6 @@ void get_cmd(char* buf, int n) {
   buf[n] = '\0';
 }
 
-#define N 100
-static int buffer[N];
-static int i = -1;
-
-static INIT_MUTEX(mutex);
-static INIT_SEMAPHORE(left, N);
-static INIT_SEMAPHORE(reserved, N);
-
-void init_consumer_producer() {
-  left.count = N;
-  reserved.count = 0;
-  for (int i = 0; i < N; ++i) {
-    buffer[i] = 0;
-  } 
-}
-
-void consumer() {
-  while (1) {
-    log("Consumer: start");
-
-    semaphore_down(&reserved);
-    semaphore_down(&mutex);
-    log("Consumer: enter CS");
-
-    buffer[i] = 0;
-    log("Consumed %d", i);
-    i--;
-    
-    
-    semaphore_up(&mutex);
-    log("Consumer: leave CS");
-    semaphore_up(&left);
-
-    thread_sleep(300);
-  }
-}
-
-void producer() {
-  while (1) {
-    log("Producer: start");
-
-    semaphore_down(&left);
-    semaphore_down(&mutex);
-    log("Producer: enter CS");
-    
-    ++i;
-    buffer[i] = 1;
-    log("Produced %d", i);
-
-    semaphore_up(&mutex);
-    log("Producer: leave CS");
-    semaphore_up(&reserved);
-
-    thread_sleep(300);
-  }
-}
-
 void kthread() {
   int col = 0;
   bool dir = true;
@@ -432,10 +375,6 @@ int search_and_run(struct cmd_t *com, int gid) {
   } else if (strcmp(com->cmd, "create") == 0) {
     kprintf("\nnew struct thread: ");
     execve(kthread_fork);
-  } if (strcmp(com->cmd, "play") == 0) {
-    init_consumer_producer();
-    create_system_process(&producer, "producer");
-    create_system_process(&consumer, "consumer");
   } else if (strcmp(com->cmd, "ps") == 0) {
     ret = exec(ps, "ps", com->argv, gid); 
   } else if (strcmp(com->cmd, "signal") == 0) {

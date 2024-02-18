@@ -12,7 +12,7 @@ static int ntty_open(struct tty_struct *tty) {
   tty->mutex = semaphore_alloc(1);
   tty->to_read = semaphore_alloc(N_TTY_BUF_SIZE);
   tty->to_write = semaphore_alloc(N_TTY_BUF_SIZE);
-  tty->to_read->count = 0;
+  semaphore_set_zero(tty->to_read);
 
   return 0;
 }
@@ -55,8 +55,7 @@ static void ntty_pop_char(struct tty_struct *tty, char *ch) {
   }
   semaphore_up(tty->mutex);
   if (to_write > 0) {
-    tty->to_write->count += to_write - 1;
-    semaphore_up(tty->to_write);
+    semaphore_up_val(tty->to_write, to_write);
   }
 }
 
@@ -104,12 +103,11 @@ static uint32_t push_buf_canon(struct tty_struct *tty, char c) {
 
   int to_read = LINE_SEPARATOR(tty, c)? ntty_available_to_read(tty) : 0;
   if (to_read > 0) 
-    tty->to_write->count = 0;
+    semaphore_set_zero(tty->to_write);
 
   semaphore_up(tty->mutex);
   if (to_read > 0) {
-    tty->to_read->count += to_read - 1;
-    semaphore_up(tty->to_read);
+    semaphore_up_val(tty->to_read, to_read);
   }
 }
 

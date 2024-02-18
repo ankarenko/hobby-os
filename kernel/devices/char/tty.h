@@ -223,12 +223,6 @@ void serial_enable(int port);
 void serial_output(int port, char a);
 extern struct tty_driver *serial_driver;
 
-// n_tty_canon.c
-extern struct tty_ldisc tty_ldisc_N_TTY_canon;
-
-// n_tty_raw.c
-extern struct tty_ldisc tty_ldisc_N_TTY_raw;
-
 // n_tty.c
 extern struct tty_ldisc tty_ldisc_N_TTY;
 
