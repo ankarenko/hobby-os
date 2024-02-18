@@ -271,13 +271,18 @@ void terminal_run() {
   newline:
     char key;
     int nfds = 2;
-    struct pollfd poll_fd[nfds];
-    
-    poll_fd[0].fd = stdin;
-    poll_fd[0].events = POLLIN;
-    
-    poll_fd[1].fd = kybrd_fd;
-    poll_fd[1].events = POLLIN;
+    struct pollfd poll_fd[] = {
+      {
+        .fd = stdin,
+        .events = POLLIN,
+        .revents = 0
+      },
+      {
+        .fd = kybrd_fd,
+        .events = POLLIN,
+        .revents = 0
+      }
+    };
     
     do_poll(poll_fd, nfds, NULL);
 
@@ -306,8 +311,7 @@ void terminal_run() {
       }
     }
 
-    //kreadline(&buf, size);
-    
+
     int i = 0;
     while (i < size && buf[i] != '\0') {
       key = buf[i];
