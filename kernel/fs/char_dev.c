@@ -1,9 +1,9 @@
-#include "kernel/memory/malloc.h"
-#include "kernel/util/string/string.h"
-#include "kernel/util/errno.h"
-#include "kernel/util/debug.h"
-
 #include "kernel/fs/char_dev.h"
+
+#include "kernel/memory/malloc.h"
+#include "kernel/util/debug.h"
+#include "kernel/util/errno.h"
+#include "kernel/util/string/string.h"
 
 struct list_head devlist;
 
@@ -29,14 +29,14 @@ static struct char_device *get_chrdev(dev_t dev) {
 }
 
 static int chrdev_ioctl(struct vfs_inode *inode, struct vfs_file *file, unsigned int cmd, unsigned long arg) {
-	struct char_device *cdev = get_chrdev(file->f_dentry->d_inode->i_rdev);
-	if (cdev == NULL)
-		return -ENODEV;
+  struct char_device *cdev = get_chrdev(file->f_dentry->d_inode->i_rdev);
+  if (cdev == NULL)
+    return -ENODEV;
 
-	if (cdev->f_ops->ioctl)
-		return cdev->f_ops->ioctl(inode, file, cmd, arg);
+  if (cdev->f_ops->ioctl)
+    return cdev->f_ops->ioctl(inode, file, cmd, arg);
 
-	return -EINVAL;
+  return -EINVAL;
 }
 
 int register_chrdev(struct char_device *new_cdev) {
@@ -61,9 +61,20 @@ static int chrdev_open(struct vfs_inode *inode, struct vfs_file *filp) {
   struct char_device *cdev = get_chrdev(inode->i_rdev);
   if (cdev == NULL)
     return -ENODEV;
-  
+
   if (cdev->f_ops && cdev->f_ops->open)
     return cdev->f_ops->open(inode, filp);
+
+  return -EINVAL;
+}
+
+static unsigned int chrdev_poll(struct vfs_file *file, struct poll_table *pt) {
+  struct char_device *cdev = get_chrdev(file->f_dentry->d_inode->i_rdev);
+  if (cdev == NULL)
+    return -ENODEV;
+
+  if (cdev->f_ops->poll)
+    return cdev->f_ops->poll(file, pt);
 
   return -EINVAL;
 }
@@ -106,6 +117,7 @@ struct vfs_file_operations def_chr_fops = {
   .read = chrdev_read,
   .write = chrdev_write,
   .llseek = chrdev_llseek,
+  .poll = chrdev_poll,
   .ioctl = chrdev_ioctl
 };
 

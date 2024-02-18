@@ -9,6 +9,7 @@
 #include "kernel/util/debug.h"
 #include "kernel/devices/kybrd.h"
 #include "kernel/proc/task.h"
+#include "kernel/fs/poll.h"
 #include "kernel/system/sysapi.h"
 #include "kernel/util/math.h"
 #include "kernel/util/fcntl.h"
@@ -260,12 +261,52 @@ void terminal_run() {
   
   int size = 20;
   char buf[size + 1];
+
+  int kybrd_fd;
+  if ((kybrd_fd = vfs_open("/dev/input/kybrd", O_RDONLY)) < 0) {
+    err("Cannot open keyboard descriptor");
+  }
   
   while (true) {
   newline:
     char key;
+    int nfds = 2;
+    struct pollfd poll_fd[nfds];
     
-    kreadline(&buf, size);
+    poll_fd[0].fd = stdin;
+    poll_fd[0].events = POLLIN;
+    
+    poll_fd[1].fd = kybrd_fd;
+    poll_fd[1].events = POLLIN;
+    
+    do_poll(poll_fd, nfds, NULL);
+
+    for (int i = 0; i < nfds; ++i) {
+      if (poll_fd[i].events & poll_fd[i].revents) {
+        if (poll_fd[i].fd == kybrd_fd) {
+          struct key_event ev;
+          vfs_fread(poll_fd[i].fd, &ev, sizeof(struct key_event));
+
+          if (ev.type == KEY_RELEASE) {
+            goto newline;
+            continue;
+          }
+          
+          char c = kkybrd_key_to_ascii(ev.key);
+          buf[0] = c;
+          buf[1] = '\0';
+
+          vfs_fwrite(stdout, buf, 1);
+        } else {
+          int read = vfs_fread(poll_fd[i].fd, buf, size);
+          if (read > 0) {
+            buf[read] = '\0';
+          }
+        }
+      }
+    }
+
+    //kreadline(&buf, size);
     
     int i = 0;
     while (i < size && buf[i] != '\0') {

@@ -676,10 +676,12 @@ void init_process() {
   
   tty_init();
 
+  /*
   if (process_fork(parent) == 0) {
     get_current_process()->name = strdup("kybrd");
     kybrd_manager(); // 3
   }
+  */
   
   pid_t id = 0;
 

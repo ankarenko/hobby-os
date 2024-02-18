@@ -5,6 +5,7 @@
 
 #include "kernel/devices/char/termios.h"
 #include "kernel/util/list.h"
+#include "kernel/proc/wait.h"
 #include "kernel/fs/vfs.h"
 
 #define INTR_CHAR(tty) ((tty)->termios->c_cc[VINTR])
@@ -192,6 +193,10 @@ struct tty_struct {
   struct semaphore *to_read;
   struct semaphore *to_write;
   struct semaphore *mutex;
+
+  // used by poll methods
+  struct wait_queue_head write_wait;
+	struct wait_queue_head read_wait;
   
 	char* buffer;
   uint16_t read_tail;

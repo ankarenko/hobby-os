@@ -87,6 +87,10 @@ void semaphore_up_val(struct semaphore *sem, int val) {
   semaphore_up(sem);
 }
 
+uint32_t semaphore_get_val(struct semaphore *sem) {
+  return sem->count;
+}
+
 struct semaphore* semaphore_alloc(int val) {
 	struct semaphore *sem = (struct semaphore *)kcalloc(1, sizeof(struct semaphore)); 
   sem->capacity = val;

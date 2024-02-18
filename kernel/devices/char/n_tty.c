@@ -15,6 +15,9 @@ static int ntty_open(struct tty_struct *tty) {
   tty->to_write = semaphore_alloc(N_TTY_BUF_SIZE);
   semaphore_set_zero(tty->to_read);
 
+  INIT_LIST_HEAD(&tty->read_wait.list);
+  INIT_LIST_HEAD(&tty->write_wait.list);
+
   return 0;
 }
 
@@ -57,6 +60,7 @@ static void ntty_pop_char(struct tty_struct *tty, char *ch) {
   semaphore_up(tty->mutex);
   if (to_write > 0) {
     semaphore_up_val(tty->to_write, to_write);
+    wake_up(&tty->write_wait.list);
   }
 }
 
@@ -89,6 +93,7 @@ static uint32_t push_buf_raw(struct tty_struct *tty, char c) {
 
   semaphore_up(tty->mutex);
   semaphore_up(tty->to_read);
+  wake_up(&tty->read_wait.list);
 }
 
 static uint32_t push_buf_canon(struct tty_struct *tty, char c) {
@@ -109,6 +114,7 @@ static uint32_t push_buf_canon(struct tty_struct *tty, char c) {
   semaphore_up(tty->mutex);
   if (to_read > 0) {
     semaphore_up_val(tty->to_read, to_read);
+    wake_up(&tty->read_wait.list);
   }
 }
 
@@ -206,15 +212,13 @@ static uint32_t ntty_write(struct tty_struct *tty, struct vfs_file *file, const 
 static unsigned int ntty_poll(struct tty_struct *tty, struct vfs_file *file, struct poll_table *ptable) {
 	uint32_t mask = 0;
 
-	//poll_wait(file, &tty->read_wait, ptable);
-	//poll_wait(file, &tty->write_wait, ptable);
+	poll_wait(file, &tty->read_wait, ptable);
+	poll_wait(file, &tty->write_wait, ptable);
   
-  /*
-	if (tty->read_count)
+	if (semaphore_get_val(tty->to_read))
 		mask |= POLLIN | POLLRDNORM;
-	if (tty->read_count < N_TTY_BUF_SIZE)
+	if (semaphore_get_val(tty->to_write))
 		mask |= POLLOUT | POLLWRNORM;
-  */
 
 	return mask;
 }

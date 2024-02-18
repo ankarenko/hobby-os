@@ -24,5 +24,6 @@ int semaphore_free(struct semaphore *sem);
 void semaphore_down(struct semaphore *sem);
 void semaphore_set_zero(struct semaphore *sem);
 void semaphore_up_val(struct semaphore *sem, int val);
+uint32_t semaphore_get_val(struct semaphore *sem);
 
 #endif
