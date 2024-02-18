@@ -12,8 +12,7 @@ static int ntty_open(struct tty_struct *tty) {
   tty->to_read = semaphore_alloc(N_TTY_BUF_SIZE);
   tty->to_write = semaphore_alloc(N_TTY_BUF_SIZE);
 
-  semaphore_down_val(tty->to_read, N_TTY_BUF_SIZE);
-
+  tty->to_read->count = 0;
   return 0;
 }
 

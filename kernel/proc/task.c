@@ -410,6 +410,9 @@ extern void load_trap_frame(trap_frame *);
 extern void set_eax(int32_t v);
 
 int32_t dup2(int oldfd, int newfd) {
+  if (oldfd == newfd)
+    return newfd;
+    
   struct process *current_process = get_current_process();
   if (current_process->files->fd[newfd]) {
     vfs_close(newfd);

@@ -48,30 +48,16 @@ void kprintformat(char *fmt, int size, char *color, ...) {
   }
 }
 
-static void _kreadline(char *buf, uint32_t size, int fd) {
-  char *iter = buf;
-  int read = 0;
-  int left = size;
-
-  while (left > 0 && (read = vfs_fread(fd, iter, left)) == left) {
-    if (read < 0) {
-      //err("Error while reading command");
-      assert_not_reached("kreadline: error while reading command");
-    }
-
-    iter = iter + read;
-    //iter[0] = '\0';
-    
-    left -= read;
+static void _kreadline(int fd, char *buf, uint32_t size) {
+  int read = vfs_fread(fd, buf, size);
+  if (read < 0) {
+    assert_not_reached("kreadline: error while reading command");
   }
+  buf[read] = '\0';
 }
 
 void kreadline(char *buf, uint32_t size) {
-  _kreadline(buf, size, stdin);
-}
-
-void kreadterminal(char *buf, uint32_t size) {
-  _kreadline(buf, size, stdin);
+  _kreadline(stdin, buf, size);
 }
 
 char kreadchar() {

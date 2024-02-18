@@ -12,6 +12,36 @@
 #include "kernel/util/string/string.h"
 #include "kernel/util/vsprintf.h"
 
+
+/*
+
+TTY - allows you to type something and get feedback from it. 
+In linux is a form to communicate with kernel.
+You are in control of a ONE endpoint. The other endpoint is kernel.
+
+_______________
+application    | - for example, a program that wants to print something on a screen
+_______________|
+     /|\     
+      |   read/write
+_____\|/________
+               |
+line discipline| - buffer, line editing. It helps to edit and buffer data.
+_______________|   It acts in different modes (canononical, raw) and it's configured trough termios data structure
+               |
+driver         | - transport (pts/ptm driver). 
+_______________|   Generally speaking, it helps to transport data. Wraps/Unwraps data according to some protocol (UART,TCP/IP and etc)
+     /|\           In case of PTY redirects data from slave to master and from master to slave
+      |
+      |  read/write
+     \|/
+screen, keyboard
+
+PTY - acts as TTY for 2 endpoints. So you can use it to 
+communicate between two processes in userspace (xterm and shell, for example)
+
+*/
+
 static struct list_head tty_drivers;
 struct termios tty_std_termios = {
     .c_iflag = ICRNL | IXON,
@@ -50,7 +80,7 @@ static struct tty_struct *create_tty_struct(struct tty_driver *driver, int idx) 
   tty->termios = &driver->init_termios;
   // TODO: not the best design, but lets leave it like this
   // when ICANON is changed it needs to be closed and opened again
-  tty->ldisc = L_ICANON(tty) ? &tty_ldisc_N_TTY_canon : &tty_ldisc_N_TTY_raw;
+  tty->ldisc = &tty_ldisc_N_TTY; // L_ICANON(tty) ? &tty_ldisc_N_TTY_canon : &tty_ldisc_N_TTY_raw;
 
   // sprintf(tty->name, "%s/%d", driver->name, idx);
 

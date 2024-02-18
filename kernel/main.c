@@ -682,9 +682,19 @@ void kybrd_manager() {
     if (pts_driver) {
       struct tty_struct *pts = list_first_entry(&pts_driver->ttys, struct tty_struct, sibling);
       if (pts != NULL) {
-        pts->ldisc->receive_buf(pts, &c, 1);
+        pts->ldisc->write(pts, NULL, &c, 1);
       }
     } 
+
+    
+    if (ptm_driver) {
+      struct tty_struct *ptm = list_first_entry(&ptm_driver->ttys, struct tty_struct, sibling);
+      if (ptm != NULL) {
+        ptm->ldisc->write(ptm, NULL, &c, 1);
+      }
+    }
+    
+    
   }
 }
 
@@ -695,7 +705,7 @@ void shell_start() {
   
   while (true) {
 newline:
-    kprintf("(%s)root@%s: ", 
+    kprintf("\n(%s)root@%s: ", 
       strcmp(proc->fs->mnt_root->mnt_devname, "/dev/hda") == 0 ? "ext2" : proc->fs->mnt_root->mnt_devname,
       proc->fs->d_root->d_name
     );

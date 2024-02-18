@@ -21,7 +21,6 @@ typedef struct __FILE {
 void kprintf(char *fmt, ...);
 void kprintformat(char *fmt, int size, char *color, ...);
 void kreadline(char *buf, uint32_t size);
-void kreadterminal(char *buf, uint32_t size);
 char kreadchar();
 
 #endif

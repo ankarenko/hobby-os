@@ -12,9 +12,9 @@
 #define POLLERR 0x0008
 #define POLLHUP 0x0010
 #define POLLNVAL 0x0020
-#define POLLRDNORM 0x0040
+#define POLLRDNORM 0x0040   // equals to POLLIN
 #define POLLRDBAND 0x0080
-#define POLLWRNORM 0x0100
+#define POLLWRNORM 0x0100   // equals to POLLOUT
 #define POLLWRBAND 0x0200
 #define POLLMSG 0x0400
 #define POLLREMOVE 0x1000
@@ -37,6 +37,5 @@ struct pollfd {
 
 int do_poll(struct pollfd *fds, uint32_t nfds, int timeout);
 void poll_wait(struct vfs_file *file, struct wait_queue_head *wh, struct poll_table *pt);
-void poll_wakeup(struct thread *t);
 
 #endif

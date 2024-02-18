@@ -208,42 +208,56 @@ void terminal_run() {
   if ((master_fd = vfs_open("/dev/ptmx", O_RDONLY)) < 0) {
     err("Unable to open ptmx");
   }
-
-  int slave_fd;
-  if ((slave_fd = vfs_open("/dev/pts/0", O_RDONLY)) < 0) {
-    err("Cannot open keyboard");
-  }
-
+  
+  dup2(master_fd, stdin);
+  dup2(master_fd, stdout);
+  
   int err_fd;
   if ((err_fd = vfs_open("/dev/serial0", O_WRONLY)) < 0) {
     err("Cannot open serial");
   }
 
-  int copy_master_fd = dup(master_fd);
-  int copy_slave_fd = dup(slave_fd);
-  int copy_serial_fd = dup(err_fd);
+  if (err_fd != stderr) {
+    dup2(err_fd, stderr);
+    vfs_close(err_fd);
+  }
+
+  //int copy_master_fd = dup(master_fd);
+  //int copy_slave_fd = dup(slave_fd);
+  //int copy_serial_fd = dup(err_fd);
   
-  dup2(copy_master_fd, stdin);
-  dup2(copy_slave_fd, stdout);
-  dup2(copy_serial_fd, stderr);
+  //dup2(copy_master_fd, stdout);
+  //dup2(copy_slave_fd, stdout);
+  //dup2(copy_serial_fd, stderr);
   
-  vfs_close(copy_master_fd);
-  vfs_close(copy_slave_fd);
-  vfs_close(copy_serial_fd);
+  //vfs_close(copy_master_fd);
+  //vfs_close(copy_slave_fd);
+  //vfs_close(copy_serial_fd);
 
   struct key_event ev;
 
   int32_t id = 0;
+  
   if ((id = process_fork(parent)) == 0) {
     setpgid(0, 0);
+    int slave_fd;
+    if ((slave_fd = vfs_open("/dev/pts/0", O_RDONLY)) < 0) {
+      err("Cannot open slave tty");
+    }
+
+    dup2(slave_fd, stdin);
+    dup2(slave_fd, stdout);
+
+    if (slave_fd != stdin && slave_fd != stdout) {
+      vfs_close(slave_fd);
+    }
+
     struct process *proc_child = get_current_process();
-    assert(dswap(stdin, stdout) == 0);
-    
     proc_child->name = strdup("shell");
     shell_start();
   }
   setpgid(id, id);
-
+  
   int size = 20;
   char buf[size + 1];
   
@@ -251,7 +265,7 @@ void terminal_run() {
   newline:
     char key;
     
-    kreadterminal(&buf, size);
+    kreadline(&buf, size);
     
     int i = 0;
     while (i < size && buf[i] != '\0') {
@@ -267,7 +281,7 @@ void terminal_run() {
             ++i;
             ++command_index;
             if (i >= size || buf[i] == '\0') { // read more
-              kreadterminal(&buf, size);
+              kreadline(&buf, size);
               i = 0;
             }
           }

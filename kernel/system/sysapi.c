@@ -27,6 +27,7 @@
 #define __NR_pipe 42
 #define __NR_signal 48
 #define __NR_ioctl 54
+#define __NR_fcntl 55   
 #define __NR_setpgid 57
 #define __NR_dup2 63
 #define __NR_getpgrp 65
@@ -247,6 +248,11 @@ static int32_t sys_poll(struct pollfd *fds, uint32_t nfds, int timeout) {
   return do_poll(fds, nfds, timeout);
 }
 
+static int32_t sys_fcntl(int fd, int cmd, unsigned long arg) {
+  assert_not_implemented();
+  //return do_fcntl(fd, cmd, arg);
+}
+
 static void *syscalls[] = {
   [__NR_exit] = sys_exit,
   [__NR_nanosleep] = sys_nanosleep,
@@ -274,6 +280,7 @@ static void *syscalls[] = {
   [__NR_getpgrp] = sys_getpgrp,
   [__NR_getpid] = sys_getpid,
   [__NR_kill] = sys_kill,
+  [__NR_fcntl] = sys_fcntl,
   [__NR_sigaction] = sys_sigaction,
   [__NR_sigprocmask] = sys_sigprocmask,
   0

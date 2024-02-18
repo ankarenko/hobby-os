@@ -198,7 +198,7 @@ struct tty_struct {
 	char* buffer;
   uint16_t read_tail;
   uint16_t read_head;
-
+  
   struct list_head sibling;
 };
 
@@ -228,6 +228,9 @@ extern struct tty_ldisc tty_ldisc_N_TTY_canon;
 
 // n_tty_raw.c
 extern struct tty_ldisc tty_ldisc_N_TTY_raw;
+
+// n_tty.c
+extern struct tty_ldisc tty_ldisc_N_TTY;
 
 // pty.c
 extern struct tty_driver *ptm_driver, *pts_driver;
