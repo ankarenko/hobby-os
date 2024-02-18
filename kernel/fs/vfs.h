@@ -231,4 +231,7 @@ int vfs_cache_remove(struct vfs_dentry* dentry);
 struct vfs_dentry* vfs_cache_get(struct vfs_dentry *parent, char *name);
 void vfs_cache_init();
 
+//fcntl.c
+int do_fcntl(int fd, int cmd, unsigned long arg);
+
 #endif

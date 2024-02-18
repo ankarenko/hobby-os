@@ -99,13 +99,8 @@ static int32_t sys_exit() {
   */ 
 }
 
-static int32_t sys_execve(const char *pathname, char *const argv[], char *const envp[]) {
-	//return process_execve(pathname, argv, envp);
-  return -1;
-}
-
 static pid_t sys_fork() {
-  return -1;
+  assert_not_implemented();
 	/*
   struct struct process* child = process_fork(current_process);
 	queue_thread(child->struct thread);
@@ -171,10 +166,6 @@ static int32_t sys_lseek(int fd, off_t offset, int whence) {
 
 static int32_t sys_close(uint32_t fd) {
 	return vfs_close(fd);
-}
-
-static int32_t sys_kill(pid_t pid, int sig) {
-  return -1;
 }
 
 static int32_t sys_time(time_t *tloc) {
@@ -244,13 +235,22 @@ static int32_t sys_ioctl(int fd, unsigned int cmd, unsigned long arg) {
   return -EINVAL;
 }
 
+
+static int32_t sys_execve(const char *pathname, char *const argv[], char *const envp[]) {
+  assert_not_implemented();
+  //return process_execve(pathname, argv, envp);
+}
+
 static int32_t sys_poll(struct pollfd *fds, uint32_t nfds, int timeout) {
   return do_poll(fds, nfds, timeout);
 }
 
+static int32_t sys_kill(pid_t pid, int sig) {
+  return do_kill(pid, sig);
+}
+
 static int32_t sys_fcntl(int fd, int cmd, unsigned long arg) {
-  assert_not_implemented();
-  //return do_fcntl(fd, cmd, arg);
+  return do_fcntl(fd, cmd, arg);
 }
 
 static void *syscalls[] = {
@@ -274,6 +274,7 @@ static void *syscalls[] = {
   [__NR_poll] = sys_poll,
   [__NR_ioctl] = sys_ioctl,
   [__NR_close] = sys_close,
+  [__NR_execve] = sys_execve,
   [__NR_waitid] = sys_waitid,
   [__NR_setsid] = sys_setsid,
   [__NR_getsid] = sys_getsid,

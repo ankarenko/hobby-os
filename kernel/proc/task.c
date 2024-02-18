@@ -6,6 +6,7 @@
 #include "kernel/cpu/tss.h"
 #include "kernel/memory/malloc.h"
 #include "kernel/util/debug.h"
+#include "kernel/util/errno.h"
 #include "kernel/cpu/gdt.h"
 #include "kernel/proc/elf.h"
 
@@ -423,7 +424,10 @@ int32_t dup2(int oldfd, int newfd) {
 }
 
 int32_t dup(int oldfd) {
-  int newfd = find_unused_fd_slot();
+  int newfd = -1;
+  if ((newfd = find_unused_fd_slot()) < 0)
+    return -EMFILE;
+
   return dup2(oldfd, newfd);
 }
 

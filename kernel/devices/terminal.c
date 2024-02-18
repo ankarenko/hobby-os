@@ -223,18 +223,6 @@ void terminal_run() {
     vfs_close(err_fd);
   }
 
-  //int copy_master_fd = dup(master_fd);
-  //int copy_slave_fd = dup(slave_fd);
-  //int copy_serial_fd = dup(err_fd);
-  
-  //dup2(copy_master_fd, stdout);
-  //dup2(copy_slave_fd, stdout);
-  //dup2(copy_serial_fd, stderr);
-  
-  //vfs_close(copy_master_fd);
-  //vfs_close(copy_slave_fd);
-  //vfs_close(copy_serial_fd);
-
   struct key_event ev;
 
   int32_t id = 0;
@@ -273,12 +261,12 @@ void terminal_run() {
     int nfds = 2;
     struct pollfd poll_fd[] = {
       {
-        .fd = stdin,
+        .fd = kybrd_fd,
         .events = POLLIN,
         .revents = 0
       },
       {
-        .fd = kybrd_fd,
+        .fd = stdin,
         .events = POLLIN,
         .revents = 0
       }
