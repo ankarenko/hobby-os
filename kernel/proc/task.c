@@ -134,7 +134,8 @@ struct process *find_process_by_pid(pid_t pid) {
 static struct thread* thread_create(
   struct process* parent, 
   virtual_addr eip,
-  virtual_addr entry
+  virtual_addr entry,
+  char **argv
 ) {
   lock_scheduler();
 
@@ -162,6 +163,7 @@ static struct thread* thread_create(
   trap_frame* frame = ((trap_frame*) th->esp);
   memset(frame, 0, sizeof(trap_frame));
   
+  frame->parameter3 = argv;
   frame->parameter2 = eip;
 	frame->parameter1 = (uint32_t)th;
 	frame->return_address = PROCESS_TRAPPED_PAGE_FAULT;
@@ -176,7 +178,51 @@ static struct thread* thread_create(
   return th;
 }
 
-bool empack_params(struct thread* th) {
+bool empack_params(struct thread* th, char **_argv) {
+  struct process* parent = th->proc;
+  char* path = parent->name;
+
+  uint32_t argc = 0;
+  while (_argv[argc] != 0) { ++argc; }
+
+  char** argv = (char**)sbrk(
+    sizeof(uint32_t) * argc + 1, 
+    parent->mm_mos
+  );
+
+  // add path 
+  uint32_t len = strlen(path) + 1;
+  char* arg_path = sbrk(
+    len, 
+    parent->mm_mos
+  );
+  memcpy(arg_path, path, len);
+  arg_path[len] = '\0';
+  argv[0] = arg_path;
+
+  for (int i = 0; i < argc; ++i) {
+    int len = strlen(_argv[i]) + 1;
+    char* param = sbrk(
+      len, 
+      parent->mm_mos
+    );
+    memcpy(param, _argv[i], len);
+    param[len] = '\0';
+    argv[i + 1] = param;
+  }
+
+  uint32_t params[3] = { 
+    argc + 1, 
+    argv,
+    PROCESS_TRAPPED_PAGE_FAULT
+  };
+  memcpy(th->user_esp - 12, params, 12);
+  //th->user_esp -= 12;
+  return true;
+}
+
+/*
+bool empack_params(struct thread* th, char** ) {
   struct process* parent = th->proc;
   char* path = parent->name;
 
@@ -207,11 +253,13 @@ bool empack_params(struct thread* th) {
     argv
   };
   memcpy(th->user_esp - 12, params, 12);
-  th->user_esp -= 12;
+  //th->user_esp -= 12;
   return true;
 }
+*/
 
-static void user_thread_elf_entry(struct thread *th) {
+
+static void user_thread_elf_entry(struct thread *th, virtual_addr eip, char **argv) {
   enable_interrupts(); // not sure if it's needed because enter_usermode enables the flag
   interruptdone(IRQ0);
 
@@ -224,7 +272,7 @@ static void user_thread_elf_entry(struct thread *th) {
     assert_not_reached("ELF is not loaded properly");
   }
 
-  if (!empack_params(th)) {
+  if (!empack_params(th, argv)) {
     assert_not_reached("Cannot empack params");
   }
 
@@ -232,13 +280,13 @@ static void user_thread_elf_entry(struct thread *th) {
   enter_usermode(entry, th->user_esp, PROCESS_TRAPPED_PAGE_FAULT);
 }
 
-struct thread* user_thread_create(struct process* parent) {
-  struct thread* th = thread_create(parent, NULL, user_thread_elf_entry);
+struct thread* user_thread_create(struct process* parent, char **argv) {
+  struct thread* th = thread_create(parent, NULL, user_thread_elf_entry, argv);
   return th;
 }
 
 struct thread* kernel_thread_create(struct process* parent, virtual_addr eip) {
-  struct thread* th = thread_create(parent, eip, kernel_thread_entry);
+  struct thread* th = thread_create(parent, eip, kernel_thread_entry, NULL);
   return th;
 }
 
@@ -309,8 +357,21 @@ void idle_task() {
   }
 }
 
-bool process_load(char* app_path) {
-  
+
+void process_load(const char *pname, char** argv) {
+	log("Process: Load %s", pname);
+  struct process *parent = get_current_process();
+	struct process *proc = create_process(parent, pname, NULL);
+
+  proc->files = clone_file_descriptor_table(parent->files);
+
+  struct thread *th = user_thread_create(proc, argv);
+
+  if (!th || !proc) {
+    assert_not_reached("Thread or struct processwere not created properly", NULL);
+  }
+
+	sched_push_queue(th);
 }
 
 extern void cmd_init();
@@ -367,7 +428,7 @@ struct process* create_system_process(virtual_addr entry, char* name) {
 
 struct process* create_elf_process(struct process* parent, char* path) {
   struct process* proc = create_process(parent, path, NULL);
-  struct thread* th = user_thread_create(proc);
+  struct thread* th = user_thread_create(proc, NULL);
 
   if (!th || !proc) {
     assert_not_reached("Thread or struct processwere not created properly", NULL);
@@ -393,7 +454,7 @@ static mm_struct_mos* clone_mm_struct(mm_struct_mos* mm_parent) {
   return mm;
 }
 
-static files_struct *clone_file_descriptor_table(files_struct *fs_src) {
+/*static*/ files_struct *clone_file_descriptor_table(files_struct *fs_src) {
   files_struct *fs = kcalloc(1, sizeof(files_struct));
   
 	memcpy(fs, fs_src, sizeof(files_struct));
@@ -488,7 +549,7 @@ pid_t process_fork(struct process* parent) {
   );
 
   // penging and blocked signals are not inherited
-  struct thread *th = thread_create(proc, NULL, 0);
+  struct thread *th = thread_create(proc, NULL, 0, NULL);
 
   /*
     NOTE: our goal is to make a separate struct thread that returns from process_fork method

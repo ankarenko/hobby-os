@@ -261,12 +261,17 @@ static uint32_t tty_write(struct vfs_file *file, const char *buf, size_t count, 
   return ld->write(tty, file, buf, count);
 }
 
+static off_t tty_lseek(struct vfs_file *file, off_t ppos, int whence) {
+	return 0;
+}
+
 static struct vfs_file_operations tty_fops = {
   .open = tty_open,
   .read = tty_read,
   .write = tty_write,
   .ioctl = tty_ioctl,
-  .poll = tty_poll
+  .poll = tty_poll,
+  .llseek = tty_lseek
 };
 
 static struct vfs_file_operations ptmx_fops = {
@@ -274,7 +279,8 @@ static struct vfs_file_operations ptmx_fops = {
   .read = tty_read,
   .write = tty_write,
   .ioctl = tty_ioctl,
-  .poll = tty_poll
+  .poll = tty_poll,
+  .llseek = tty_lseek
 };
 
 int tty_register_driver(struct tty_driver *driver) {

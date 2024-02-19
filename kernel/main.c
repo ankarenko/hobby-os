@@ -293,8 +293,7 @@ void make_foreground() {
 }
 
 int run_userprogram(char **argv) {
-  struct process *cur_proc = get_current_process();
-  create_elf_process(cur_proc, argv[0]);
+  process_load(argv[0], &argv[1]);
   return 0;
 }
 
@@ -424,7 +423,9 @@ int search_and_run(struct cmd_t *com, int gid) {
   } else if (strcmp(com->cmd, "ls") == 0) {
     ret = exec(ls, "ls", com->argv, gid);
   } else if (strcmp(com->cmd, "run") == 0) {
-    ret = exec(run_userprogram, com->argv[0], com->argv, gid);
+    run_userprogram(com->argv);
+    ret = -1;
+    //ret = exec(run_userprogram, com->argv[0], com->argv, gid);
   } else if (strcmp(com->cmd, "") == 0) {
     goto clean;
   } else {

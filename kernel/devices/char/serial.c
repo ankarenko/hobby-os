@@ -58,6 +58,7 @@ static struct tty_operations serial_ops = {
   .open = serial_open,
   .write = serial_write,
   .read = serial_read, 
+  
   .write_room = serial_write_room,
 };
 

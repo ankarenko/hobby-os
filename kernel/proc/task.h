@@ -196,6 +196,7 @@ int32_t dup(int oldfd);
 void enter_critical_section();
 void leave_critical_section();
 int32_t process_execve(const char *path, char *const argv[], char *const envp[]);
+void process_load(const char *pname, char** argv);
 
 #define process_for_each_entry(iter) \
   list_for_each_entry(iter, get_proc_list(), sibling)
@@ -216,6 +217,7 @@ bool thread_signal(uint32_t tid, int32_t signal);
 void thread_wait(struct thread *th);
 void thread_update(struct thread *t, enum thread_state state);
 struct list_head* get_waiting_threads();
+files_struct *clone_file_descriptor_table(files_struct *fs_src);
 
 // exit.c
 void garbage_worker_task();

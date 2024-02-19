@@ -29,10 +29,27 @@ void custom_signal_handler_SIGALRMP(int signum) {
 }
 
 void main(int argc, char** argv) {
+  
+  char* buf[30];
+  sprintf(buf, "Args : %d \n", argc);
+  fputs(buf, stdout);
+
+  //stream = fopen("dev/serial0", "ab+");
+
+  //vfprintf(stdout, "Hello from loop %d \n!", argc);
+    
+
+  while (1) {
+    sprintf(buf, "Hello %s \n!", argc > 1? argv[1] : " world!");
+    fputs(buf, stdout);
+    sleep(1);
+  }
+  /*
   while (1) {
     fprintf(stdout, "hello my man");
     sleep(3);
   }
+  */
 
   /*
   stream = fopen("dev/tty0", "ab+");
@@ -80,16 +97,6 @@ void main(int argc, char** argv) {
   }
   */
 
-  // test signals
-  char* buf[30];
-  for (;;) {
-    //vfprintf(stream, "Hello from loop %d \n!", j);
-    //fflush(stream);
-    //j++;
-    //sprintf(buf, "Hello from loop %d \n!\0", j);
-    //fputs(buf, stream);
-    //sleep(5);
-  }
 
   
   
