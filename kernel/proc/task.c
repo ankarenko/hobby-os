@@ -212,12 +212,13 @@ bool empack_params(struct thread* th, char **_argv) {
   }
 
   uint32_t params[3] = { 
+    PROCESS_TRAPPED_PAGE_FAULT,
     argc + 1, 
     argv,
-    PROCESS_TRAPPED_PAGE_FAULT
   };
-  memcpy(th->user_esp - 12, params, 12);
-  //th->user_esp -= 12;
+  len = sizeof(params);
+  memcpy(th->user_esp - len, params, len);
+  th->user_esp -= len;
   return true;
 }
 
