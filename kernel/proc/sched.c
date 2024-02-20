@@ -223,6 +223,9 @@ next_thread:
   sched_push_queue(th);
 
 do_switch:
+  if (th->tid == 7) {
+    log("calc.exe");
+  }
   // INFO: SA switch to trhead invokes tss_set_stack implicitly
   // tss_set_stack(KERNEL_DATA, th->kernel_esp);
   // log("sched: tid: %d, name: %s", th->tid, th->proc->name);

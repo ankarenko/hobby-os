@@ -70,6 +70,11 @@ typedef uint32_t virtual_addr;
 #define PAGE_TABLE_INDEX(x) (((x) >> 12) & 0x3ff)
 #define PAGE_PHYS_ADDR(x) (*x & ~0xfff)
 
+#define PAGE_DIRECTORY_BASE 0xFFFFF000
+#define PAGE_TABLE_BASE 0xFFC00000
+#define PAGE_TABLE_VIRT_ADDRESS(virt) (PAGE_TABLE_BASE + (PAGE_DIRECTORY_INDEX(virt) * PMM_FRAME_SIZE))
+
+
 //! page table represents 4mb address space
 #define PTABLE_ADDR_SPACE_SIZE 0x400000
 

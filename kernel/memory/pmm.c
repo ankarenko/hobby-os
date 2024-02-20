@@ -171,6 +171,7 @@ void* pmm_alloc_frame() {
 
   int32_t frame = memory_bitmap_first_free();
 
+  
   if (frame == -1)
     return 0;  // out of memory
 

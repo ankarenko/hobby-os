@@ -4,8 +4,11 @@
     {
       "label": "Launch QEMU2",
       "type": "shell",
+      "options": {
+        "cwd": "${workspaceRoot}"
+      },
       //"command": "echo Hello",
-      "command": "qemu-system-i386 -S -gdb tcp::1234 -chardev pty,id=char0,logfile=uart1.log -serial chardev:char0 ${env:MYOS_QEMU_PARAMS} -boot d -daemonize -kernel isodir/boot/myos.bin || exit 0",
+      "command": "qemu-system-i386 -S -gdb tcp::1234 -monitor unix:qemu-monitor-socket,server,nowait -chardev pty,id=char0,logfile=uart1.log -serial chardev:char0 ${env:MYOS_QEMU_PARAMS} -boot d -daemonize -kernel isodir/boot/myos.bin || exit 0",
       "dependsOn": [
         "Build"
       ]
@@ -15,7 +18,7 @@
       "label": "Launch test QEMU",
       "type": "shell",
       //"command": "echo Hello",
-      "command": "qemu-system-i386 -S -gdb tcp::1234 ${env:MYOS_QEMU_PARAMS} -daemonize -boot d -kernel isodir/boot/test.bin || exit 0",
+      "command": "sudo qemu-system-i386 -S -gdb tcp::1234 ${env:MYOS_QEMU_PARAMS} -daemonize -boot d -kernel isodir/boot/test.bin || exit 0",
       "dependsOn": [
         "Build-TEST"
       ]

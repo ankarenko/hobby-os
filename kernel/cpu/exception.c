@@ -92,18 +92,13 @@ void general_protection_fault(struct interrupt_registers *registers) {
 }
 
 //! page fault
-void page_fault(interrupt_registers *registers) {
+void page_fault(interrupt_registers *registers, uint32_t faultAddr) {
   //_asm cli _asm sub ebp, 4
 
-  uint32_t faultAddr = 0;
-	int error_code = registers->err_code;
+  int error_code = registers->err_code;
 
-	__asm__ __volatile__("mov %%cr2, %%eax	\n"
-	 										 "mov %%eax, %0			\n"
-	 										 : "=r"(faultAddr));
 
-  assert_not_reached("\nLast tid: %d\nPage Fault at 0x%x\nReason: %s, %s, %s%s%s",
-    DEBUG_LAST_TID,
+  assert_not_reached("\nPage Fault at 0x%d\nReason: %s, %s, %s%s%s",
     faultAddr,
     error_code & 0b1 ? "protection violation" : "non-present page",
     error_code & 0b10 ? "write" : "read",
@@ -136,7 +131,7 @@ void machine_check_abort(struct interrupt_registers *registers) {
 void simd_fpu_fault(struct interrupt_registers *registers) {
   assert_not_reached("FPU SIMD fault", NULL);
 }
-
+// 0xC8060ED8
 int32_t thread_page_fault(interrupt_registers *regs) {
 	uint32_t faultAddr = 0;
 	__asm__ __volatile__("mov %%cr2, %%eax	\n"
@@ -156,7 +151,7 @@ int32_t thread_page_fault(interrupt_registers *regs) {
     
 		return IRQ_HANDLER_STOP;
 	} else {
-    page_fault(regs);
+    page_fault(regs, faultAddr);
   }
 
 	assert_not_reached();

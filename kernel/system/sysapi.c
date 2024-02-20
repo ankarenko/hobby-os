@@ -24,6 +24,7 @@
 #define __NR_lseek 19
 #define __NR_getpid 20
 #define __NR_kill 37
+#define __NR_dup 41
 #define __NR_pipe 42
 #define __NR_times 43
 #define __NR_signal 48
@@ -31,6 +32,7 @@
 #define __NR_fcntl 55   
 #define __NR_setpgid 57
 #define __NR_dup2 63
+#define __NR_getppid 64
 #define __NR_getpgrp 65
 #define __NR_setsid 66
 #define __NR_sigaction 67
@@ -56,6 +58,10 @@ static int32_t sys_debug_printf(const char *format, va_list args) {
 
 static int32_t sys_dup2(int oldfd, int newfd) {
   return dup2(oldfd, newfd);
+}
+
+static int32_t sys_dup(int oldfd) {
+  return dup(oldfd);
 }
 
 static int32_t sys_read(uint32_t fd, char *buf, size_t count) {
@@ -101,13 +107,12 @@ static int32_t sys_exit() {
 }
 
 static pid_t sys_fork() {
-  assert_not_implemented();
-	/*
-  struct struct process* child = process_fork(current_process);
-	queue_thread(child->struct thread);
-
-	return child->pid;
-  */
+  struct process *parent = get_current_process();
+  struct process* child = process_fork(parent);
+	//queue_thread(child->thread);
+  
+  return 123;
+	return 1;
 }
 
 static int32_t sys_waitpid(pid_t pid, int *wstatus, int options) {
@@ -258,6 +263,11 @@ static int32_t sys_times(struct tms *buffer) {
   assert_not_implemented("sys_times");
 }
 
+
+static int32_t sys_getppid() {
+  return get_current_process()->parent->pid;
+}
+
 static void *syscalls[] = {
   [__NR_exit] = sys_exit,
   [__NR_nanosleep] = sys_nanosleep,
@@ -272,6 +282,7 @@ static void *syscalls[] = {
   [__NR_time] = sys_time,
   [__NR_times] = sys_times,
   [__NR_fstat] = sys_fstat,
+  [__NR_dup] = sys_dup,
   [__NR_dup2] = sys_dup2,
   [__NR_waitpid] = sys_waitpid,
   [__NR_setpgid] = sys_setpgid,
@@ -282,6 +293,7 @@ static void *syscalls[] = {
   [__NR_close] = sys_close,
   [__NR_execve] = sys_execve,
   [__NR_waitid] = sys_waitid,
+  [__NR_getppid] = sys_getppid,
   [__NR_setsid] = sys_setsid,
   [__NR_getsid] = sys_getsid,
   [__NR_getpgrp] = sys_getpgrp,

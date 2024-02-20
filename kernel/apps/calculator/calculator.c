@@ -2,9 +2,10 @@
 #include <malloc.h>
 #include <signal.h>
 #include <string.h>
+#include <unistd.h>
 #include <stdio.h>
 
-#include "../../../ports/newlib/myos/print.h"
+//#include "../../../ports/newlib/myos/print.h"
 
 FILE* stream;
 
@@ -29,19 +30,32 @@ void custom_signal_handler_SIGALRMP(int signum) {
 }
 
 void main(int argc, char** argv) {
+  setbuf(stdout, 0);
+
   
   char* buf[30];
-  sprintf(buf, "Args : %d \n", argc);
-  fputs(buf, stdout);
+  printf("!---Args : %d \n", argc);
+  //fputs(buf, stdout);
 
   //stream = fopen("dev/serial0", "ab+");
 
   //vfprintf(stdout, "Hello from loop %d \n!", argc);
-    
+  
+  //char string [256];
+  //gets(string);
 
+  //printf("hello: %s", string);
+  
+  int pid = 0; 
+  if ((pid = fork()) == 0) {
+    while (1) {
+      printf("\nchild");
+      sleep(1);
+    }
+  } 
+  
   while (1) {
-    sprintf(buf, "Hello %s \n!", argc > 1? argv[1] : " world!");
-    fputs(buf, stdout);
+    printf("\nHello %s \n", argc > 1? argv[1] : " parent");
     sleep(1);
   }
   /*

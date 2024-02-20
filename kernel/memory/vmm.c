@@ -10,9 +10,6 @@
 
 #include "kernel/memory/vmm.h"
 
-#define PAGE_DIRECTORY_BASE 0xFFFFF000
-#define PAGE_TABLE_BASE 0xFFC00000
-#define PAGE_TABLE_VIRT_ADDRESS(virt) (PAGE_TABLE_BASE + (PAGE_DIRECTORY_INDEX(virt) * PMM_FRAME_SIZE))
 
 //! current directory table (global)
 struct pdirectory* _current_dir = 0;
@@ -127,58 +124,17 @@ struct pdirectory* vmm_get_kernel_space() {
   return _current_dir;
 }
 
-struct pdirectory *vmm_fork(struct pdirectory *va_dir) {
-  lock_scheduler(); 
+void pmmngr_load_PDBR(physical_addr addr)
+{
 
-  struct pdirectory *forked_dir = vmm_create_address_space();
-  void *aligned = kalign_heap(PMM_FRAME_ALIGN);
-
-  uint32_t heap_current = (uint32_t)sbrk(0, NULL);
-
-  // NOTE: make sure we are not exceeding the boundaries of the kernel heap
-  assert(
-    ALIGN_UP(heap_current + sizeof(struct ptable) + PMM_FRAME_SIZE, PMM_FRAME_SIZE) <= KERNEL_HEAP_TOP
-  );
-
-  assert(heap_current % PMM_FRAME_ALIGN == 0);
-  
-  for (int ipd = 0; ipd < 768; ++ipd) {
-    if (pd_entry_is_present(va_dir->m_entries[ipd])) {
-      struct ptable *forked_pt = (struct ptable *)heap_current;
-      uint32_t forked_pt_paddr = (uint32_t)pmm_alloc_frame();
-      vmm_map_address((uint32_t)forked_pt, forked_pt_paddr, I86_PTE_PRESENT | I86_PTE_WRITABLE);
-			memset(forked_pt, 0, sizeof(struct ptable));
-      heap_current += sizeof(struct ptable);
-
-      struct ptable *pt = PAGE_TABLE_BASE + ipd * PMM_FRAME_SIZE;
-
-      for (int ipt = 0; ipt < PAGES_PER_TABLE; ++ipt) {
-        if (pt_entry_is_present(pt->m_entries[ipt])) {
-          char *pte = (ipd << 10 | (0b1111111111 & ipt)) << 12;  // NOTE: lowest virtual address assigned to ipd and ipt
-					char *forked_pte = heap_current;
-					uint32_t forked_pte_paddr = (uint32_t)pmm_alloc_frame();
-
-          vmm_map_address((uint32_t)forked_pte, forked_pte_paddr, I86_PTE_PRESENT | I86_PTE_WRITABLE);
-          memcpy(forked_pte, pte, PMM_FRAME_SIZE);
-          vmm_unmap_address((uint32_t)forked_pte);
-          forked_pt->m_entries[ipt] = pt->m_entries[ipt];
-          pt_entry_set_frame(&forked_pt->m_entries[ipt], forked_pte_paddr);
-        }
-      }
-      vmm_unmap_address((uint32_t)forked_pt);
-      forked_dir->m_entries[ipd] = va_dir->m_entries[ipd];
-      pd_entry_set_frame(&forked_dir->m_entries[ipd], forked_pt_paddr);
-    }
-  }
-
-  if (aligned) {
-    kfree(aligned);
-  }
-  unlock_scheduler();
-  return forked_dir;
+	asm volatile("mov %0, %%cr3" ::"r"(addr));
 }
 
 void vmm_flush_tlb_entry(virtual_addr addr) {
+  __asm__ __volatile__("invlpg (%0)" ::"r"(addr)
+						 : "memory");
+  /*
+  doesn't work 
   __asm__ __volatile__(
       "cli        \n\t"
       "invlpg %0  \n\t"
@@ -186,6 +142,73 @@ void vmm_flush_tlb_entry(virtual_addr addr) {
       :
       : "m"(addr)
       :);
+  */
+}
+
+struct pdirectory *vmm_fork(struct pdirectory *va_dir) {
+  lock_scheduler(); 
+
+  struct pdirectory *forked_dir = vmm_create_address_space();
+  void *aligned = kalign_heap(PMM_FRAME_ALIGN);
+
+  uint32_t start_heap = (uint32_t)sbrk(0, NULL);
+
+  // NOTE: make sure we are not exceeding the boundaries of the kernel heap
+  assert(
+    ALIGN_UP(start_heap + sizeof(struct ptable) + PMM_FRAME_SIZE, PMM_FRAME_SIZE) <= KERNEL_HEAP_TOP
+  );
+
+  assert(start_heap % PMM_FRAME_ALIGN == 0);
+
+  for (int ipd = 0; ipd < 768; ++ipd) {
+    if (pd_entry_is_present(va_dir->m_entries[ipd])) {
+      struct ptable *forked_pt = (struct ptable *)start_heap;
+      uint32_t heap_current = start_heap;
+      void* forked_pt_paddr = pmm_alloc_frame();
+      vmm_map_address((uint32_t)forked_pt, forked_pt_paddr, I86_PTE_PRESENT | I86_PTE_WRITABLE);
+			memset((void*)forked_pt, 0, sizeof(struct ptable));
+      heap_current += sizeof(struct ptable);
+  
+      struct ptable *pt = PAGE_TABLE_BASE + ipd * PMM_FRAME_SIZE;
+
+      for (int ipt = 0; ipt < PAGES_PER_TABLE; ++ipt) {
+        if (pt_entry_is_present(pt->m_entries[ipt])) {
+          if (ipt == 4 && ipd == 1) {
+            int asdf = 1;
+          }
+          uint8_t *pte = (ipd << 10 | (0b1111111111 & ipt)) << 12;  // NOTE: lowest virtual address assigned to ipd and ipt
+					uint8_t *forked_pte = heap_current;
+					void* forked_pte_paddr = pmm_alloc_frame();
+          //6766592
+          vmm_map_address((uint32_t)forked_pte, forked_pte_paddr, I86_PTE_PRESENT | I86_PTE_WRITABLE);
+          //memset(forked_pte, 0, PMM_FRAME_SIZE);
+          memcpy((void*)forked_pte, (void*)pte, PMM_FRAME_SIZE);
+          vmm_unmap_address((uint32_t)forked_pte);
+
+          forked_pt->m_entries[ipt] = (uint32_t)forked_pte_paddr | I86_PTE_PRESENT | I86_PTE_WRITABLE | I86_PTE_USER;
+          ////ffff030000000f4cc281e7ffffff89
+          /*
+          forked_pt->m_entries[ipt] = pt->m_entries[ipt];
+          pt_entry_set_frame(&forked_pt->m_entries[ipt], forked_pte_paddr);
+          */
+        }
+      }
+      //6746215
+      vmm_unmap_address((uint32_t)forked_pt);
+      forked_dir->m_entries[ipd] = (uint32_t)forked_pt_paddr | I86_PDE_PRESENT | I86_PDE_WRITABLE | I86_PDE_USER;
+      /*
+      forked_dir->m_entries[ipd] = va_dir->m_entries[ipd];
+      pd_entry_set_frame(&forked_dir->m_entries[ipd], forked_pt_paddr);
+      */
+    }
+  }
+
+  if (aligned) {
+    kfree(aligned);
+  }
+
+  unlock_scheduler();
+  return forked_dir;
 }
 
 void vmm_init_and_map(struct pdirectory* va_dir, uint32_t vaddr, uint32_t paddr, uint32_t num_of_pages) {

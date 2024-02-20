@@ -310,18 +310,19 @@ int exec(void *entry(char **), char *name, char **argv, int gid) {
     assert(file == cur_proc->files->fd[stdout]);
     cur_proc->name = strdup(name);
 
-    if (file->f_op->ioctl(file->f_dentry->d_inode, file, TIOCSPGRP, &cur_proc->gid) < 0) {
+    pid_t gid = -1;
+    file->f_op->ioctl(file->f_dentry->d_inode, file, TIOCGPGRP, &gid);
+
+    if (gid != cur_proc->gid && file->f_op->ioctl(file->f_dentry->d_inode, file, TIOCSPGRP, &cur_proc->gid) < 0) {
       assert_not_reached("unable to set foreground process");
     }
 
-    parent->tty->pgrp = cur_proc->gid;
     entry(argv);
     do_exit(0);
   }
   int id = gid == -1 ? pid : gid;
   setpgid(pid, id);
-  parent->tty->pgrp = id;  // set foreground process
-
+  
   return pid;
 }
 
@@ -367,9 +368,9 @@ void test_pipe() {
   setpgid(pid, gid);
 
   if ((pid = process_fork(shell_proc)) == 0) {
+    setpgid(0, gid);
     struct process *cur_proc = get_current_process();
     cur_proc->name = strdup("answer");
-    setpgid(0, gid);
     dup2(pipe_fd[0], stdin);
     vfs_close(pipe_fd[1]);
     answer(NULL);

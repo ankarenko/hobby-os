@@ -17,6 +17,7 @@ extern void enter_usermode(
   virtual_addr user_esp, 
   virtual_addr return_addr
 );
+extern void return_usermode(struct interrupt_registers *regs);
 
 extern struct thread *_current_thread;
 struct list_head all_threads;
@@ -506,8 +507,20 @@ static void child_return_fork() {
   interruptdone(IRQ0);
   // needs to be last as previous funcion invokacions can spoil eax
   set_eax(0);
-  return;
+
+  return 0;
 }
+
+static void child_return_fork_user(struct thread *th, virtual_addr entry) {
+  enable_interrupts();
+  interruptdone(IRQ0);
+  interrupt_registers *regs = th->kernel_esp - sizeof(interrupt_registers);
+  regs->eax = 0;
+  tss_set_stack(KERNEL_DATA, th->kernel_esp);
+  return_usermode(regs);
+  return 0;
+}
+
 
 // probably it's better to rename the kernel fork to spawn
 pid_t process_fork(struct process* parent) {
@@ -542,7 +555,8 @@ pid_t process_fork(struct process* parent) {
   proc->files = clone_file_descriptor_table(parent->files);
   proc->va_dir = is_kernel? parent->va_dir : vmm_fork(parent->va_dir);
   proc->pa_dir = vmm_get_physical_address(proc->va_dir, false);
-  
+  //5689344
+  //0xc805f000
   struct thread *parent_thread = get_current_thread();
   assert(
     parent_thread->proc->pid == parent->pid, 
@@ -560,20 +574,27 @@ pid_t process_fork(struct process* parent) {
     picked up and run by the scheduler
   */
   // ebp + 8 means that we skip return address, it will be put to switch stack frame
-  int stack_size = parent_thread->kernel_esp - (stf.ebp + 8);
-  th->esp = th->kernel_esp - stack_size;
-  memcpy(th->esp, stf.ebp + 8, stack_size);
+  
+  interrupt_registers *regs = parent_thread->kernel_esp - sizeof(interrupt_registers);
+
+  if (is_kernel) {
+    int stack_size = parent_thread->kernel_esp - (stf.ebp + 8);
+    th->esp = th->kernel_esp - stack_size;
+    memcpy(th->esp, stf.ebp + 8, stack_size);
+  } else {
+    th->esp = th->kernel_esp - sizeof(interrupt_registers);
+    memcpy(th->esp, regs, sizeof(interrupt_registers));
+  }
   
   th->esp = th->esp - sizeof(trap_frame);
+	th->user_esp = parent_thread->user_esp; // NOTE: equal virtual address, but different physical!
   int prev_frame_size = parent_thread->kernel_esp - *((uint32_t*)stf.ebp);
   stf.ebp = th->kernel_esp - prev_frame_size;
   stf.return_address = stf.eip;
-  stf.eip = child_return_fork;
-
+  stf.parameter1 = th;
+  stf.parameter2 = regs->eip;
+  stf.eip = is_kernel? child_return_fork : child_return_fork_user;
   memcpy((char*)th->esp, &stf, sizeof(trap_frame));
-  
-  // NOTE: equal virtual address, but different physical!
-	th->user_esp = parent_thread->user_esp; 
 
   sched_push_queue(th);
   unlock_scheduler();

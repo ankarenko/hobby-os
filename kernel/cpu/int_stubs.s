@@ -48,8 +48,8 @@ isr_common_stub:
   pop %es
   pop %ds
 
-  popa
-
+  popa             # eip: 0x0040467e cs 0x0000001b eflags 0x00000206 0x00e00f30
+                   # uint32_t eip, cs, eflags, useresp, ss; 
   add $8, %esp     # Cleans up the pushed error code and pushed ISR number
   iret             # pops 5 things at once: CS, EIP, EFLAGS, SS, and ESP
 

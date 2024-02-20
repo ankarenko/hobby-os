@@ -45,6 +45,8 @@
     "terminal.h": "c",
     "cstdio": "c",
     "task.h": "c",
-    "atomic": "c"
+    "atomic": "c",
+    "wait.h": "c",
+    "sstream": "c"
   }
 }
