@@ -100,8 +100,6 @@ struct thread {
   struct process *proc;
   uint32_t tid;
 
-  physical_addr phys_ustack_bottom;  // TODO: needs to be put in mm_struct 
-  virtual_addr virt_ustack_bottom;
   enum thread_state state;
 
   struct list_head sched_sibling;
@@ -197,6 +195,11 @@ void enter_critical_section();
 void leave_critical_section();
 int32_t process_execve(const char *path, char *const argv[], char *const envp[]);
 void process_load(const char *pname, char** argv);
+bool create_user_stack(
+  struct pdirectory* space, 
+  virtual_addr* user_esp,
+  virtual_addr addr
+);
 
 #define process_for_each_entry(iter) \
   list_for_each_entry(iter, get_proc_list(), sibling)

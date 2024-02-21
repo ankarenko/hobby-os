@@ -87,8 +87,6 @@ void _clear_on_exit() {
 // int execve(char *name, char **argv, char **env);
 _syscall3(execve, const char *, char *const *, char *const *);
 int execve(const char *pathname, char *const argv[], char *const envp[]) {
-  // kernel_print("\nexecve");
-  //_clear_on_exit();
   SYSCALL_RETURN_ORIGINAL(syscall_execve(pathname, argv, envp));
 }
 

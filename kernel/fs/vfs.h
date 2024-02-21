@@ -218,7 +218,7 @@ int32_t find_unused_fd_slot();
 // read_write.c
 int32_t vfs_fread(int32_t fd, char* buf, uint32_t count);
 uint32_t vfs_fwrite(int32_t fd, char* buf, int32_t count);
-char* vfs_read(const char* path);
+int32_t vfs_read(const char *path, char** buf);
 off_t vfs_flseek(int32_t fd, off_t offset, int whence);
 off_t vfs_generic_llseek(struct vfs_file *file, off_t offset, int whence);
 

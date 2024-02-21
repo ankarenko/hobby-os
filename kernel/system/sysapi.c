@@ -108,11 +108,7 @@ static int32_t sys_exit() {
 
 static pid_t sys_fork() {
   struct process *parent = get_current_process();
-  struct process* child = process_fork(parent);
-	//queue_thread(child->thread);
-  
-  return 123;
-	return 1;
+  return process_fork(parent);
 }
 
 static int32_t sys_waitpid(pid_t pid, int *wstatus, int options) {
@@ -243,8 +239,7 @@ static int32_t sys_ioctl(int fd, unsigned int cmd, unsigned long arg) {
 
 
 static int32_t sys_execve(const char *pathname, char *const argv[], char *const envp[]) {
-  assert_not_implemented("sys_execve");
-  //return process_execve(pathname, argv, envp);
+  return process_execve(pathname, argv, envp);
 }
 
 static int32_t sys_poll(struct pollfd *fds, uint32_t nfds, int timeout) {

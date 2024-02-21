@@ -120,13 +120,15 @@ int exit_thread(struct thread *th) {
   // clear userstack
   if (is_user) {
     // parent->mm->heap_elock_schedund - beggining of the stack
+    /*
     uint32_t frames = div_ceil(USER_STACK_SIZE, PMM_FRAME_SIZE);
-    physical_addr paddr = vmm_get_physical_address(th->virt_ustack_bottom, false);
+    physical_addr paddr = vmm_get_physical_address( th->virt_ustack_bottom, false);
     pmm_free_frames(paddr, frames);
 
     for (int i = 0; i < frames; ++i) {
       vmm_unmap_address(th->virt_ustack_bottom + i * PAGE_SIZE);
     }
+    */
   }
 
   kfree(th);

@@ -4,15 +4,17 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "../memory/vmm.h"
-#include "./task.h"
-#include "../cpu/gdt.h"
+#include "kernel/memory/vmm.h"
+#include "kernel/proc/task.h"
+#include "kernel/cpu/gdt.h"
 
 typedef uint16_t Elf32_Half;  // Unsigned half int
 typedef uint32_t Elf32_Off;	  // Unsigned offset
 typedef uint32_t Elf32_Addr;  // Unsigned address
 typedef uint32_t Elf32_Word;  // Unsigned int
 typedef int32_t Elf32_Sword;  // Signed int
+
+#define HEAP_END(stack_start) (PAGE_ALIGN(stack_start + USER_HEAP_SIZE))
 
 // e_ident
 #define EI_MAG0 0		 // 0x7F
@@ -163,20 +165,16 @@ struct Elf32_Phdr
 	Elf32_Word p_align;
 };
 
-struct Elf32_Layout
-{
-	uint32_t stack;
-	uint32_t entry;
-  uint32_t image_size;
-  uint8_t* base;
-  uint8_t* image_start;
-  uint8_t* address_space;
+struct ELF32_Layout {
+	virtual_addr stack_bottom;
+  virtual_addr heap_start;
+  virtual_addr heap_current;
+	virtual_addr entry;
 };
 
-bool elf_load_image(
+int32_t elf_load(
   char* app_path, 
-  struct thread* th,
-  virtual_addr* entry
+  struct ELF32_Layout* layout
 );
-void elf_unload_image();
+int32_t elf_unload();
 #endif

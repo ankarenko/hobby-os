@@ -3,6 +3,7 @@
 #include "kernel/fs/vfs.h"
 #include "kernel/memory/vmm.h"
 #include "kernel/memory/malloc.h"
+#include "kernel/util/errno.h"
 #include "kernel/util/debug.h"
 #include "kernel/util/math.h"
 #include "kernel/proc/task.h"
@@ -61,27 +62,22 @@ static int elf_verify(struct Elf32_Ehdr *elf_header) {
   return NO_ERROR;
 }
 
-// load elf program into the user userspace 
-// which is provided in params
-bool elf_load_image(
+int32_t elf_load(
   char* app_path, 
-  struct thread* th, 
-  virtual_addr* entry
+  struct ELF32_Layout* layout
 ) {
   
-  uint8_t* elf_file = vfs_read(app_path);
-  //return true;
-  struct process* parent = th->proc;
+  uint8_t* elf_file = NULL;
+  
+  int ret = 0;
+  if ((ret = vfs_read(app_path, &elf_file)) < 0)
+    return ret;
 
-  if (!elf_file) {
-    assert_not_reached("\nELF file not found", NULL);
-  }
-
+  struct process* parent = get_current_process();
   struct Elf32_Ehdr *elf_header = (struct Elf32_Ehdr *)elf_file;
 
-  if (elf_verify(elf_header) != NO_ERROR || elf_header->e_phoff == 0) {
-    return false;
-  }
+  if (elf_verify(elf_header) != NO_ERROR || elf_header->e_phoff == 0)
+    return -EINVAL;
 
   // where elf wants us to put the image
   virtual_addr base = UINT32_MAX;
@@ -100,19 +96,13 @@ bool elf_load_image(
     parent->image_size = max(parent->image_size, segment_end);
   }
 
-  // allocating segments and mapping to virtual addresses
-  // *image_base = base; for absolute
   parent->image_base = USER_IMAGE_START; // for PIC (or malloc(image_size))
-  
-  //assert(parent->image_size % PMM_FRAME_SIZE == 0);
   assert(USER_HEAP_SIZE % PMM_FRAME_SIZE == 0);
   
-  
   mm_struct_mos* mm = parent->mm_mos;
-  
   mm->heap_start = parent->image_base;
   mm->brk = mm->heap_start;
-  mm->heap_end = PAGE_ALIGN(mm->heap_start + USER_HEAP_SIZE);
+  mm->heap_end = HEAP_END(mm->heap_start);
   mm->remaning = 0;
 
   virtual_addr* image = sbrk(
@@ -120,7 +110,6 @@ bool elf_load_image(
     mm
   );
   
-  // iterating trough segments and copying them to our address space
   for (int i = 0; i < elf_header->e_phnum; ++i) {
     struct Elf32_Phdr *ph = elf_file + elf_header->e_phoff + elf_header->e_phentsize * i;
     
@@ -140,48 +129,52 @@ bool elf_load_image(
 			mm->end_data = vaddr + ph->p_memsz;
 		}
 
-    //virtual_addr actual_addr = do_mmap(vaddr, ph->p_memsz, 0, 0, -1);
-    //assert(actual_addr == vaddr);
-
     // the ELF specification states that you should zero the BSS area. In bochs, everything's zeroed by default, 
     // but on real computers and virtual machines it isnt.
     memset(vaddr, 0, ph->p_memsz);
     memcpy(vaddr, elf_file + ph->p_offset, ph->p_filesz);
   }
-  /*
-  virtual_addr heap_start = do_mmap(0, 0, 0, 0, -1);
-  assert(heap_start != 0);
-	mm->start_brk = heap_start;
-	mm->brk = heap_start;
-	mm->end_brk = heap_start + USER_HEAP_SIZE;
 
-	virtual_addr stack_bottom = do_mmap(0, USER_STACK_SIZE, 0, 0, -1);
-  assert(stack_bottom != 0);
-	th->user_ss = USER_DATA;
-  th->user_esp = stack_bottom + USER_STACK_SIZE;
-  th->virt_ustack_bottom = stack_bottom;
-  */
-  
-  /* create stack space for main struct thread at the end of the program */
-  // dont forget that the stack grows up from down
-  
-  th->user_ss = USER_DATA;
-  th->virt_ustack_bottom = mm->heap_end;
-  
   if (!create_user_stack(
     parent->va_dir, 
-    &th->user_esp, 
-    &th->phys_ustack_bottom, 
-    th->virt_ustack_bottom
+    &layout->stack_bottom,
+    mm->heap_end
   )) {
     return false;
   }
 
-  *entry = parent->image_base + elf_header->e_entry - base;
+  layout->entry = parent->image_base + elf_header->e_entry - base;
+  layout->heap_start = mm->heap_start;
+  layout->heap_current = sbrk(0, mm);
   
   kfree(elf_file);
-  return true;
+  return 0;
 }
 
-void elf_unload() {
+int32_t elf_unload() {
+  // caught signals are reset
+	// sigemptyset(&get_current_process()->thread->pending); ??
+  struct process* proc = get_current_process();
+  virtual_addr start = proc->mm_mos->heap_start;
+  virtual_addr end = sbrk(0, proc->mm_mos);
+
+  assert(start % PMM_FRAME_SIZE == 0);
+
+  for (virtual_addr virt = start; virt < end; virt+= PMM_FRAME_SIZE) {
+    physical_addr phys = vmm_get_physical_address(virt, false);
+    vmm_unmap_address(virt);
+    pmm_free_frame(phys);
+  }
+
+  start = proc->mm_mos->heap_end;
+  end = proc->mm_mos + USER_HEAP_SIZE;
+  
+  for (virtual_addr virt = start; virt < end; virt+= PMM_FRAME_SIZE) {
+    physical_addr phys = vmm_get_physical_address(virt, false);
+    vmm_unmap_address(virt);
+    pmm_free_frame(phys);
+  }
+
+  memset(proc->mm_mos, 0, sizeof(mm_struct_mos));
+  return 0;
 }

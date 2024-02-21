@@ -49,14 +49,17 @@ void main(int argc, char** argv) {
   int pid = 0; 
   if ((pid = fork()) == 0) {
     while (1) {
-      printf("\nchild");
-      sleep(1);
+      setpgid(0, 0);
+      printf("\nHello from child");
+      sleep(3);
     }
   } 
+  setpgid(pid, pid);
+  printf("\nforked child pid: %d", pid);
   
   while (1) {
-    printf("\nHello %s \n", argc > 1? argv[1] : " parent");
-    sleep(1);
+    printf("\nHello %s", argc > 1? argv[1] : " parent");
+    sleep(3);
   }
   /*
   while (1) {

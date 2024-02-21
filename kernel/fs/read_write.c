@@ -5,10 +5,13 @@
 
 #include "kernel/fs/vfs.h"
 
-char *vfs_read(const char *path) {
-  int32_t fd = vfs_open(path, O_RDWR);
-	if (fd < 0)
-		return NULL;
+int32_t vfs_read(const char *path, char** res) {
+  int ret  = -1;
+  *res = NULL;
+
+  int32_t fd;
+	if ((fd = vfs_open(path, O_RDWR)) < 0)
+		return fd;
 
   struct process* proc = get_current_process();
   struct vfs_file* file = proc->files->fd[fd];
@@ -17,11 +20,22 @@ char *vfs_read(const char *path) {
   file->f_pos = 0; // read from the beggining
 
 	struct kstat *stat = kcalloc(1, sizeof(struct kstat));
-  vfs_fstat(fd, stat);
-	char *buf = kcalloc(stat->st_size + 1, sizeof(char));
-	vfs_fread(fd, buf, stat->st_size);
+  if ((ret = vfs_fstat(fd, stat)) < 0)
+    goto clean;
+
+	char* buf = kcalloc(stat->st_size + 1, sizeof(char));
+
+  if ((ret = vfs_fread(fd, buf, stat->st_size)) < 0) {
+    kfree(buf);
+    goto clean;
+  }
+
   buf[stat->st_size] = '\0';
-	return buf;
+  *res = buf;
+  
+clean:
+  kfree(stat);
+	return 0;
 }
 
 int32_t vfs_fread(int32_t fd, char *buf, uint32_t count) {

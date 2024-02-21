@@ -108,6 +108,14 @@ void vmm_unmap_address(virtual_addr virt) {
 	vmm_flush_tlb_entry(virt);
 }
 
+void vmm_unmap_range(virtual_addr vm_start, virtual_addr vm_end) {
+	assert(PAGE_ALIGN(vm_start) == vm_start);
+	assert(PAGE_ALIGN(vm_end) == vm_end);
+
+	for (uint32_t addr = vm_start; addr < vm_end; addr += PMM_FRAME_SIZE)
+		vmm_unmap_address(addr);
+}
+
 pt_entry* vmm_ptable_lookup_entry(struct ptable* p, virtual_addr addr) {
   return p ? &p->m_entries[PAGE_TABLE_INDEX(addr)] : 0;
 }
