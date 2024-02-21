@@ -116,6 +116,7 @@ void interruptdone(uint32_t intno);
 //! shutdown hardware devices
 int32_t hal_shutdown();
 
+
 uint32_t hal_initialize();
 uint32_t get_tick_count();
 void (*getvect(int intno))();

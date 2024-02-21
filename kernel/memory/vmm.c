@@ -3,6 +3,7 @@
 #include "kernel/util/math.h"
 #include "kernel/util/list.h"
 #include "kernel/memory/malloc.h"
+#include "kernel/util/errno.h"
 #include "kernel/memory/kernel_info.h"
 #include "kernel/memory/pmm.h"
 #include "kernel/util/debug.h"
@@ -83,25 +84,25 @@ struct pdirectory* vmm_create_address_space() {
 }
 
 
-void vmm_unmap_address(virtual_addr virt) {
+int32_t vmm_unmap_address(virtual_addr virt) {
   struct pdirectory* va_dir = PAGE_DIRECTORY_BASE;
 
   if (virt != PAGE_ALIGN(virt)) {
-    err("0x%x is not page aligned", virt);
+    assert_not_reached("0x%x is not page aligned", virt);
+    return -EINVAL;
   }
-		//dlog("0x%x is not page aligned", virt);
-
+		
 	if (!pd_entry_is_present(va_dir->m_entries[PAGE_DIRECTORY_INDEX(virt)])) {
-		err("PD entry not present");
-    return;
+		assert_not_reached("PD entry not present");
+    return -EINVAL;
   }
 
 	struct ptable *pt = (struct ptable *)(PAGE_TABLE_VIRT_ADDRESS(virt));
   uint32_t pte = PAGE_TABLE_INDEX(virt);
 
 	if (!pt_entry_is_present(pt->m_entries[pte])) {
-    err("PT entry not present");
-		return;
+    assert_not_reached("PT entry not present");
+		return -EINVAL;
   }
 
 	pt->m_entries[pte] = 0;

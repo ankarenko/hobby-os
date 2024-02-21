@@ -73,15 +73,6 @@ void kthread_fork() {
   }
 }
 
-void execve(void *entry()) {
-  struct process *parent = get_current_process();
-  if (process_fork(parent) == 0) {
-    entry();
-  }
-
-  wait_until_wakeup(&parent->wait_chld);
-}
-
 void ls(char **argv) {
   if (!vfs_ls(argv[0])) {
     kprintf("\ndirectory not found");
@@ -264,6 +255,11 @@ int ask(char **argv) {
   return 0;
 }
 
+int run_program(char **argv) {
+  process_execve(argv[0], &argv[1], NULL);
+  assert_not_reached("run program: ...");
+}
+
 int answer(char **argv) {
   int i = 0;
   int size = 64;
@@ -390,9 +386,6 @@ int search_and_run(struct cmd_t *com, int gid) {
   int ret = -1;
   if (strcmp(com->cmd, "hello") == 0) {
     ret = exec(hello, "hello", com->argv, gid);
-  } else if (strcmp(com->cmd, "create") == 0) {
-    kprintf("\nnew struct thread: ");
-    execve(kthread_fork);
   } else if (strcmp(com->cmd, "ps") == 0) {
     ret = exec(ps, "ps", com->argv, gid);
   } else if (strcmp(com->cmd, "signal") == 0) {
@@ -423,6 +416,8 @@ int search_and_run(struct cmd_t *com, int gid) {
     cmd_read_kybrd();
   } else if (strcmp(com->cmd, "ls") == 0) {
     ret = exec(ls, "ls", com->argv, gid);
+  } else if (strcmp(com->cmd, "exec") == 0) {
+    ret = exec(run_program, "program", com->argv, gid);
   } else if (strcmp(com->cmd, "run") == 0) {
     run_userprogram(com->argv);
     ret = -1;

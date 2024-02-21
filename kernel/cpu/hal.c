@@ -43,6 +43,7 @@ void interruptdone(uint32_t intno) {
   i86_pic_send_command(I86_PIC_OCW2_MASK_EOI, 0);
 }
 
+
 //! shutdown hardware devices
 int32_t hal_shutdown () {
 	return 0;

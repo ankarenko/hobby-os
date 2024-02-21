@@ -2,6 +2,7 @@
 #include "kernel/memory/malloc.h"
 #include "kernel/memory/vmm.h"
 #include "kernel/proc/task.h"
+#include "kernel/proc/elf.h"
 #include "kernel/util/errno.h"
 #include "kernel/util/debug.h"
 #include "kernel/util/math.h"
@@ -9,27 +10,17 @@
 
 static void exit_mm(struct process *proc) {
   mm_struct_mos *iter, *next;
-  /*
-list_for_each_entry_safe(iter, next, &proc->mm->mmap, vm_sibling) {
-          if (!iter->vm_file)
-                  vmm_unmap_range(proc->pdir, iter->vm_start, iter->vm_end);
 
-          list_del(&iter->vm_sibling);
-          kfree(iter);
-  }
-*/
   if (proc->mm_mos) {
-    for (
-        virtual_addr vaddr = proc->mm_mos->heap_start;
-        vaddr < proc->mm_mos->brk;
-        vaddr += PMM_FRAME_SIZE) {
-      physical_addr paddr = vmm_get_physical_address(vaddr, false);
-      pmm_free_frame(paddr);
-      vmm_unmap_address(vaddr);
-    }
+    // bad, but works for now
+    pmm_load_PDBR(proc->pa_dir); 
+    if (elf_unload() < 0)
+      assert_not_reached("unable to unload elf");
+    pmm_load_PDBR(get_current_process()->pa_dir);
+
+    kfree(proc->mm_mos);
+    proc->mm_mos = NULL;
   }
-  kfree(proc->mm_mos);
-  proc->mm_mos = NULL;
 }
 
 static void exit_files(struct process *proc) {
@@ -54,6 +45,7 @@ static void exit_notify(struct process *proc) {
 
 void exit_process(struct process *proc) {
   log("exit process %d", proc->pid);
+  
   exit_mm(proc);
   exit_files(proc);
   exit_notify(proc);
@@ -119,16 +111,7 @@ int exit_thread(struct thread *th) {
 
   // clear userstack
   if (is_user) {
-    // parent->mm->heap_elock_schedund - beggining of the stack
-    /*
-    uint32_t frames = div_ceil(USER_STACK_SIZE, PMM_FRAME_SIZE);
-    physical_addr paddr = vmm_get_physical_address( th->virt_ustack_bottom, false);
-    pmm_free_frames(paddr, frames);
-
-    for (int i = 0; i < frames; ++i) {
-      vmm_unmap_address(th->virt_ustack_bottom + i * PAGE_SIZE);
-    }
-    */
+    // free kernel stack
   }
 
   kfree(th);
@@ -144,6 +127,7 @@ int exit_thread(struct thread *th) {
     //parent->parent->tty->pgrp = parent->parent->gid;
     wake_up(&parent->parent->wait_chld);
   } else  {
+    schedule();
     log("no parent to wake up");
   }
 

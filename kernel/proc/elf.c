@@ -167,7 +167,7 @@ int32_t elf_unload() {
   }
 
   start = proc->mm_mos->heap_end;
-  end = proc->mm_mos + USER_HEAP_SIZE;
+  end = start + USER_STACK_SIZE;
   
   for (virtual_addr virt = start; virt < end; virt+= PMM_FRAME_SIZE) {
     physical_addr phys = vmm_get_physical_address(virt, false);

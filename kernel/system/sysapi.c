@@ -95,7 +95,9 @@ static void* sys_sbrk(size_t n) {
 }
 
 static int32_t sys_exit() {
-  assert_not_implemented("sys_exit");
+  do_kill(0, SIGQUIT);
+  while (1) {}
+  
   /*
   struct thread* cur_thread = get_current_thread();
   thread_kill(cur_thread->tid);

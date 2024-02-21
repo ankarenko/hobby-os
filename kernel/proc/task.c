@@ -177,20 +177,19 @@ static int32_t empack_params(char **_argv) {
   struct process *parent = th->proc;
   char *path = parent->name;
 
-  uint32_t argc = 0;
-  while (_argv[argc] != 0) {
-    ++argc;
-  }
+  uint32_t argc = count_array_of_pointers(_argv);
 
   char **argv = (char **)sbrk(
-      sizeof(uint32_t) * argc + 1,
-      parent->mm_mos);
+    sizeof(uint32_t) * (argc + 1),
+    parent->mm_mos
+  );
 
   // add path
   uint32_t len = strlen(path) + 1;
   char *arg_path = sbrk(
-      len,
-      parent->mm_mos);
+    len,
+    parent->mm_mos
+  );
   memcpy(arg_path, path, len);
   arg_path[len] = '\0';
   argv[0] = arg_path;
@@ -637,28 +636,40 @@ int32_t process_execve(const char *path, char *const argv[], char *const envp[])
 
   struct thread *th = get_current_thread();
   struct process *current_process = th->proc;
-
   current_process->name = strdup(path);
+
+  bool is_kernel = vmm_is_kernel_directory(current_process->va_dir);
   
+  int argv_length = count_array_of_pointers(argv);
+	char **kernel_argv = kcalloc(argv_length, sizeof(char *));
+	for (int i = 0; i < argv_length; ++i) {
+		int ilength = strlen(argv[i]);
+		kernel_argv[i] = kcalloc(ilength + 1, sizeof(char));
+		memcpy(kernel_argv[i], argv[i], ilength);
+	}
+
+
   if (elf_unload() < 0) {
     assert_not_reached("Unablt to unload elf");
   }
 
   struct ELF32_Layout layout; 
-  if (elf_load(path, &layout) < 0) {
+  if (elf_load(current_process->name, &layout) < 0) {
     assert_not_reached("ELF is not loaded properly");
   }
 
   th->user_ss = USER_DATA;
   th->user_esp = layout.stack_bottom;
 
-  if (empack_params(argv) < 0) {
+  if (empack_params(kernel_argv) < 0) {
     assert_not_reached("Cannot empack params");
   }
 
   tss_set_stack(KERNEL_DATA, th->kernel_esp);
   enter_usermode(layout.entry, th->user_esp, PROCESS_TRAPPED_PAGE_FAULT);
-  return 0;
+
+  assert_not_reached();
+  //return 0;
 }
 
 bool initialise_multitasking(virtual_addr entry) {

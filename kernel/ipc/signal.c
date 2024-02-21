@@ -166,7 +166,7 @@ int do_kill(pid_t pid, int32_t signum) {
     }
 
   } else if (pid == 0) {
-    assert_not_reached();
+    kill_process(get_current_process());
   } else if (pid > 0) {
     log("do_kill: killing PROCESS %d with signum %d", pid, signum);
     struct process *proc = find_process_by_pid(-pid);

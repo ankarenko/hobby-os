@@ -142,7 +142,7 @@ static int ptmx_open(struct vfs_inode *inode, struct vfs_file *file) {
   ttys->link = ttym;
 
   char path[sizeof(PATH_DEV) + SPECNAMELEN] = {0};
-  sprintf(path, "/dev/%s", ttys->name);
+  sprintf(path, "/dev/pts/%d", ttys->index);
   int dev = MKDEV(UNIX98_PTY_SLAVE_MAJOR, index);
   vfs_mknod(path, S_IFCHR, dev);
 

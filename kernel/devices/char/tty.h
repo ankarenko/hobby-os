@@ -107,7 +107,7 @@
 #define UNIX98_PTY_MASTER_MAJOR 128
 #define UNIX98_PTY_MAJOR_COUNT 8
 #define UNIX98_PTY_SLAVE_MAJOR (UNIX98_PTY_MASTER_MAJOR + UNIX98_PTY_MAJOR_COUNT)
-#define N_TTY_BUF_SIZE (64)
+#define N_TTY_BUF_SIZE (256)
 // proper overflow safe 
 // https://csresources.github.io/SystemProgrammingWiki/SystemProgramming/Synchronization,-Part-8:-Ring-Buffer-Example/
 // #define N_TTY_BUF_ALIGN(v) (((v)++) & (N_TTY_BUF_SIZE - 1))
