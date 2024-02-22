@@ -649,7 +649,7 @@ int32_t process_execve(const char *path, char *const argv[], char *const envp[])
 	}
 
 
-  if (elf_unload() < 0) {
+  if (elf_unload(NULL) < 0) {
     assert_not_reached("Unablt to unload elf");
   }
 

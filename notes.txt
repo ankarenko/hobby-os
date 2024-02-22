@@ -1,2 +1,6 @@
 1. cat diary/day1.txt crashes with page fault
 cd diary && cd .. && cd ..
+
+pmemsave 0x674000 4096 out.mem
+
+echo "pmemsave 0x674000 4096 home/sergey/Desktop/os/out.mem" | sudo socat - unix-connect:qemu-monitor-socket

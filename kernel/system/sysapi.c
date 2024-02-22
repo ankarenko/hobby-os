@@ -44,6 +44,7 @@
 #define __NR_getsid 147
 #define __NR_nanosleep 162
 #define __NR_poll 168
+#define __NR_getcwd 183
 #define __NR_waitid 284
 #define __NR_print 0
 
@@ -92,6 +93,40 @@ static void* sys_sbrk(size_t n) {
     n, parent->mm_mos
   );
   return addr;
+}
+
+static int32_t sys_getcwd(char *buf, size_t size) {
+  
+  if (!buf || !size)
+    return -EINVAL;
+  
+  struct process *proc = get_current_process();
+  char *path = proc->fs->d_root->d_name;
+
+  int32_t ret = (int32_t)buf;
+  int plen = strlen(path);
+  if (plen < size) {
+    memcpy(buf, path, plen);
+    buf[plen] = '\0';
+  } else
+    ret = -ERANGE;
+
+  return 0;
+
+  /*
+  char *abs_path = kcalloc(MAXPATHLEN, sizeof(char));
+  vfs_build_path_backward(current_process->fs->d_root, abs_path);
+
+  int32_t ret = (int32_t)buf;
+  int plen = strlen(abs_path);
+  if (plen < size)
+    memcpy(buf, abs_path, plen + 1);
+  else
+    ret = -ERANGE;
+
+  kfree(abs_path);
+  return ret;
+  */
 }
 
 static int32_t sys_exit() {
@@ -295,6 +330,7 @@ static void *syscalls[] = {
   [__NR_getsid] = sys_getsid,
   [__NR_getpgrp] = sys_getpgrp,
   [__NR_getpid] = sys_getpid,
+  [__NR_getcwd] = sys_getcwd,
   [__NR_kill] = sys_kill,
   [__NR_fcntl] = sys_fcntl,
   [__NR_sigaction] = sys_sigaction,

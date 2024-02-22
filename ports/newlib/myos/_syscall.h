@@ -36,6 +36,7 @@
 #define __NR_getsid 147
 #define __NR_nanosleep 162
 #define __NR_poll 168
+#define __NR_getcwd 183
 #define __NR_waitid 284
 #define __NR_print 0
 

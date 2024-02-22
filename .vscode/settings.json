@@ -47,6 +47,8 @@
     "task.h": "c",
     "atomic": "c",
     "wait.h": "c",
-    "sstream": "c"
+    "sstream": "c",
+    "string": "c",
+    "istream": "c"
   }
 }

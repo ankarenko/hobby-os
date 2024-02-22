@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 //#include "../../../ports/newlib/myos/print.h"
 
@@ -29,12 +30,157 @@ void custom_signal_handler_SIGALRMP(int signum) {
   fflush(stream);
 }
 
-void main(int argc, char** argv) {
-  
-  setbuf(stdout, 0);
-  printf("Start program: %s", argv[0]);
-  return 0;
+#define CMD_MAX         5
+#define PARAM_MAX       10
+#define N_TTY_BUF_SIZE  (256)
 
+#define CMD_MAX 5
+#define PARAM_MAX 10
+
+struct cmd_t {
+  char *argv[PARAM_MAX];
+  char *cmd;
+};
+
+static struct cmd_t commands[CMD_MAX];
+
+int search_and_run(struct cmd_t *com, int gid) {
+  int ret = -1;
+  if (strcmp(com->cmd, "hello") == 0) {
+    ret = 0; // exec(hello, "hello", com->argv, gid);
+  }
+clean:
+  return ret;
+}
+
+bool interpret_line(char *line) {
+  int param_size = PARAM_MAX;
+  for (int i = 0; i < CMD_MAX; ++i) {
+    commands[i].cmd = NULL;
+    for (int j = 0; j < param_size; ++j) {
+      commands[i].argv[j] = NULL;
+    }
+  }
+
+  // Returns first token
+  char *token = strtok(line, " ");
+
+  int param_i = 0;
+  int command_i = -1;
+  bool parse_command = true;
+
+  while (token != NULL) {
+    if (parse_command) {
+      command_i++;
+      commands[command_i].cmd = strdup(token);
+      param_i = 0;
+      parse_command = false;
+      continue;
+    }
+
+    token = strtok(NULL, " ");
+    
+    if (token == NULL) {
+      break;
+    } else if (
+      (strlen(token) == 1 && strcmp(token, "|") == 0) ||
+      (strlen(token) == 2 && strcmp(token, "&&") == 0) ||
+      (strlen(token) == 2 && strcmp(token, "||") == 0)
+    ) {
+      command_i++;
+      commands[command_i].cmd = strdup(token);
+      parse_command = true;
+      token = strtok(NULL, " ");
+      continue;
+    } else {
+      commands[command_i].argv[param_i] = strdup(token);
+      ++param_i;
+    }
+  }
+
+  command_i++;
+  if (command_i == 0)
+    goto clean;
+
+  //struct infop inop;
+  int gid = -1;
+  int pid = -1;
+  //struct process *shell_proc = get_current_process();
+
+  for (int i = 0; i < command_i; ++i) {
+    struct cmd_t *com = &commands[i];
+
+    if (strcmp(com->cmd, "|") == 0) {
+      continue;
+    } else if (strcmp(com->cmd, "&&") == 0) {
+      //do_wait(P_PID, pid, &inop, WEXITED | WSSTOPPED);
+
+      continue;
+    } else if (strcmp(com->cmd, "pipe") == 0) {
+      //test_pipe();
+      continue;
+    }
+
+    pid = search_and_run(com, gid);
+
+    if (gid == -1)
+      gid = pid;
+
+    if (gid == -1)
+      goto clean;
+  }
+  
+  int ret = 0;
+
+  // wait all childs
+  /*
+  while ((ret = do_wait(P_PGID, gid, &inop, WEXITED | WSSTOPPED)) > 0) {
+  }
+  shell_proc->tty->pgrp = shell_proc->gid;
+  */
+  printf("\n");
+clean:
+  for (int i = 0; i < CMD_MAX; ++i) {
+    struct cmd_t com = commands[i];
+    if (com.cmd) {
+      for (int j = 0; j < param_size; ++j) {
+        if (com.argv[j] != NULL) {
+          free(com.argv[j]);
+          com.argv[j] = NULL;
+        }
+      }
+      free(com.cmd);
+      com.cmd = NULL;
+    }
+  }
+  return false;
+}
+
+void main(int argc, char** argv) {
+  setbuf(stdout, 0);
+  setbuf(stdin, 0);
+  setpgid(0, 0);
+  
+  int size = N_TTY_BUF_SIZE - 1;
+  char *line = malloc(size * sizeof(char));
+
+  char path[20];
+  size_t  n = 256;
+
+  while (true) {
+newline:
+    getcwd(&path, 20);
+    printf("\n(%s)root@%s: ", "ext2", path);
+
+    sleep(3);
+
+    gets(line);
+    
+  }
+clean:
+  free(line);
+  return 0;
+  /*
   int pid = 0; 
   char *param1 = "final";
   char *_argv[] = { param1, 0 };
@@ -53,6 +199,7 @@ void main(int argc, char** argv) {
     fprintf(stdout, "hello my man");
     sleep(3);
   }
+  
   */
 
   /*

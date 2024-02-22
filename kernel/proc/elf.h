@@ -176,5 +176,5 @@ int32_t elf_load(
   char* app_path, 
   struct ELF32_Layout* layout
 );
-int32_t elf_unload();
+int32_t elf_unload(struct process* _proc);
 #endif

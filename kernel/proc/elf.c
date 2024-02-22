@@ -151,10 +151,10 @@ int32_t elf_load(
   return 0;
 }
 
-int32_t elf_unload() {
+int32_t elf_unload(struct process* _proc) {
   // caught signals are reset
 	// sigemptyset(&get_current_process()->thread->pending); ??
-  struct process* proc = get_current_process();
+  struct process* proc = _proc == NULL? get_current_process() : _proc;
   virtual_addr start = proc->mm_mos->heap_start;
   virtual_addr end = sbrk(0, proc->mm_mos);
 

@@ -462,8 +462,10 @@ bool interpret_line(char *line) {
     }
 
     token = strtok(NULL, " ");
-
-    if (
+    
+    if (token == NULL) {
+      break;
+    } else if (
         (strlen(token) == 1 && strcmp(token, "|") == 0) ||
         (strlen(token) == 2 && strcmp(token, "&&") == 0) ||
         (strlen(token) == 2 && strcmp(token, "||") == 0)) {
@@ -472,8 +474,6 @@ bool interpret_line(char *line) {
       parse_command = true;
       token = strtok(NULL, " ");
       continue;
-    } else if (token == NULL) {
-      break;
     } else {
       assert(param_i < param_size, "too many params");
       commands[command_i].argv[param_i] = strdup(token);

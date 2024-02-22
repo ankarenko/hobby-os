@@ -13,11 +13,14 @@ static void exit_mm(struct process *proc) {
 
   if (proc->mm_mos) {
     // bad, but works for now
+    /*
     pmm_load_PDBR(proc->pa_dir); 
-    if (elf_unload() < 0)
+    
+    if (elf_unload(proc) < 0)
       assert_not_reached("unable to unload elf");
+    
     pmm_load_PDBR(get_current_process()->pa_dir);
-
+    */
     kfree(proc->mm_mos);
     proc->mm_mos = NULL;
   }
@@ -127,7 +130,6 @@ int exit_thread(struct thread *th) {
     //parent->parent->tty->pgrp = parent->parent->gid;
     wake_up(&parent->parent->wait_chld);
   } else  {
-    schedule();
     log("no parent to wake up");
   }
 

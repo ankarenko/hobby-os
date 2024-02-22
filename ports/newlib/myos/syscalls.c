@@ -90,6 +90,17 @@ int execve(const char *pathname, char *const argv[], char *const envp[]) {
   SYSCALL_RETURN_ORIGINAL(syscall_execve(pathname, argv, envp));
 }
 
+_syscall2(getcwd, char *, size_t);
+char *getcwd(char *buf, size_t size) {
+  /*
+	if (!size)
+		size = MAXPATHLEN;
+	if (!buf)
+		buf = calloc(size, sizeof(char));
+  */
+	SYSCALL_RETURN_POINTER(syscall_getcwd(buf, size));
+}
+
 _syscall0(fork);
 int fork() {
   // kernel_print("\nfork");
