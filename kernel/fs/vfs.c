@@ -32,38 +32,35 @@ char* months[12] = {
     "dec"};
 
 int32_t vfs_ls(const char* path) {
-  struct nameidata nd = {
-      .dentry = 0,
-      .mnt = 0};
-  int32_t ret = 0;
-  if ((ret = vfs_jmp(&nd, path, 0, 0)) != 0) {
-    return ret;
-  }
+  int32_t fd = 0;
+  if ((fd = vfs_open(path, 0)) < 0)
+    return fd;
 
   //  check if dir
+  /*
   if (!S_ISDIR(nd.dentry->d_inode->i_mode)) {
     return -ENOTDIR;
   }
+  */
 
-  struct vfs_file* file = alloc_vfs_file();
-  file->f_dentry = nd.dentry;
-
-  struct dirent* dirs = NULL;
-
-  uint32_t count = nd.dentry->d_inode->i_fop->readdir(file, &dirs);
+  struct vfs_file* file = get_current_process()->files->fd[fd];
+  int size = file->f_dentry->d_inode->i_size;
+  uint8_t* buf = kcalloc(size, sizeof(uint8_t));
+  uint32_t count = file->f_op->readdir(file, buf, size);
 
   struct vfs_inode inode;
 
-  for (int i = 0; i < count; ++i) {
+  for (int i = 0; i < count;) {
     
     char name[12] = "           ";
-    struct dirent* iter = &dirs[i];
+    struct dirent* iter = &buf[i];
+    i += iter->d_reclen;
 
     inode.i_ino = iter->d_ino;
-    inode.i_sb = nd.dentry->d_inode->i_sb;
+    inode.i_sb = file->f_dentry->d_inode->i_sb;
 
-    if (nd.dentry->d_inode->i_sb->s_op->read_inode && inode.i_ino != 0) {
-      nd.dentry->d_inode->i_sb->s_op->read_inode(&inode);
+    if (file->f_dentry->d_inode->i_sb->s_op->read_inode && inode.i_ino != 0) {
+      file->f_dentry->d_inode->i_sb->s_op->read_inode(&inode);
 
       memcpy(&name, iter->d_name, strlen(iter->d_name));
       if (!S_ISDIR(iter->d_type)) {
@@ -102,7 +99,7 @@ int32_t vfs_ls(const char* path) {
     }
     
   }
-  kfree(dirs);
+  kfree(buf);
   return count;
 }
 

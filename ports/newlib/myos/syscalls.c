@@ -90,6 +90,11 @@ int execve(const char *pathname, char *const argv[], char *const envp[]) {
   SYSCALL_RETURN_ORIGINAL(syscall_execve(pathname, argv, envp));
 }
 
+_syscall3(getdents, unsigned int, struct dirent *, unsigned int);
+int getdents(unsigned int fd, struct dirent *dirent, unsigned int count) {
+	SYSCALL_RETURN_ORIGINAL(syscall_getdents(fd, dirent, count));
+}
+
 _syscall2(getcwd, char *, size_t);
 char *getcwd(char *buf, size_t size) {
   /*

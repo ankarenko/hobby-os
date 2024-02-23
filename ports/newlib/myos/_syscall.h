@@ -33,6 +33,7 @@
 #define __NR_fstat 108
 #define __NR_sigprocmask 126
 #define __NR_getpgid 132
+#define __NR_getdents 141
 #define __NR_getsid 147
 #define __NR_nanosleep 162
 #define __NR_poll 168

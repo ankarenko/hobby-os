@@ -41,6 +41,7 @@
 #define __NR_fstat 108
 #define __NR_sigprocmask 126
 #define __NR_getpgid 132
+#define __NR_getdents 141
 #define __NR_getsid 147
 #define __NR_nanosleep 162
 #define __NR_poll 168
@@ -94,6 +95,20 @@ static void* sys_sbrk(size_t n) {
   );
   return addr;
 }
+
+static int32_t sys_getdents(unsigned int fd, struct dirent *dirent, unsigned int count) {
+  struct process *current_process = get_current_process();
+  struct vfs_file *file = current_process->files->fd[fd];
+
+  if (!file)
+    return -EBADF;
+
+  if (file->f_op->readdir)
+    return file->f_op->readdir(file, dirent, count);
+
+  return -ENOTDIR;
+}
+
 
 static int32_t sys_getcwd(char *buf, size_t size) {
   
@@ -330,6 +345,7 @@ static void *syscalls[] = {
   [__NR_getsid] = sys_getsid,
   [__NR_getpgrp] = sys_getpgrp,
   [__NR_getpid] = sys_getpid,
+  [__NR_getdents] = sys_getdents,
   [__NR_getcwd] = sys_getcwd,
   [__NR_kill] = sys_kill,
   [__NR_fcntl] = sys_fcntl,

@@ -2,6 +2,7 @@
 #include <malloc.h>
 #include <signal.h>
 #include <string.h>
+#include <dirent.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -44,10 +45,60 @@ struct cmd_t {
 
 static struct cmd_t commands[CMD_MAX];
 
+void ls() {
+  struct dirent *dirent = NULL;
+  
+  
+  
+
+}
+
+void hello(char **argv) {
+  while (1) {
+    printf("\nHello %s", argv[0]);
+    sleep(2000);
+  }
+}
+
+int exec(void *entry(char **), char *name, char **argv, int gid) {
+  // TODO: FORBID 0 DEREFERENCE!
+  entry(argv);
+  return gid;
+
+  
+  /*
+  struct process *parent = get_current_process();
+  int pid = 0;
+
+  if ((pid = process_fork(parent)) == 0) {
+    setpgid(0, gid == -1 ? 0 : gid);
+
+    struct process *cur_proc = get_current_process();
+    struct vfs_file *file = cur_proc->files->fd[stdin];
+    assert(file == cur_proc->files->fd[stdout]);
+    cur_proc->name = strdup(name);
+
+    pid_t gid = -1;
+    file->f_op->ioctl(file->f_dentry->d_inode, file, TIOCGPGRP, &gid);
+
+    if (gid != cur_proc->gid && file->f_op->ioctl(file->f_dentry->d_inode, file, TIOCSPGRP, &cur_proc->gid) < 0) {
+      assert_not_reached("unable to set foreground process");
+    }
+
+    entry(argv);
+    do_exit(0);
+  }
+  int id = gid == -1 ? pid : gid;
+  setpgid(pid, id);
+  
+  return pid;
+  */
+}
+
 int search_and_run(struct cmd_t *com, int gid) {
   int ret = -1;
   if (strcmp(com->cmd, "hello") == 0) {
-    ret = 0; // exec(hello, "hello", com->argv, gid);
+    ret = exec(hello, "hello", com->argv, gid);
   }
 clean:
   return ret;
@@ -157,8 +208,7 @@ clean:
 }
 
 void main(int argc, char** argv) {
-  setbuf(stdout, 0);
-  setbuf(stdin, 0);
+  
   setpgid(0, 0);
   
   int size = N_TTY_BUF_SIZE - 1;

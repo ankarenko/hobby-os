@@ -89,7 +89,7 @@ struct vfs_superblock {
 struct vfs_file_operations {
 	int (*open)(struct vfs_inode *inode, struct vfs_file *file);
   int32_t (*read)(struct vfs_file* file, uint8_t* buffer, uint32_t length, off_t ppos);
-  int (*readdir)(struct vfs_file *dir, struct dirent** dirent);
+  int (*readdir)(struct vfs_file *dir, struct dirent* dirent, uint32_t count);
   uint32_t (*write)(struct vfs_file *file, const char *buf, size_t count, off_t ppos);
   int32_t (*close)(struct vfs_file*);
   off_t (*llseek)(struct vfs_file* file, off_t ppos, int);
@@ -210,7 +210,7 @@ int vfs_fstat(int32_t fd, struct kstat* stat);
 int32_t vfs_delete(const char* fname);
 struct vfs_dentry *alloc_dentry(struct vfs_dentry *parent, char *name);
 struct vfs_file *alloc_vfs_file();
-int generic_memory_readdir(struct vfs_file *file, struct dirent **dirent);
+int generic_memory_readdir(struct vfs_file *file, struct dirent *dirent, uint32_t count);
 int vfs_mknod(const char *path, int mode, int32_t dev);
 struct vfs_dentry *vfs_search_virt_subdirs(struct vfs_dentry *dir, const char *name);
 int32_t find_unused_fd_slot();

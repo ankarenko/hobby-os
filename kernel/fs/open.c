@@ -130,21 +130,25 @@ int vfs_mknod(const char *path, int mode, int32_t dev) {
   return ret;
 }
 
-int generic_memory_readdir(struct vfs_file *file, struct dirent **dirent) {
+int generic_memory_readdir(struct vfs_file *file, struct dirent *dirent, uint32_t count) {
   struct vfs_dentry *dentry = file->f_dentry;
-  int entries_size = list_count(&dentry->d_subdirs);
+  int entries_size = 0; // list_count(&dentry->d_subdirs);
 
-  *dirent = kcalloc(entries_size, sizeof(struct dirent));
-
-  struct dirent *idrent = *dirent;
+  struct dirent *idrent = dirent;
   struct vfs_dentry *iter;
+  int total_len = 0;
   list_for_each_entry(iter, &dentry->d_subdirs, d_sibling) {
-    int len = strlen(iter->d_name);
-    memcpy(idrent->d_name, iter->d_name, len);
+    total_len = sizeof(struct dirent);
+    
+    if (entries_size + total_len > count)
+			break;
+
+    memcpy(idrent->d_name, iter->d_name, strlen(iter->d_name));
     idrent->d_reclen = sizeof(struct dirent); // + len + 1;
     idrent->d_ino = iter->d_inode->i_ino;
     idrent->d_type = iter->d_inode->i_mode;
     idrent = (struct dirent *)((char *)idrent + idrent->d_reclen);
+    entries_size += idrent->d_reclen;
   }
   return entries_size;
 }
