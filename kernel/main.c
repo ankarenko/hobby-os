@@ -289,7 +289,7 @@ void make_foreground() {
 }
 
 int run_userprogram(char **argv) {
-  process_load(argv[0], &argv[1]);
+  process_load(argv[0], argv);
   return 0;
 }
 
@@ -325,7 +325,7 @@ int exec(void *entry(char **), char *name, char **argv, int gid) {
 void cmd_read_file();
 
 #define CMD_MAX 5
-#define PARAM_MAX 10
+#define PARAM_MAX 32
 
 struct cmd_t {
   char *argv[PARAM_MAX];
@@ -419,7 +419,7 @@ int search_and_run(struct cmd_t *com, int gid) {
   } else if (strcmp(com->cmd, "exec") == 0) {
     ret = exec(run_program, "program", com->argv, gid);
   } else if (strcmp(com->cmd, "run") == 0) {
-    run_userprogram(com->argv);
+    run_userprogram(&com->argv);
     ret = -1;
     //ret = exec(run_userprogram, com->argv[0], com->argv, gid);
   } else if (strcmp(com->cmd, "") == 0) {
@@ -432,10 +432,12 @@ clean:
   return ret;
 }
 
-static struct cmd_t commands[CMD_MAX];
+
 
 //! our simple command parser
 bool interpret_line(char *line) {
+  struct cmd_t *commands = kcalloc(CMD_MAX, sizeof(struct cmd_t));
+  
   int param_size = PARAM_MAX;
   for (int i = 0; i < CMD_MAX; ++i) {
     commands[i].cmd = NULL;

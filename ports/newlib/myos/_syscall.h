@@ -30,6 +30,7 @@
 #define __NR_sigaction 67
 #define __NR_sigsuspend 72
 #define __NR_sigreturn 103
+#define __NR_stat 106
 #define __NR_fstat 108
 #define __NR_sigprocmask 126
 #define __NR_getpgid 132

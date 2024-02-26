@@ -180,11 +180,12 @@ static int32_t empack_params(char **_argv) {
   uint32_t argc = count_array_of_pointers(_argv);
 
   char **argv = (char **)sbrk(
-    sizeof(uint32_t) * (argc + 1),
+    sizeof(uint32_t) * argc,
     parent->mm_mos
   );
 
   // add path
+  /*
   uint32_t len = strlen(path) + 1;
   char *arg_path = sbrk(
     len,
@@ -193,6 +194,7 @@ static int32_t empack_params(char **_argv) {
   memcpy(arg_path, path, len);
   arg_path[len] = '\0';
   argv[0] = arg_path;
+  */
 
   for (int i = 0; i < argc; ++i) {
     int len = strlen(_argv[i]) + 1;
@@ -201,15 +203,15 @@ static int32_t empack_params(char **_argv) {
         parent->mm_mos);
     memcpy(param, _argv[i], len);
     param[len] = '\0';
-    argv[i + 1] = param;
+    argv[i] = param;
   }
 
   uint32_t params[3] = {
       PROCESS_TRAPPED_PAGE_FAULT,
-      argc + 1,
+      argc,
       argv,
   };
-  len = sizeof(params);
+  int len = sizeof(params);
   memcpy(th->user_esp - len, params, len);
   th->user_esp -= len;
   return 0;

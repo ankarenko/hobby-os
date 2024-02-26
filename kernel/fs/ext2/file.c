@@ -134,7 +134,7 @@ int ext2_readdir(struct vfs_file *file, struct dirent* dirent, uint32_t count) {
     return -ENOTDIR;
 
   char *buf = kcalloc(count, sizeof(char));
-	count = ext2_read_file(file, buf, count, 0);
+	count = ext2_read_file(file, buf, count, file->f_pos);
   
   uint32_t size = 0;
 

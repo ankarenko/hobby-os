@@ -148,7 +148,7 @@ COPY ./ports/newlib/$OS_NAME newlib-$NEWLIB_VERSION/newlib/libc/sys/$OS_NAME
 RUN \
   sed -i '1375,+10s/-gnu\* |/& -'"$OS_NAME"'* |/' newlib-$NEWLIB_VERSION/config.sub && \
   sed -i 's/case "${host_cpu}" in/&\ni[3-7]86-*-'"$OS_NAME"'*)\nsys_dir='"$OS_NAME"';;/' newlib-$NEWLIB_VERSION/newlib/configure.host && \
-  echo "sys_dir='"$OS_NAME"'\nnewlib_cflags='${newlib_cflags} -DMISSING_SYSCALL_NAMES'" >> newlib-$NEWLIB_VERSION/newlib/configure.host && \
+  echo "sys_dir='"$OS_NAME"'\nnewlib_cflags='${newlib_cflags} -DMISSING_SYSCALL_NAMES -DHAVE_OPENDIR'" >> newlib-$NEWLIB_VERSION/newlib/configure.host && \
   sed -i 's/case ${sys_dir} in/&\n'"$OS_NAME"') AC_CONFIG_SUBDIRS('"$OS_NAME"') ;;/' newlib-$NEWLIB_VERSION/newlib/libc/sys/configure.in
 
 COPY ./toolchain/build_libc.sh ./

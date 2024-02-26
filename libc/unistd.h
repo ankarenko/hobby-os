@@ -93,7 +93,7 @@ int write(int fd, const char *buf, size_t size);
 int lseek(int fd, off_t offset, int whence);
 int close(int fd);
 int getpid();
-
+int getdents(unsigned int, struct dirent *, unsigned int);
 void print(char* format, ...);
 void _exit(int32_t status);
 

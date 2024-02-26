@@ -38,6 +38,7 @@
 #define __NR_sigaction 67
 #define __NR_sigsuspend 72
 #define __NR_sigreturn 103
+#define __NR_stat 106
 #define __NR_fstat 108
 #define __NR_sigprocmask 126
 #define __NR_getpgid 132
@@ -310,6 +311,9 @@ static int32_t sys_times(struct tms *buffer) {
   assert_not_implemented("sys_times");
 }
 
+static int32_t sys_stat(const char *path, struct kstat *stat) {
+  return vfs_stat(path, stat);
+}
 
 static int32_t sys_getppid() {
   return get_current_process()->parent->pid;
@@ -328,6 +332,7 @@ static void *syscalls[] = {
   [__NR_pipe] = sys_pipe,
   [__NR_time] = sys_time,
   [__NR_times] = sys_times,
+  [__NR_stat] = sys_stat,
   [__NR_fstat] = sys_fstat,
   [__NR_dup] = sys_dup,
   [__NR_dup2] = sys_dup2,

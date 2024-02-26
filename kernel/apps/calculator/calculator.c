@@ -1,11 +1,22 @@
 #include <stdint.h>
 #include <malloc.h>
 #include <signal.h>
+
 #include <string.h>
+#include <unistd.h>
 #include <dirent.h>
+#include <sys/stat.h>
+#include <kernel/util/ansi_codes.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdbool.h>
+
+#define WNOHANG 0x00000001
+#define WUNTRACED 0x00000002
+#define WSTOPPED WUNTRACED
+#define WEXITED 0x00000004
+#define WCONTINUED 0x00000008
+#define WNOWAIT 0x01000000 /* Don't reap, just poll status.  */
 
 //#include "../../../ports/newlib/myos/print.h"
 
@@ -43,68 +54,123 @@ struct cmd_t {
   char *cmd;
 };
 
-static struct cmd_t commands[CMD_MAX];
 
-void ls() {
-  struct dirent *dirent = NULL;
+void ls(int argc, char **argv) {
+  DIR* dirp;
   
-  
-  
-
-}
-
-void hello(char **argv) {
-  while (1) {
-    printf("\nHello %s", argv[0]);
-    sleep(2000);
+  printf("start");
+  if (argc > 1) {
+    printf("\nARG: %s", argv[1]);
   }
+
+  int size = 128;
+  char path[size];
+  memset(&path, 0, size);
+  sprintf(&path, "%s/", argc < 2? "" : argv[1]);
+  int base_path_len = strlen(path);
+  printf("\n%d", base_path_len);
+  char *base_path = &path[base_path_len];
+  
+  printf("\nabsolute path to search: %s\n", path);
+  
+  printf("\n%s", base_path);
+  
+
+  if ((dirp = opendir(path)) == NULL)
+    return -1; 
+    
+  int maxlen = 16;
+  char name[maxlen + 1];
+  struct dirent* p_dirent = NULL;
+  struct stat st;
+  char res[32];
+  struct tm lt;
+  
+  while ((p_dirent = readdir(dirp)) != NULL) {
+    memset(&name, ' ', maxlen);
+    memcpy(&name, p_dirent->d_name, strlen(p_dirent->d_name));
+    name[maxlen] = '\0';
+
+    
+    sprintf(base_path, "%s\0", p_dirent->d_name);
+    //printf(path);
+
+    if (stat(path, &st) != 0) {
+      printf(RED"\n[ERROR]:"COLOR_RESET "unable to fetch stats for teh file %s", p_dirent->d_name);
+      goto error;
+    }
+
+    if (S_ISDIR(st.st_mode)) {
+      printf("\n%s", name);
+    } else if (S_ISCHR(st.st_mode)) {
+      printf(BLU"\n%s", name);
+      localtime_r(&st.st_ctime, &lt);
+      strftime(&res, sizeof(res), "%H:%M %b %d", &lt);
+      printf(res);
+      printf(COLOR_RESET);
+
+    } else if (S_ISREG(st.st_mode)) {
+      printf(RED"\n%s", name);
+      localtime_r(&st.st_ctime, &lt);
+      strftime(&res, sizeof(res), "%H:%M %b %d", &lt);
+      printf(res);
+      printf("   %u bytes", st.st_size);
+      printf(COLOR_RESET);
+    }
+  }
+
+  if (closedir(dirp) < 0)
+    goto error;
+
+  _exit(0);
+error:
+  _exit(-1); 
 }
+
 
 int exec(void *entry(char **), char *name, char **argv, int gid) {
-  // TODO: FORBID 0 DEREFERENCE!
-  entry(argv);
-  return gid;
-
-  
-  /*
-  struct process *parent = get_current_process();
   int pid = 0;
-
-  if ((pid = process_fork(parent)) == 0) {
+  if ((pid = fork()) == 0) {
     setpgid(0, gid == -1 ? 0 : gid);
 
-    struct process *cur_proc = get_current_process();
-    struct vfs_file *file = cur_proc->files->fd[stdin];
-    assert(file == cur_proc->files->fd[stdout]);
-    cur_proc->name = strdup(name);
-
+    /*
     pid_t gid = -1;
     file->f_op->ioctl(file->f_dentry->d_inode, file, TIOCGPGRP, &gid);
 
     if (gid != cur_proc->gid && file->f_op->ioctl(file->f_dentry->d_inode, file, TIOCSPGRP, &cur_proc->gid) < 0) {
       assert_not_reached("unable to set foreground process");
     }
-
+    */
     entry(argv);
-    do_exit(0);
+    _exit(0);
   }
   int id = gid == -1 ? pid : gid;
   setpgid(pid, id);
   
   return pid;
-  */
+}
+
+void hello() {
+  printf("hello");
+  _exit(0);
 }
 
 int search_and_run(struct cmd_t *com, int gid) {
   int ret = -1;
-  if (strcmp(com->cmd, "hello") == 0) {
+  if (strcmp(com->cmd, "ls") == 0) {
+    ret = exec(ls, "ls", com->argv, gid);
+  } else if (strcmp(com->cmd, "hello") == 0) {
     ret = exec(hello, "hello", com->argv, gid);
+  } else {
+    printf("unknown program");
   }
 clean:
   return ret;
 }
 
 bool interpret_line(char *line) {
+  printf("line: %s", line);
+  struct cmd_t commands[CMD_MAX];
   int param_size = PARAM_MAX;
   for (int i = 0; i < CMD_MAX; ++i) {
     commands[i].cmd = NULL;
@@ -180,13 +246,14 @@ bool interpret_line(char *line) {
     if (gid == -1)
       goto clean;
   }
-  
-  int ret = 0;
 
-  // wait all childs
-  /*
-  while ((ret = do_wait(P_PGID, gid, &inop, WEXITED | WSSTOPPED)) > 0) {
+  int status;
+  int ret = -1;
+  while ((ret = waitpid(-pid, &status, WEXITED | WSTOPPED)) > 0) {
+    printf("\nwaited for child, exiting");
   }
+
+  /*
   shell_proc->tty->pgrp = shell_proc->gid;
   */
   printf("\n");
@@ -207,8 +274,49 @@ clean:
   return false;
 }
 
+void readline(char *line) {
+  int i = 0;
+  while (1) {
+    line[i] = getchar();
+    printf("\nc[%d]=%c", i, line[i]);
+    if (line[i] == EOF) {
+      line[i] = '\0';
+      break;
+    }
+    ++i;
+    sleep(1);
+  }
+  printf("\n%s", line);
+  printf("end");
+}
+
+
 void main(int argc, char** argv) {
+  int size = N_TTY_BUF_SIZE - 1;
+  char *line = calloc(size, sizeof(char));
+  char path[20];
+    
+  while (true) {
+    getcwd(&path, 20);
+    printf("\n(%s)root@%s: ", "ext2", path);
+
+    readline(line);
+    printf(line);
+    sleep(5);
+    //interpret_line(line);
+  }
+  free(line);
+  return 0;
+}
   
+
+ 
+  
+  /*
+  return ls(argc, argv);
+  */
+  
+  /*
   setpgid(0, 0);
   
   int size = N_TTY_BUF_SIZE - 1;
@@ -346,4 +454,4 @@ clean:
 
   //_exit(0);
   // while (1) {};
-}
+//}

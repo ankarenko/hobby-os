@@ -110,6 +110,16 @@ int vfs_fstat(int32_t fd, struct kstat *stat) {
   return do_getattr(/*file->f_vfsmnt,*/ file->f_dentry, stat);
 }
 
+
+int vfs_stat(const char *path, struct kstat *stat) {
+	struct nameidata nd;
+	int ret = vfs_jmp(&nd, path, 0, S_IFREG | S_IFDIR);
+	if (ret < 0)
+		return ret;
+
+	return do_getattr(nd.dentry, stat);
+}
+
 int vfs_mknod(const char *path, int mode, int32_t dev) {
   char *dir = NULL;
   char *name = NULL;

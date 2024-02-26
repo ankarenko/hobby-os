@@ -6,6 +6,7 @@
 #include <sys/fcntl.h>
 #include <sys/signal.h>
 #include <sys/stat.h>
+#include <dirent.h>
 #include <sys/time.h>
 #include <sys/times.h>
 #include <sys/wait.h>
@@ -33,7 +34,7 @@ uint32_t read(int fd, char *buf, size_t size) {
 _syscall2(fstat, int32_t, struct stat *);
 int fstat(int fildes, struct stat *buf) {
   // kernel_print("\nfstat");
-  SYSCALL_RETURN(syscall_fstat(fildes, buf));
+  SYSCALL_RETURN_ORIGINAL(syscall_fstat(fildes, buf));
 }
 
 _syscall1(dup, int);
@@ -58,7 +59,7 @@ pid_t waitpid(pid_t pid, int *wstatus, int options) {
 // TODO: idtype_t is not defined, so I replaced to int
 _syscall4(waitid, int, id_t, struct infop *, int);
 int waitid(int idtype, id_t id, struct infop *infop, int options) {
-  SYSCALL_RETURN(syscall_waitid(idtype, id, infop, options));
+  SYSCALL_RETURN_ORIGINAL(syscall_waitid(idtype, id, infop, options));
 }
 
 _syscall1(exit, int);
@@ -70,7 +71,7 @@ void _exit(int32_t status) {
 _syscall1(close, int);
 int close(int fd) {
   // kernel_print("\nclose");
-  SYSCALL_RETURN(syscall_close(fd));
+  SYSCALL_RETURN_ORIGINAL(syscall_close(fd));
 }
 
 void _clear_on_exit() {
@@ -162,7 +163,7 @@ int getppid() {
 
 _syscall2(setpgid, pid_t, pid_t);
 int setpgid(pid_t pid, pid_t pgid) {
-  SYSCALL_RETURN(syscall_setpgid(pid, pgid));
+  SYSCALL_RETURN_ORIGINAL(syscall_setpgid(pid, pgid));
 }
 
 _syscall0(getsid);
@@ -181,8 +182,9 @@ caddr_t sbrk(intptr_t increment) {
   SYSCALL_RETURN_POINTER(syscall_sbrk(increment));
 }
 
-int stat(const char *file, struct stat *st) {
-  kernel_print("Invoke stat");
+_syscall2(stat, const char *, struct stat *);
+int stat(const char *path, struct stat *buf) {
+	SYSCALL_RETURN_ORIGINAL(syscall_stat(path, buf));
 }
 
 clock_t times(struct tms *buf) {

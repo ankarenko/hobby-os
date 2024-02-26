@@ -248,7 +248,9 @@ void terminal_run() {
     }
 
     proc_child->name = strdup("shell");
-    shell_start();
+    //shell_start();
+    process_load("calc.exe", NULL);
+    do_exit(0);
   }
   setpgid(id, id);
   

@@ -57,21 +57,20 @@ struct vfs_super_operations {
 	void (*write_super)(struct vfs_superblock *);
 };
 
-struct kstat {
-	int32_t st_dev;		  /* ID of device containing file */
-	ino_t st_ino;		  /* Inode number */
-	mode_t st_mode;		  /* File type and mode */
-	nlink_t st_nlink;	  /* Number of hard links */
-	uid_t st_uid;		  /* User ID of owner */
-	gid_t st_gid;		  /* Group ID of owner */
-	int32_t st_rdev;		  /* Device ID (if special file) */
-	off_t st_size;		  /* Total size, in bytes */
-	blksize_t st_blksize; /* Block size for filesystem I/O */
-	blkcnt_t st_blocks;	  /* Number of 512B blocks allocated */
-
-	struct timespec st_atim; /* Time of last access */
-	struct timespec st_mtim; /* Time of last modification */
-	struct timespec st_ctim; /* Time of last status change */
+struct kstat  {
+  dev_t		st_dev;
+  ino_t		st_ino;
+  mode_t	st_mode;
+  nlink_t	st_nlink;
+  uid_t		st_uid;
+  gid_t		st_gid;
+  dev_t		st_rdev;
+  off_t		st_size;
+  struct timespec st_atim;
+  struct timespec st_mtim;
+  struct timespec st_ctim;
+  blksize_t st_blksize;
+  blkcnt_t	st_blocks;
 };
 
 // SA TODO: 2023-12-21 s_dirt flag will be useful
@@ -171,16 +170,18 @@ struct vfs_inode_operations {
 	//int (*getattr)(struct vfs_mount *mnt, struct vfs_dentry *, struct kstat *);
 };
 
+#define MAX_FILENAME_SIZE 32
+
 struct dirent {
 	ino_t d_ino;			          /* Inode number */
 	off_t d_off;			          /* Not an offset; see below */
 	unsigned short d_reclen;    /* Length of this record */
 	unsigned short d_type;	    /* Type of file; not supported by all filesystem types */
-	char d_name[12];			      /* Null-terminated filename */
+	char d_name[MAX_FILENAME_SIZE];			      /* Null-terminated filename */
 };
 
 struct vfs_file {
-  char name[12];
+  char name[MAX_FILENAME_SIZE];
   unsigned int f_flags;
   off_t f_pos;
   mode_t f_mode;
@@ -207,6 +208,7 @@ int vfs_jmp(struct nameidata* nd, const char* path, int32_t flags, mode_t mode);
 int32_t vfs_close(int32_t fd);
 int32_t vfs_open(const char* fname, int32_t flags, ...);
 int vfs_fstat(int32_t fd, struct kstat* stat);
+int vfs_stat(const char *path, struct kstat *stat);
 int32_t vfs_delete(const char* fname);
 struct vfs_dentry *alloc_dentry(struct vfs_dentry *parent, char *name);
 struct vfs_file *alloc_vfs_file();

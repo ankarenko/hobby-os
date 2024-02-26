@@ -11,7 +11,7 @@ struct dirent {
   off_t d_off;             /* Not an offset; see below */
   unsigned short d_reclen; /* Length of this record */
   unsigned short d_type;   /* Type of file; not supported by all filesystem types */
-  char d_name[12];         /* Null-terminated filename */
+  char d_name[MAX_FILENAME_LENGTH];         /* Null-terminated filename */
 };
 
 struct __DIR {
