@@ -10,9 +10,13 @@
 #define __NR_open 5
 #define __NR_close 6
 #define __NR_waitpid 7
-#define __NR_sbrk 10
+//#define __NR_unlink 10
 #define __NR_execve 11
+#define __NR_chdir 12
 #define __NR_time 13
+//#define __NR_sbrk 18
+#define __NR_sbrk 10
+
 #define __NR_lseek 19
 #define __NR_getpid 20
 #define __NR_kill 37
@@ -34,12 +38,14 @@
 #define __NR_fstat 108
 #define __NR_sigprocmask 126
 #define __NR_getpgid 132
+#define __NR_fchdir 133
 #define __NR_getdents 141
 #define __NR_getsid 147
 #define __NR_nanosleep 162
 #define __NR_poll 168
 #define __NR_getcwd 183
 #define __NR_waitid 284
+#define __NR_unlinkat 301
 #define __NR_print 0
 
 #define _syscall0(name)                       \

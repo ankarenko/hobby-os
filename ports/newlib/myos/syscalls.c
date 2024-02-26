@@ -62,6 +62,16 @@ int waitid(int idtype, id_t id, struct infop *infop, int options) {
   SYSCALL_RETURN_ORIGINAL(syscall_waitid(idtype, id, infop, options));
 }
 
+_syscall1(chdir, const char *);
+int chdir(const char *path) {
+	SYSCALL_RETURN_ORIGINAL(syscall_chdir(path));
+}
+
+_syscall1(fchdir, int);
+int fchdir(int fildes) {
+	SYSCALL_RETURN_ORIGINAL(syscall_fchdir(fildes));
+}
+
 _syscall1(exit, int);
 void _exit(int32_t status) {
   // kernel_print("\nexit");
@@ -72,6 +82,17 @@ _syscall1(close, int);
 int close(int fd) {
   // kernel_print("\nclose");
   SYSCALL_RETURN_ORIGINAL(syscall_close(fd));
+}
+/*
+_syscall1(unlink, const char *);
+int unlink(const char *path) {
+	SYSCALL_RETURN_ORIGINAL(syscall_unlink(path));
+}
+*/
+
+_syscall3(unlinkat, int, const char *, int);
+int unlinkat(int fd, const char *path, int flag) {
+	SYSCALL_RETURN_ORIGINAL(syscall_unlinkat(fd, path, flag));
 }
 
 void _clear_on_exit() {
@@ -189,10 +210,6 @@ int stat(const char *path, struct stat *buf) {
 
 clock_t times(struct tms *buf) {
   kernel_print("\ntimes");
-}
-
-int unlink(char *name) {
-  kernel_print("\nunlink");
 }
 
 _syscall3(write, int, const char *, size_t);

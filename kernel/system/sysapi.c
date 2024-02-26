@@ -5,6 +5,8 @@
 #include "kernel/util/errno.h"
 #include "kernel/proc/task.h"
 #include "kernel/cpu/idt.h"
+#include "kernel/memory/malloc.h"
+#include "kernel/util/fcntl.h"
 #include "kernel/system/sysapi.h"
 #include "kernel/system/time.h"
 #include "kernel/cpu/hal.h"
@@ -18,9 +20,13 @@
 #define __NR_open 5
 #define __NR_close 6
 #define __NR_waitpid 7
-#define __NR_sbrk 10
+//#define __NR_unlink 10
 #define __NR_execve 11
+#define __NR_chdir 12
 #define __NR_time 13
+//#define __NR_sbrk 18
+#define __NR_sbrk 10
+
 #define __NR_lseek 19
 #define __NR_getpid 20
 #define __NR_kill 37
@@ -42,12 +48,14 @@
 #define __NR_fstat 108
 #define __NR_sigprocmask 126
 #define __NR_getpgid 132
+#define __NR_fchdir 133
 #define __NR_getdents 141
 #define __NR_getsid 147
 #define __NR_nanosleep 162
 #define __NR_poll 168
 #define __NR_getcwd 183
 #define __NR_waitid 284
+#define __NR_unlinkat 301
 #define __NR_print 0
 
 static int32_t sys_pipe(int32_t *fd) {
@@ -256,6 +264,28 @@ static int32_t sys_setsid() {
   return 0;
 }
 
+static int32_t sys_fchdir(int fildes) {
+  struct process *current_process = get_current_process();
+  struct vfs_file *filp = current_process->files->fd[fildes];
+  if (!filp)
+    return -EBADF;
+
+  if (!S_ISDIR(filp->f_mode))
+    return -ENOTDIR;
+  
+  current_process->fs->d_root = filp->f_dentry;
+  current_process->fs->mnt_root = filp->f_vfsmnt;
+  return 0;
+}
+
+static int32_t sys_chdir(const char *path) {
+  int ret = vfs_open(path, O_RDONLY);
+  if (ret < 0)
+    return ret;
+
+  return sys_fchdir(ret);
+} 
+
 static int32_t sys_getpgid(pid_t pid) {
   struct process *current_process = get_current_process();
   if (!pid)
@@ -319,6 +349,28 @@ static int32_t sys_getppid() {
   return get_current_process()->parent->pid;
 }
 
+static int32_t sys_unlink(const char *path) {
+  return vfs_unlink(path, 0);
+}
+
+static int32_t sys_unlinkat(int fd, const char *path, int flag) {
+  assert_not_implemented();
+  /*
+  if (flag && flag & ~AT_REMOVEDIR)
+    return -EINVAL;
+
+  char *interpreted_path;
+  int ret = interpret_path_from_fd(fd, path, &interpreted_path);
+
+  if (ret >= 0)
+    ret = vfs_unlink(interpreted_path, flag);
+
+  if (interpreted_path != path)
+    kfree(interpreted_path);
+  return ret;
+  */
+}
+
 static void *syscalls[] = {
   [__NR_exit] = sys_exit,
   [__NR_nanosleep] = sys_nanosleep,
@@ -342,9 +394,13 @@ static void *syscalls[] = {
   [__NR_lseek] = sys_lseek,
   [__NR_poll] = sys_poll,
   [__NR_ioctl] = sys_ioctl,
+  //[__NR_unlink] = sys_unlink,
   [__NR_close] = sys_close,
   [__NR_execve] = sys_execve,
   [__NR_waitid] = sys_waitid,
+  [__NR_chdir] = sys_chdir,
+  [__NR_fchdir] = sys_fchdir,
+  [__NR_unlinkat] = sys_unlinkat,
   [__NR_getppid] = sys_getppid,
   [__NR_setsid] = sys_setsid,
   [__NR_getsid] = sys_getsid,

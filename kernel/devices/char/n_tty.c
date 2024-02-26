@@ -73,7 +73,7 @@ static uint32_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *b
   do {
     ntty_pop_char(tty, &buf[i]);
     if (L_ICANON(tty) && LINE_SEPARATOR(tty, buf[i])) {
-      --i;  // omit LINE_SEPARATOR;
+      //--i;  // omit LINE_SEPARATOR;
       break;
     }
 
@@ -83,7 +83,7 @@ static uint32_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *b
     ++i;
   } while (i < nr);
 
-  return i + 1;
+  return min(nr, i + 1);
 }
 
 static uint32_t push_buf_raw(struct tty_struct *tty, char c) {

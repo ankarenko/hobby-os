@@ -50,8 +50,12 @@ void kprintformat(char *fmt, int size, char *color, ...) {
 
 static void _kreadline(int fd, char *buf, uint32_t size) {
   int read = vfs_fread(fd, buf, size);
-  if (read < 0) {
+  if (read <= 0) {
     assert_not_reached("kreadline: error while reading command");
+  }
+
+  if (buf[read - 1] == '\n') {
+    buf[read - 1] = '\0';  
   }
   buf[read] = '\0';
 }

@@ -52,29 +52,18 @@ void custom_signal_handler_SIGALRMP(int signum) {
 struct cmd_t {
   char *argv[PARAM_MAX];
   char *cmd;
+  int argc;
 };
 
-
-void ls(int argc, char **argv) {
+int ls(char **argv) {
   DIR* dirp;
-  
-  printf("start");
-  if (argc > 1) {
-    printf("\nARG: %s", argv[1]);
-  }
-
+  bool has_arg = argv[0] != NULL;
   int size = 128;
   char path[size];
   memset(&path, 0, size);
-  sprintf(&path, "%s/", argc < 2? "" : argv[1]);
+  sprintf(&path, "%s/", !has_arg? "." : argv[0]);
   int base_path_len = strlen(path);
-  printf("\n%d", base_path_len);
   char *base_path = &path[base_path_len];
-  
-  printf("\nabsolute path to search: %s\n", path);
-  
-  printf("\n%s", base_path);
-  
 
   if ((dirp = opendir(path)) == NULL)
     return -1; 
@@ -127,7 +116,6 @@ error:
   _exit(-1); 
 }
 
-
 int exec(void *entry(char **), char *name, char **argv, int gid) {
   int pid = 0;
   if ((pid = fork()) == 0) {
@@ -151,7 +139,7 @@ int exec(void *entry(char **), char *name, char **argv, int gid) {
 }
 
 void hello() {
-  printf("hello");
+  printf("\nhello bros\n");
   _exit(0);
 }
 
@@ -161,6 +149,9 @@ int search_and_run(struct cmd_t *com, int gid) {
     ret = exec(ls, "ls", com->argv, gid);
   } else if (strcmp(com->cmd, "hello") == 0) {
     ret = exec(hello, "hello", com->argv, gid);
+  } else if (strcmp(com->cmd, "cd") == 0) {
+    chdir(com->argv[0] == NULL? "." : com->argv[0]);
+    //ret = exec(cd, "cd", com->argv, gid);
   } else {
     printf("unknown program");
   }
@@ -169,15 +160,9 @@ clean:
 }
 
 bool interpret_line(char *line) {
-  printf("line: %s", line);
   struct cmd_t commands[CMD_MAX];
   int param_size = PARAM_MAX;
-  for (int i = 0; i < CMD_MAX; ++i) {
-    commands[i].cmd = NULL;
-    for (int j = 0; j < param_size; ++j) {
-      commands[i].argv[j] = NULL;
-    }
-  }
+  memset(commands, 0, sizeof(commands));
 
   // Returns first token
   char *token = strtok(line, " ");
@@ -214,6 +199,8 @@ bool interpret_line(char *line) {
       ++param_i;
     }
   }
+
+  commands[command_i].argc = param_i;
 
   command_i++;
   if (command_i == 0)
@@ -274,36 +261,18 @@ clean:
   return false;
 }
 
-void readline(char *line) {
-  int i = 0;
-  while (1) {
-    line[i] = getchar();
-    printf("\nc[%d]=%c", i, line[i]);
-    if (line[i] == EOF) {
-      line[i] = '\0';
-      break;
-    }
-    ++i;
-    sleep(1);
-  }
-  printf("\n%s", line);
-  printf("end");
-}
-
-
 void main(int argc, char** argv) {
   int size = N_TTY_BUF_SIZE - 1;
   char *line = calloc(size, sizeof(char));
   char path[20];
-    
+  
   while (true) {
     getcwd(&path, 20);
     printf("\n(%s)root@%s: ", "ext2", path);
 
-    readline(line);
-    printf(line);
-    sleep(5);
-    //interpret_line(line);
+    gets(line);
+    //printf(line);
+    interpret_line(line);
   }
   free(line);
   return 0;
