@@ -14,10 +14,12 @@
 #define __NR_execve 11
 #define __NR_chdir 12
 #define __NR_time 13
+#define __NR_mknod 14
 #define __NR_sbrk 18
 #define __NR_lseek 19
 #define __NR_getpid 20
 #define __NR_kill 37
+#define __NR_mkdir 39
 #define __NR_dup 41
 #define __NR_pipe 42
 #define __NR_times 43
@@ -43,6 +45,8 @@
 #define __NR_poll 168
 #define __NR_getcwd 183
 #define __NR_waitid 284
+#define __NR_mkdirat 296
+#define __NR_mknodat 297
 #define __NR_unlinkat 301
 #define __NR_print 0
 

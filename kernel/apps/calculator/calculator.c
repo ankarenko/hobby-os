@@ -57,6 +57,7 @@ struct cmd_t {
 };
 
 int cat(char **argv) {
+  
   char *filepath = argv[0];
 
   int32_t fd = open(filepath, O_RDONLY, 0);

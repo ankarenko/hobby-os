@@ -219,18 +219,38 @@ int write(int fd, const char *buf, size_t size) {
 
 _syscall3(sigaction, int, const struct sigaction *, struct sigaction *);
 int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact) {
-  SYSCALL_RETURN(syscall_sigaction(signum, act, oldact));
+  SYSCALL_RETURN_ORIGINAL(syscall_sigaction(signum, act, oldact));
 }
 
 _syscall3(sigprocmask, int, const sigset_t *, sigset_t *);
 int sigprocmask(int how, const sigset_t *set, sigset_t *oldset) {
-  SYSCALL_RETURN(syscall_sigprocmask(how, set, oldset));
+  SYSCALL_RETURN_ORIGINAL(syscall_sigprocmask(how, set, oldset));
 }
 
 _syscall2(nanosleep, const struct timespec *, struct timespec *);
 int nanosleep(const struct timespec *req, struct timespec *rem) {
   // kernel_print("\nananosleep");
-  SYSCALL_RETURN(syscall_nanosleep(req, rem));
+  SYSCALL_RETURN_ORIGINAL(syscall_nanosleep(req, rem));
+}
+
+_syscall3(mkdirat, int, const char *, mode_t);
+int mkdirat(int fd, const char *path, mode_t mode) {
+	SYSCALL_RETURN_ORIGINAL(syscall_mkdirat(fd, path, mode));
+}
+
+_syscall2(mkdir, const char *, mode_t);
+int mkdir(const char *path, mode_t mode) {
+	SYSCALL_RETURN_ORIGINAL(syscall_mkdir(path, mode));
+}
+
+_syscall3(mknod, const char *, mode_t, dev_t);
+int mknod(const char *path, mode_t mode, dev_t dev) {
+	SYSCALL_RETURN_ORIGINAL(syscall_mknod(path, mode, dev));
+}
+
+_syscall4(mknodat, int, const char *, mode_t, dev_t);
+int mknodat(int fd, const char *path, mode_t mode, dev_t dev) {
+	SYSCALL_RETURN_ORIGINAL(syscall_mknodat(fd, path, mode, dev));
 }
 
 int usleep(useconds_t usec) {

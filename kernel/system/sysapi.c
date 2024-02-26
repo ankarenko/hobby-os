@@ -24,10 +24,12 @@
 #define __NR_execve 11
 #define __NR_chdir 12
 #define __NR_time 13
+#define __NR_mknod 14
 #define __NR_sbrk 18
 #define __NR_lseek 19
 #define __NR_getpid 20
 #define __NR_kill 37
+#define __NR_mkdir 39
 #define __NR_dup 41
 #define __NR_pipe 42
 #define __NR_times 43
@@ -53,6 +55,8 @@
 #define __NR_poll 168
 #define __NR_getcwd 183
 #define __NR_waitid 284
+#define __NR_mkdirat 296
+#define __NR_mknodat 297
 #define __NR_unlinkat 301
 #define __NR_print 0
 
@@ -369,6 +373,44 @@ static int32_t sys_unlinkat(int fd, const char *path, int flag) {
   */
 }
 
+static int32_t sys_mknodat(int fd, const char *path, mode_t mode, dev_t dev) {
+  assert_not_implemented();
+  /*
+  char *interpreted_path;
+  int ret = interpret_path_from_fd(fd, path, &interpreted_path);
+
+  if (ret >= 0)
+    ret = vfs_mknod(interpreted_path, mode, dev);
+
+  if (interpreted_path != path)
+    kfree(interpreted_path);
+  return ret;
+  */
+}
+
+static int32_t sys_mknod(const char *path, mode_t mode, dev_t dev) {
+  return vfs_mknod(path, mode, dev);
+}
+
+static int32_t sys_mkdir(const char *path, mode_t mode) {
+  return vfs_mkdir(path, mode);
+}
+
+static int32_t sys_mkdirat(int fd, const char *path, mode_t mode) {
+  assert_not_implemented();
+  /*
+  char *interpreted_path;
+  int ret = interpret_path_from_fd(fd, path, &interpreted_path);
+
+  if (ret >= 0)
+    ret = vfs_mkdir(interpreted_path, mode);
+
+  if (interpreted_path != path)
+    kfree(interpreted_path);
+  return ret;
+  */
+}
+
 static void *syscalls[] = {
   [__NR_exit] = sys_exit,
   [__NR_nanosleep] = sys_nanosleep,
@@ -391,12 +433,16 @@ static void *syscalls[] = {
   [__NR_print] = sys_debug_printf,
   [__NR_lseek] = sys_lseek,
   [__NR_poll] = sys_poll,
+  [__NR_mknod] = sys_mknod,
+  [__NR_mknodat] = sys_mknodat,
   [__NR_ioctl] = sys_ioctl,
-  //[__NR_unlink] = sys_unlink,
+  [__NR_unlink] = sys_unlink,
   [__NR_close] = sys_close,
   [__NR_execve] = sys_execve,
   [__NR_waitid] = sys_waitid,
   [__NR_chdir] = sys_chdir,
+  [__NR_mkdir] = sys_mkdir,
+  [__NR_mkdirat] = sys_mkdirat,
   [__NR_fchdir] = sys_fchdir,
   [__NR_unlinkat] = sys_unlinkat,
   [__NR_getppid] = sys_getppid,
