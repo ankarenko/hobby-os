@@ -10,13 +10,11 @@
 #define __NR_open 5
 #define __NR_close 6
 #define __NR_waitpid 7
-//#define __NR_unlink 10
+#define __NR_unlink 10
 #define __NR_execve 11
 #define __NR_chdir 12
 #define __NR_time 13
-//#define __NR_sbrk 18
-#define __NR_sbrk 10
-
+#define __NR_sbrk 18
 #define __NR_lseek 19
 #define __NR_getpid 20
 #define __NR_kill 37

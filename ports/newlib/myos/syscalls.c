@@ -83,12 +83,11 @@ int close(int fd) {
   // kernel_print("\nclose");
   SYSCALL_RETURN_ORIGINAL(syscall_close(fd));
 }
-/*
+
 _syscall1(unlink, const char *);
 int unlink(const char *path) {
 	SYSCALL_RETURN_ORIGINAL(syscall_unlink(path));
 }
-*/
 
 _syscall3(unlinkat, int, const char *, int);
 int unlinkat(int fd, const char *path, int flag) {

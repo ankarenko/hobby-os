@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <kernel/util/ansi_codes.h>
 #include <unistd.h>
@@ -54,6 +55,29 @@ struct cmd_t {
   char *cmd;
   int argc;
 };
+
+int cat(char **argv) {
+  char *filepath = argv[0];
+
+  int32_t fd = open(filepath, O_RDONLY, 0);
+
+  if (fd < 0) {
+    printf("\nfile not found");
+    return;
+  }
+
+  uint32_t size = 5;
+  uint8_t *buf = calloc(size + 1, sizeof(uint8_t));
+  printf("\n_____________________________________________");
+  printf("\n");
+  while (read(fd, buf, size) == size) {
+    buf[size] = '\0';
+    printf(buf);
+  };
+  printf("\n____________________________________________\n");
+
+  close(fd);
+}
 
 int ls(char **argv) {
   DIR* dirp;
@@ -149,6 +173,8 @@ int search_and_run(struct cmd_t *com, int gid) {
     ret = exec(ls, "ls", com->argv, gid);
   } else if (strcmp(com->cmd, "hello") == 0) {
     ret = exec(hello, "hello", com->argv, gid);
+  } else if (strcmp(com->cmd, "cat") == 0) {
+    ret = exec(cat, "cat", com->argv, gid);
   } else if (strcmp(com->cmd, "cd") == 0) {
     chdir(com->argv[0] == NULL? "." : com->argv[0]);
     //ret = exec(cd, "cd", com->argv, gid);
