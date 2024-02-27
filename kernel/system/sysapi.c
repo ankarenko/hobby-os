@@ -33,6 +33,8 @@
 #define __NR_dup 41
 #define __NR_pipe 42
 #define __NR_times 43
+#define __NR_setgid 46
+#define __NR_getgid 47
 #define __NR_signal 48
 #define __NR_ioctl 54
 #define __NR_fcntl 55   
@@ -58,15 +60,17 @@
 #define __NR_mkdirat 296
 #define __NR_mknodat 297
 #define __NR_unlinkat 301
-#define __NR_print 0
+// debug
+#define __NR_dbg_ps 512
 
 static int32_t sys_pipe(int32_t *fd) {
   return do_pipe(fd);
 }
 
-static int32_t sys_debug_printf(const char *format, va_list args) {
-  int i = vprintf(format, args);
-  return i;
+extern void ps(char **argv);
+static int32_t sys_dbg_ps() {
+  ps(NULL);
+  return 0;
 }
 
 static int32_t sys_dup2(int oldfd, int newfd) {
@@ -411,6 +415,16 @@ static int32_t sys_mkdirat(int fd, const char *path, mode_t mode) {
   */
 }
 
+static int32_t sys_getgid() {
+  return get_current_process()->gid;
+}
+
+static int32_t sys_setgid(gid_t gid) {
+  struct process *current_process = get_current_process();
+  current_process->gid = gid;
+  return 0;
+}
+
 static void *syscalls[] = {
   [__NR_exit] = sys_exit,
   [__NR_nanosleep] = sys_nanosleep,
@@ -430,9 +444,11 @@ static void *syscalls[] = {
   [__NR_dup2] = sys_dup2,
   [__NR_waitpid] = sys_waitpid,
   [__NR_setpgid] = sys_setpgid,
-  [__NR_print] = sys_debug_printf,
+  [__NR_dbg_ps] = sys_dbg_ps,
   [__NR_lseek] = sys_lseek,
   [__NR_poll] = sys_poll,
+  [__NR_getgid] = sys_getgid,
+  [__NR_setgid] = sys_setgid,
   [__NR_mknod] = sys_mknod,
   [__NR_mknodat] = sys_mknodat,
   [__NR_ioctl] = sys_ioctl,

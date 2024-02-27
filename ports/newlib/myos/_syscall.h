@@ -23,6 +23,8 @@
 #define __NR_dup 41
 #define __NR_pipe 42
 #define __NR_times 43
+#define __NR_setgid 46
+#define __NR_getgid 47
 #define __NR_signal 48
 #define __NR_ioctl 54
 #define __NR_fcntl 55   
@@ -48,7 +50,8 @@
 #define __NR_mkdirat 296
 #define __NR_mknodat 297
 #define __NR_unlinkat 301
-#define __NR_print 0
+// debug
+#define __NR_dbg_ps 512
 
 #define _syscall0(name)                       \
   static inline int32_t syscall_##name() {    \

@@ -5,6 +5,7 @@
 #include <sys/errno.h>
 #include <sys/fcntl.h>
 #include <sys/signal.h>
+#include <kernel/util/ioctls.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <sys/time.h>
@@ -13,27 +14,16 @@
 #include <sys/types.h>
 
 #include "_syscall.h"
-#include "print.h"
 
 char **environ; /* pointer to array of char * strings that define the current environment variables */
 
-_syscall2(print, char *, va_list);
-void kernel_print(char *format, ...) {
-  va_list list;
-  va_start(list, format);
-  SYSCALL_RETURN(syscall_print(format, list));
-  va_end(list);
-}
-
 _syscall3(read, int, char *, size_t);
 uint32_t read(int fd, char *buf, size_t size) {
-  // kernel_print("\nread");
   SYSCALL_RETURN_ORIGINAL(syscall_read(fd, buf, size));
 }
 
 _syscall2(fstat, int32_t, struct stat *);
 int fstat(int fildes, struct stat *buf) {
-  // kernel_print("\nfstat");
   SYSCALL_RETURN_ORIGINAL(syscall_fstat(fildes, buf));
 }
 
@@ -74,13 +64,11 @@ int fchdir(int fildes) {
 
 _syscall1(exit, int);
 void _exit(int32_t status) {
-  // kernel_print("\nexit");
   SYSCALL_RETURN(syscall_exit(status));
 }
 
 _syscall1(close, int);
 int close(int fd) {
-  // kernel_print("\nclose");
   SYSCALL_RETURN_ORIGINAL(syscall_close(fd));
 }
 
@@ -116,6 +104,7 @@ int getdents(unsigned int fd, struct dirent *dirent, unsigned int count) {
 	SYSCALL_RETURN_ORIGINAL(syscall_getdents(fd, dirent, count));
 }
 
+
 _syscall2(getcwd, char *, size_t);
 char *getcwd(char *buf, size_t size) {
   /*
@@ -127,51 +116,65 @@ char *getcwd(char *buf, size_t size) {
 	SYSCALL_RETURN_POINTER(syscall_getcwd(buf, size));
 }
 
+_syscall3(ioctl, int, unsigned int, unsigned long);
+int ioctl(int fd, unsigned int cmd, ...) {
+	va_list ap;
+	va_start(ap, cmd);
+	unsigned long arg = va_arg(ap, unsigned long);
+	va_end(ap);
+	SYSCALL_RETURN_ORIGINAL(syscall_ioctl(fd, cmd, arg));
+}
+
 _syscall0(fork);
 int fork() {
-  // kernel_print("\nfork");
   SYSCALL_RETURN_ORIGINAL(syscall_fork());
 }
 
+int tcsetpgrp(int fd, pid_t pid) {
+	return ioctl(fd, TIOCSPGRP, (unsigned long)&pid);
+}
+
+pid_t tcgetpgrp(int fd) {
+	pid_t pgrp;
+
+	if (ioctl(fd, TIOCGPGRP, &pgrp) < 0)
+		return -1;
+
+	return pgrp;
+}
+
+
 _syscall0(getpid);
 int getpid() {
-  // kernel_print("\ngetpid");
   SYSCALL_RETURN_ORIGINAL(syscall_getpid());
 }
 
 int isatty(int file) {
-  kernel_print("\nisatty");
   return 1;
 }
 
 int kill(int pid, int sig) {
-  kernel_print("\nkill");
 }
 
 int link(char *old, char *new) {
-  kernel_print("\nlink");
 }
 
 // int lseek(int file, int ptr, int dir); original
 _syscall3(lseek, int, off_t, int);
 int lseek(int fd, off_t offset, int whence) {
-  // kernel_print("\nlseek offset: %d type: %d", offset, whence);
   SYSCALL_RETURN_ORIGINAL(syscall_lseek(fd, offset, whence));
 }
 
 _syscall3(open, const char *, int32_t, mode_t);
 int open(const char *name, int flags, ...) {
   mode_t mode = 0;
-  // kernel_print("\nmode: %d", mode);
-
+  
   if (flags & O_CREAT) {
     va_list ap;
     va_start(ap, flags);
     mode = va_arg(ap, mode_t);
     va_end(ap);
   }
-
-  // kernel_print("\nmode: %d", mode);
 
   SYSCALL_RETURN_ORIGINAL(syscall_open(name, flags, mode));
 }
@@ -198,7 +201,6 @@ int setsid() {
 
 _syscall1(sbrk, intptr_t);
 caddr_t sbrk(intptr_t increment) {
-  // kernel_print("\nsbrk");
   SYSCALL_RETURN_POINTER(syscall_sbrk(increment));
 }
 
@@ -208,12 +210,10 @@ int stat(const char *path, struct stat *buf) {
 }
 
 clock_t times(struct tms *buf) {
-  kernel_print("\ntimes");
 }
 
 _syscall3(write, int, const char *, size_t);
 int write(int fd, const char *buf, size_t size) {
-  // kernel_print("\nwrite");
   SYSCALL_RETURN_ORIGINAL(syscall_write(fd, buf, size));
 }
 
@@ -229,13 +229,22 @@ int sigprocmask(int how, const sigset_t *set, sigset_t *oldset) {
 
 _syscall2(nanosleep, const struct timespec *, struct timespec *);
 int nanosleep(const struct timespec *req, struct timespec *rem) {
-  // kernel_print("\nananosleep");
   SYSCALL_RETURN_ORIGINAL(syscall_nanosleep(req, rem));
 }
 
 _syscall3(mkdirat, int, const char *, mode_t);
 int mkdirat(int fd, const char *path, mode_t mode) {
 	SYSCALL_RETURN_ORIGINAL(syscall_mkdirat(fd, path, mode));
+}
+
+_syscall0(getgid);
+int getgid() {
+	SYSCALL_RETURN_ORIGINAL(syscall_getgid());
+}
+
+_syscall1(setgid, gid_t);
+int setgid(gid_t gid) {
+	SYSCALL_RETURN_ORIGINAL(syscall_setgid(gid));
 }
 
 _syscall2(mkdir, const char *, mode_t);

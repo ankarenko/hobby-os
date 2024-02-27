@@ -12,6 +12,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#include "../../../ports/newlib/myos/msyscalls.h"
+
 #define WNOHANG 0x00000001
 #define WUNTRACED 0x00000002
 #define WSTOPPED WUNTRACED
@@ -80,6 +82,26 @@ int cat(char **argv) {
   close(fd);
 }
 
+void echo(char **argv) {
+  int32_t fd = open(argv[0], O_CREAT | O_APPEND, S_IFREG);
+  if (fd < 0)
+    printf("\nunable to open file");
+
+  // vfs_flseek(fd, 11, SEEK_SET);
+  if (write(fd, argv[1], strlen(argv[1])) < 0)
+    printf("\nnot a file");
+  else
+    printf("\nfile updated");
+  
+  close(fd);
+}
+
+void rm(char **argv) {
+  if (unlink(argv[0]) < 0) {
+    printf("\nfile or directory not found");
+  }
+}
+
 int ls(char **argv) {
   DIR* dirp;
   bool has_arg = argv[0] != NULL;
@@ -104,7 +126,6 @@ int ls(char **argv) {
     memset(&name, ' ', maxlen);
     memcpy(&name, p_dirent->d_name, strlen(p_dirent->d_name));
     name[maxlen] = '\0';
-
     
     sprintf(base_path, "%s\0", p_dirent->d_name);
     //printf(path);
@@ -146,6 +167,12 @@ int exec(void *entry(char **), char *name, char **argv, int gid) {
   if ((pid = fork()) == 0) {
     setpgid(0, gid == -1 ? 0 : gid);
 
+    int foreground_pgrp = tcgetpgrp(STDIN_FILENO);
+    if (foreground_pgrp != gid && tcsetpgrp(STDIN_FILENO, gid) < 0) {
+      printf("unable to set foreground process");
+    }
+
+    //tcsetpgrp();
     /*
     pid_t gid = -1;
     file->f_op->ioctl(file->f_dentry->d_inode, file, TIOCGPGRP, &gid);
@@ -163,9 +190,19 @@ int exec(void *entry(char **), char *name, char **argv, int gid) {
   return pid;
 }
 
-void hello() {
-  printf("\nhello bros\n");
-  _exit(0);
+void hello(char **argv) {
+  while (true) {
+    int foreground_pgrp = tcgetpgrp(STDIN_FILENO);
+
+    printf("\nHello %s [foreground = %d]", argv[0] == NULL? "world" : argv[0], foreground_pgrp);
+    dbg_ps();
+    
+    sleep(6);
+  } 
+}
+
+void ps() {
+  dbg_ps();
 }
 
 int search_and_run(struct cmd_t *com, int gid) {
@@ -176,6 +213,12 @@ int search_and_run(struct cmd_t *com, int gid) {
     ret = exec(hello, "hello", com->argv, gid);
   } else if (strcmp(com->cmd, "cat") == 0) {
     ret = exec(cat, "cat", com->argv, gid);
+  } else if (strcmp(com->cmd, "ps") == 0) {
+    ret = exec(ps, "ps", com->argv, gid);
+  } else if (strcmp(com->cmd, "echo") == 0) {
+    ret = exec(echo, "echo", com->argv, gid);
+  } else if (strcmp(com->cmd, "rm") == 0) {
+    ret = exec(rm, "rm", com->argv, gid);
   } else if (strcmp(com->cmd, "cd") == 0) {
     chdir(com->argv[0] == NULL? "." : com->argv[0]);
     //ret = exec(cd, "cd", com->argv, gid);
@@ -267,6 +310,16 @@ bool interpret_line(char *line) {
     printf("\nwaited for child, exiting");
   }
 
+  int shell_gid = getgid();
+  if (gid <= 0) {
+    printf("\nInvalid gid");
+  }
+  
+  if (tcsetpgrp(STDIN_FILENO, shell_gid) < 0) {
+    printf("\nUnable to return foreground process to shell");
+  }
+
+  
   /*
   shell_proc->tty->pgrp = shell_proc->gid;
   */

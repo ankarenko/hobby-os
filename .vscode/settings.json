@@ -49,6 +49,7 @@
     "wait.h": "c",
     "sstream": "c",
     "string": "c",
-    "istream": "c"
+    "istream": "c",
+    "msyscalls.h": "c"
   }
 }
