@@ -60,7 +60,7 @@ void kthread_fork() {
   struct process *current_process = get_current_process();
   int parent_id = current_process->pid;
 
-  if (process_fork(current_process) == 0) {
+  if (process_spawn(current_process) == 0) {
     while (1) {
       kprintf("\nHello from child");
       thread_sleep(3000);
@@ -126,8 +126,11 @@ void ps(char **argv) {
   kprintformat("NAME", 10, NULL);
   kprintformat("GID", 5, NULL);
   kprintformat("SID", 5, NULL);
-  kprintformat("PARENT", 10, NULL);
+  kprintformat("PARENT", 8, NULL);
+  kprintformat("USER", 7, NULL);
   kprintformat("THREADS", 10, NULL);
+  
+
 
   list_for_each_entry(proc, ls, sibling) {
     kprintf("\n");
@@ -135,7 +138,8 @@ void ps(char **argv) {
     kprintformat("%s", 10, NULL, proc->name);
     kprintformat("%d", 5, NULL, proc->gid);
     kprintformat("%d", 5, NULL, proc->sid);
-    kprintformat("%d", 10, CYN, proc->parent ? proc->parent->pid : -1);
+    kprintformat("%d", 8, CYN, proc->parent ? proc->parent->pid : -1);
+    kprintformat("%c", 7, CYN, vmm_is_kernel_directory(proc->va_dir)? '-' : '+');
 
     if ((proc->state & (EXIT_ZOMBIE)) == 0) {
       kprintf("[");
@@ -146,6 +150,7 @@ void ps(char **argv) {
     } else {
       kprintformat("%s", 10, RED, "zombie");
     }
+
   }
   unlock_scheduler();
 }
@@ -298,7 +303,7 @@ int exec(void *entry(char **), char *name, char **argv, int gid) {
   struct process *parent = get_current_process();
   int pid = 0;
 
-  if ((pid = process_fork(parent)) == 0) {
+  if ((pid = process_spawn(parent)) == 0) {
     setpgid(0, gid == -1 ? 0 : gid);
 
     struct process *cur_proc = get_current_process();
@@ -345,7 +350,7 @@ void test_pipe() {
   int pid = 0;
   int gid = 0;
 
-  if ((pid = process_fork(shell_proc)) == 0) {
+  if ((pid = process_spawn(shell_proc)) == 0) {
     struct process *cur_proc = get_current_process();
     cur_proc->name = strdup("ask");
     setpgid(0, 0);
@@ -363,7 +368,7 @@ void test_pipe() {
   gid = pid;
   setpgid(pid, gid);
 
-  if ((pid = process_fork(shell_proc)) == 0) {
+  if ((pid = process_spawn(shell_proc)) == 0) {
     setpgid(0, gid);
     struct process *cur_proc = get_current_process();
     cur_proc->name = strdup("answer");
@@ -605,46 +610,6 @@ void cmd_read_sect() {
 
 GREATEST_MAIN_DEFS();
 
-/*
-void kybrd_manager() {
-  int kybrd_fd = 0;
-  if ((kybrd_fd = vfs_open("/dev/input/kybrd", O_RDONLY)) < 0) {
-    err("Cannot open keyboard");
-  }
-
-  struct key_event ev;
-
-  while (true) {
-    vfs_fread(kybrd_fd, &ev, sizeof(ev));
-
-    //log("%c", ev.key);
-    if (ev.type == KEY_RELEASE) {
-      continue;
-    }
-
-    char c = kkybrd_key_to_ascii(ev.key);
-    //log("%c", c);
-
-    if (pts_driver) {
-      struct tty_struct *pts = list_first_entry(&pts_driver->ttys, struct tty_struct, sibling);
-      if (pts != NULL) {
-        pts->ldisc->write(pts, NULL, &c, 1);
-      }
-    }
-
-
-    if (ptm_driver) {
-      struct tty_struct *ptm = list_first_entry(&ptm_driver->ttys, struct tty_struct, sibling);
-      if (ptm != NULL) {
-        ptm->ldisc->write(ptm, NULL, &c, 1);
-      }
-    }
-
-
-  }
-}
-*/
-
 void shell_start() {
   int size = N_TTY_BUF_SIZE - 1;
   char *line = kcalloc(size, sizeof(char));
@@ -665,12 +630,12 @@ void shell_start() {
 void init_process() {
   struct process *parent = get_current_process();
 
-  if (process_fork(parent) == 0) {
+  if (process_spawn(parent) == 0) {
     get_current_process()->name = strdup("garbage");
     garbage_worker_task();  // 1
   }
 
-  if (process_fork(parent) == 0) {
+  if (process_spawn(parent) == 0) {
     get_current_process()->name = strdup("idle");
     idle_task();  // 2
   }
@@ -681,19 +646,11 @@ void init_process() {
   kkybrd_install(IRQ1);
 
   tty_init();
-
-  /*
-  if (process_fork(parent) == 0) {
-    get_current_process()->name = strdup("kybrd");
-    kybrd_manager(); // 3
-  }
-  */
-
   pid_t id = 0;
 
   // NOTE: calling setpgid twice seems redudant but it eluminates race conditions
   // caused by not knowing whether the parent or the child is selected by the scheduler
-  if ((id = process_fork(parent)) == 0) {
+  if ((id = process_spawn(parent)) == 0) {
     struct process *cur_proc = get_current_process();
     setpgid(0, 0);
     cur_proc->sid = cur_proc->pid;

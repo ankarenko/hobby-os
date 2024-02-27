@@ -165,6 +165,7 @@ error:
 int exec(void *entry(char **), char *name, char **argv, int gid) {
   int pid = 0;
   if ((pid = fork()) == 0) {
+    printf("fork");
     setpgid(0, gid == -1 ? 0 : gid);
 
     int foreground_pgrp = tcgetpgrp(STDIN_FILENO);
@@ -172,15 +173,6 @@ int exec(void *entry(char **), char *name, char **argv, int gid) {
       printf("unable to set foreground process");
     }
 
-    //tcsetpgrp();
-    /*
-    pid_t gid = -1;
-    file->f_op->ioctl(file->f_dentry->d_inode, file, TIOCGPGRP, &gid);
-
-    if (gid != cur_proc->gid && file->f_op->ioctl(file->f_dentry->d_inode, file, TIOCSPGRP, &cur_proc->gid) < 0) {
-      assert_not_reached("unable to set foreground process");
-    }
-    */
     entry(argv);
     _exit(0);
   }
@@ -191,6 +183,7 @@ int exec(void *entry(char **), char *name, char **argv, int gid) {
 }
 
 void hello(char **argv) {
+  
   while (true) {
     int foreground_pgrp = tcgetpgrp(STDIN_FILENO);
 
@@ -219,11 +212,13 @@ int search_and_run(struct cmd_t *com, int gid) {
     ret = exec(echo, "echo", com->argv, gid);
   } else if (strcmp(com->cmd, "rm") == 0) {
     ret = exec(rm, "rm", com->argv, gid);
+  } else if (strcmp(com->cmd, "clear") == 0) {
+    putchar(12);
   } else if (strcmp(com->cmd, "cd") == 0) {
     chdir(com->argv[0] == NULL? "." : com->argv[0]);
     //ret = exec(cd, "cd", com->argv, gid);
   } else {
-    printf("unknown program");
+    printf("\nunknown program: %s", com->cmd);
   }
 clean:
   return ret;
@@ -349,7 +344,6 @@ void main(int argc, char** argv) {
   while (true) {
     getcwd(&path, 20);
     printf("\n(%s)root@%s: ", "ext2", path);
-
     gets(line);
     //printf(line);
     interpret_line(line);

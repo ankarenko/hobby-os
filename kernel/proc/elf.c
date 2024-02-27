@@ -74,6 +74,9 @@ int32_t elf_load(
     return ret;
 
   struct process* parent = get_current_process();
+
+  assert(!vmm_is_kernel_directory(parent->va_dir));
+
   struct Elf32_Ehdr *elf_header = (struct Elf32_Ehdr *)elf_file;
 
   if (elf_verify(elf_header) != NO_ERROR || elf_header->e_phoff == 0)
@@ -156,6 +159,10 @@ int32_t elf_unload(struct process* _proc) {
 	// sigemptyset(&get_current_process()->thread->pending); ??
   struct process* proc = _proc == NULL? get_current_process() : _proc;
   virtual_addr start = proc->mm_mos->heap_start;
+
+  if (proc->mm_mos->heap_start == proc->mm_mos->heap_end)
+    return 0;
+    
   virtual_addr end = sbrk(0, proc->mm_mos);
 
   assert(start % PMM_FRAME_SIZE == 0);

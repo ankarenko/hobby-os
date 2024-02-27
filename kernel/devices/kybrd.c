@@ -522,6 +522,10 @@ char kkybrd_key_to_ascii(enum KEYCODE code) {
       return '\003';
     }
 
+    if (key == 'l' && _ctrl) {
+      return KEY_MINUS;
+    }
+
     if (key == KEY_BACKSPACE)
       return 127;
 

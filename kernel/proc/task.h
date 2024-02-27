@@ -185,6 +185,7 @@ struct process* create_system_process(virtual_addr entry, char* name);
 struct list_head* get_proc_list();
 struct process* create_elf_process(struct process* parent, char* path);
 pid_t process_fork(struct process* parent);
+pid_t process_spawn(struct process *parent);
 int32_t dup2(int oldfd, int newfd);
 int32_t dswap(int fd1, int fd2);
 struct process *find_process_by_pid(pid_t pid);

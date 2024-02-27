@@ -227,7 +227,7 @@ void terminal_run() {
 
   int32_t id = 0;
   
-  if ((id = process_fork(parent)) == 0) {
+  if ((id = process_spawn(parent)) == 0) {
     setpgid(0, 0);
     struct process *proc_child = get_current_process();
     
@@ -248,9 +248,15 @@ void terminal_run() {
     }
 
     proc_child->name = strdup("shell");
-    //shell_start();
-    process_load("calc.exe", NULL);
-    do_exit(0);
+
+    // dirty way to load a program in a userspace
+    proc_child->va_dir = vmm_create_address_space();
+    proc_child->pa_dir = vmm_get_physical_address(proc_child->va_dir, false); 
+    pmm_load_PDBR(proc_child->pa_dir);
+    char* argv[] = { proc_child->name };
+    process_execve("calc.exe", &argv, NULL);
+    
+    assert_not_reached();
   }
   setpgid(id, id);
   
@@ -374,6 +380,10 @@ void terminal_run() {
         case KEY_BACKSPACE:
         case '\177':
           terminal_popchar();
+          break;
+
+        case 12:
+          terminal_clrscr();
           break;
         
         case KEY_RETURN:

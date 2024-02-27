@@ -320,6 +320,7 @@ static struct process *create_process(struct process *parent, char *name, struct
   proc->files = create_files_descriptors();
   proc->name = strdup(name);
   proc->exit_code = 0;
+  //proc->tty = parent->tty;
   proc->mm_mos = kcalloc(1, sizeof(mm_struct_mos));
 
   INIT_LIST_HEAD(&proc->childrens);
@@ -368,6 +369,7 @@ void process_load(const char *pname, char **argv) {
   }
 
   sched_push_queue(th);
+  
 }
 
 extern void cmd_init();
@@ -503,7 +505,7 @@ static void child_return_fork() {
   return 0;
 }
 
-static void child_return_fork_user(struct thread *th, virtual_addr entry) {
+static void child_return_fork_user(struct thread *th) {
   enable_interrupts();
   interruptdone(IRQ0);
   interrupt_registers *regs = th->kernel_esp - sizeof(interrupt_registers);
@@ -513,15 +515,16 @@ static void child_return_fork_user(struct thread *th, virtual_addr entry) {
   return 0;
 }
 
-// probably it's better to rename the kernel fork to spawn
-pid_t process_fork(struct process *parent) {
+pid_t process_spawn(struct process *parent) {
+
   lock_scheduler();
 
-  log("Task: Fork from %s(p%d)", parent->name, parent->pid);
+  bool is_kernel = vmm_is_kernel_directory(parent->va_dir);
+  assert(is_kernel);
+
+  log("Task: Spawn from %s(p%d)", parent->name, parent->pid);
   trap_frame stf;
   load_trap_frame(&stf);
-
-  bool is_kernel = vmm_is_kernel_directory(parent->va_dir);
 
   struct process *proc = kcalloc(1, sizeof(struct process));
   proc->pid = next_pid++;
@@ -544,14 +547,13 @@ pid_t process_fork(struct process *parent) {
   memcpy(proc->fs, parent->fs, sizeof(fs_struct));
 
   proc->files = clone_file_descriptor_table(parent->files);
-  proc->va_dir = is_kernel ? parent->va_dir : vmm_fork(parent->va_dir);
+  proc->va_dir = parent->va_dir;
   proc->pa_dir = vmm_get_physical_address(proc->va_dir, false);
-  // 5689344
-  // 0xc805f000
   struct thread *parent_thread = get_current_thread();
   assert(
-      parent_thread->proc->pid == parent->pid,
-      "Current thread doesn't belong to the process being forked");
+    parent_thread->proc->pid == parent->pid,
+    "Current thread doesn't belong to the process being forked"
+  );
 
   // penging and blocked signals are not inherited
   struct thread *th = thread_create(proc, NULL, 0, NULL);
@@ -564,17 +566,11 @@ pid_t process_fork(struct process *parent) {
     picked up and run by the scheduler
   */
   // ebp + 8 means that we skip return address, it will be put to switch stack frame
-
   interrupt_registers *regs = parent_thread->kernel_esp - sizeof(interrupt_registers);
 
-  if (is_kernel) {
-    int stack_size = parent_thread->kernel_esp - (stf.ebp + 8);
-    th->esp = th->kernel_esp - stack_size;
-    memcpy(th->esp, stf.ebp + 8, stack_size);
-  } else {
-    th->esp = th->kernel_esp - sizeof(interrupt_registers);
-    memcpy(th->esp, regs, sizeof(interrupt_registers));
-  }
+  int stack_size = parent_thread->kernel_esp - (stf.ebp + 8);
+  th->esp = th->kernel_esp - stack_size;
+  memcpy(th->esp, stf.ebp + 8, stack_size);
 
   th->esp = th->esp - sizeof(trap_frame);
   th->user_esp = parent_thread->user_esp;  // NOTE: equal virtual address, but different physical!
@@ -583,7 +579,66 @@ pid_t process_fork(struct process *parent) {
   stf.return_address = stf.eip;
   stf.parameter1 = th;
   stf.parameter2 = regs->eip;
-  stf.eip = is_kernel ? child_return_fork : child_return_fork_user;
+  stf.eip = child_return_fork;
+  memcpy((char *)th->esp, &stf, sizeof(trap_frame));
+
+  sched_push_queue(th);
+  unlock_scheduler();
+
+  return proc->pid;
+}
+
+// probably it's better to rename the kernel fork to spawn
+pid_t process_fork(struct process *parent) {
+  lock_scheduler();
+
+  bool is_kernel = vmm_is_kernel_directory(parent->va_dir);
+  assert(!is_kernel);
+
+  struct process *proc = kcalloc(1, sizeof(struct process));
+  proc->pid = next_pid++;
+  proc->gid = parent->gid;
+  proc->sid = parent->sid;
+  proc->parent = parent;
+  proc->tty = parent->tty;
+  proc->name = strdup(parent->name);
+  proc->mm_mos = clone_mm_struct(parent->mm_mos);
+  memcpy(&proc->sighand, &parent->sighand, sizeof(parent->sighand));
+
+  INIT_LIST_HEAD(&proc->wait_chld.list);
+  INIT_LIST_HEAD(&proc->childrens);
+  INIT_LIST_HEAD(&proc->threads);
+
+  list_add(&proc->child, &parent->childrens);
+  list_add(&proc->sibling, get_proc_list());
+
+  proc->fs = kcalloc(1, sizeof(fs_struct));
+  memcpy(proc->fs, parent->fs, sizeof(fs_struct));
+
+  proc->files = clone_file_descriptor_table(parent->files);
+  proc->va_dir = vmm_fork(parent->va_dir);
+  proc->pa_dir = vmm_get_physical_address(proc->va_dir, false);
+
+  struct thread *parent_thread = get_current_thread();
+  assert(
+    parent_thread->proc->pid == parent->pid,
+    "Current thread doesn't belong to the process being forked"
+  );
+
+  // penging and blocked signals are not inherited
+  struct thread *th = thread_create(proc, NULL, 0, NULL);
+  interrupt_registers *regs = parent_thread->kernel_esp - sizeof(interrupt_registers);
+
+  th->esp = th->kernel_esp - sizeof(interrupt_registers);
+  memcpy(th->esp, regs, sizeof(interrupt_registers));
+  
+  th->esp = th->esp - sizeof(trap_frame);
+  th->user_esp = parent_thread->user_esp;  // NOTE: equal virtual address, but different physical!
+
+  trap_frame stf = {
+    .parameter1 = th,
+    .eip = child_return_fork_user
+  };
   memcpy((char *)th->esp, &stf, sizeof(trap_frame));
 
   sched_push_queue(th);
@@ -634,22 +689,25 @@ int count_array_of_pointers(void *arr) {
 }
 
 int32_t process_execve(const char *path, char *const argv[], char *const envp[]) {
+  lock_scheduler();
+  
   log("Task: Exec %s", path);
-
   struct thread *th = get_current_thread();
   struct process *current_process = th->proc;
+  bool is_kernel = vmm_is_kernel_directory(current_process->va_dir);
+  assert(!is_kernel);
+  assert(pmm_get_PDBR() == current_process->pa_dir);
+
   current_process->name = strdup(path);
 
-  bool is_kernel = vmm_is_kernel_directory(current_process->va_dir);
-  
   int argv_length = count_array_of_pointers(argv);
-	char **kernel_argv = kcalloc(argv_length, sizeof(char *));
+	char **kernel_argv = kcalloc(argv_length + 1, sizeof(char *));
 	for (int i = 0; i < argv_length; ++i) {
 		int ilength = strlen(argv[i]);
 		kernel_argv[i] = kcalloc(ilength + 1, sizeof(char));
 		memcpy(kernel_argv[i], argv[i], ilength);
 	}
-
+  kernel_argv[argv_length] = 0;
 
   if (elf_unload(NULL) < 0) {
     assert_not_reached("Unablt to unload elf");
@@ -668,10 +726,10 @@ int32_t process_execve(const char *path, char *const argv[], char *const envp[])
   }
 
   tss_set_stack(KERNEL_DATA, th->kernel_esp);
+  unlock_scheduler();
   enter_usermode(layout.entry, th->user_esp, PROCESS_TRAPPED_PAGE_FAULT);
 
   assert_not_reached();
-  //return 0;
 }
 
 bool initialise_multitasking(virtual_addr entry) {
