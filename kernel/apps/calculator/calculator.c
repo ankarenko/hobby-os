@@ -165,12 +165,24 @@ error:
 int exec(void *entry(char **), char *name, char **argv, int gid) {
   int pid = 0;
   if ((pid = fork()) == 0) {
-    printf("fork");
     setpgid(0, gid == -1 ? 0 : gid);
 
     int foreground_pgrp = tcgetpgrp(STDIN_FILENO);
-    if (foreground_pgrp != gid && tcsetpgrp(STDIN_FILENO, gid) < 0) {
-      printf("unable to set foreground process");
+
+    printf("\n current foreground pgrp: %d", foreground_pgrp);
+
+    int tmp = 0;
+    
+    if ((tmp = getgid()) < 0) {
+      printf("\n unable get gid");
+    }
+
+    printf("\n current gid: %d", tmp);
+
+    if (foreground_pgrp != tmp && tcsetpgrp(STDIN_FILENO, tmp) < 0) {
+      printf("\nunable to set foreground process");
+    } else {
+      printf("\nset foreground to %d", tmp);
     }
 
     entry(argv);
@@ -312,7 +324,10 @@ bool interpret_line(char *line) {
   
   if (tcsetpgrp(STDIN_FILENO, shell_gid) < 0) {
     printf("\nUnable to return foreground process to shell");
+  } else {
+    printf("\n Return foreground to gid: %d", shell_gid);
   }
+
 
   
   /*

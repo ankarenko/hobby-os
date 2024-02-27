@@ -129,7 +129,6 @@ void ps(char **argv) {
   kprintformat("PARENT", 8, NULL);
   kprintformat("USER", 7, NULL);
   kprintformat("THREADS", 10, NULL);
-  
 
 
   list_for_each_entry(proc, ls, sibling) {
