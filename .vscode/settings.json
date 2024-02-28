@@ -50,6 +50,7 @@
     "sstream": "c",
     "string": "c",
     "istream": "c",
-    "msyscalls.h": "c"
+    "msyscalls.h": "c",
+    "poll.h": "c"
   }
 }

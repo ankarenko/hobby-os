@@ -28,6 +28,8 @@
 #define __NR_sbrk 18
 #define __NR_lseek 19
 #define __NR_getpid 20
+#define __NR_setuid 23
+#define __NR_getuid 24
 #define __NR_kill 37
 #define __NR_mkdir 39
 #define __NR_dup 41
@@ -36,9 +38,12 @@
 #define __NR_setgid 46
 #define __NR_getgid 47
 #define __NR_signal 48
+#define __NR_geteuid 49
+#define __NR_getegid 50
 #define __NR_ioctl 54
 #define __NR_fcntl 55   
 #define __NR_setpgid 57
+#define __NR_umask 60
 #define __NR_dup2 63
 #define __NR_getppid 64
 #define __NR_getpgrp 65
@@ -123,7 +128,6 @@ static int32_t sys_getdents(unsigned int fd, struct dirent *dirent, unsigned int
 
   return -ENOTDIR;
 }
-
 
 static int32_t sys_getcwd(char *buf, size_t size) {
   
@@ -339,10 +343,6 @@ static int32_t sys_kill(pid_t pid, int sig) {
   return do_kill(pid, sig);
 }
 
-static int32_t sys_fcntl(int fd, int cmd, unsigned long arg) {
-  return do_fcntl(fd, cmd, arg);
-}
-
 static int32_t sys_times(struct tms *buffer) {
   assert_not_implemented("sys_times");
 }
@@ -415,6 +415,10 @@ static int32_t sys_mkdirat(int fd, const char *path, mode_t mode) {
   */
 }
 
+static int32_t sys_fcntl(int fd, int cmd, unsigned long arg) {
+  return do_fcntl(fd, cmd, arg);
+}
+
 static int32_t sys_getgid() {
   return get_current_process()->gid;
 }
@@ -422,6 +426,33 @@ static int32_t sys_getgid() {
 static int32_t sys_setgid(gid_t gid) {
   struct process *current_process = get_current_process();
   current_process->gid = gid;
+  return 0;
+}
+
+static int32_t sys_umask(mode_t cmask) {
+  // TODO: MQ 2020-11-10 Implement umask
+
+  assert_not_implemented();
+  return 0;
+}
+
+static int32_t sys_getuid() {
+  assert_not_implemented();
+  return 0;
+}
+
+static int32_t sys_setuid(uid_t uid) {
+  assert_not_implemented();
+  return 0;
+}
+
+static int32_t sys_getegid() {
+  assert_not_implemented();
+  return 0;
+}
+
+static int32_t sys_geteuid() {
+  assert_not_implemented();
   return 0;
 }
 
@@ -463,7 +494,12 @@ static void *syscalls[] = {
   [__NR_unlinkat] = sys_unlinkat,
   [__NR_getppid] = sys_getppid,
   [__NR_setsid] = sys_setsid,
+  [__NR_umask] = sys_umask,
   [__NR_getsid] = sys_getsid,
+  [__NR_getuid] = sys_getuid,
+  [__NR_setuid] = sys_setuid,
+  [__NR_getegid] = sys_getegid,
+  [__NR_geteuid] = sys_geteuid,
   [__NR_getpgrp] = sys_getpgrp,
   [__NR_getpid] = sys_getpid,
   [__NR_getdents] = sys_getdents,

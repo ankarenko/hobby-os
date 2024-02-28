@@ -164,6 +164,14 @@ RUN \
 RUN \
   sh ./libc.sh rebuild && sh ./libc.sh install
 
+
+# ./configure --bindir=$PWD/bin --mandir=$PWD/man --host=i686-myos CPPFLAGS=-DHAVE_KILLPG=1
+WORKDIR $SRC
+RUN \
+  wget http://gondor.apana.org.au/\~herbert/dash/files/dash-0.5.12.tar.gz && \
+  tar xvf dash-0.5.12.tar.gz && \
+  rm -rf dash-0.5.12.tar.gz
+
 VOLUME /os
 #VOLUME /os/sysroot
 VOLUME $BUILD

@@ -1,4 +1,5 @@
 #ifndef DIRENT_H
+#define DIRENT_H
 
 #include <stdint.h>
 #include <sys/types.h>

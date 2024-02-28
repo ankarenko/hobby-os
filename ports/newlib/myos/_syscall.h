@@ -18,6 +18,8 @@
 #define __NR_sbrk 18
 #define __NR_lseek 19
 #define __NR_getpid 20
+#define __NR_setuid 23
+#define __NR_getuid 24
 #define __NR_kill 37
 #define __NR_mkdir 39
 #define __NR_dup 41
@@ -26,9 +28,12 @@
 #define __NR_setgid 46
 #define __NR_getgid 47
 #define __NR_signal 48
+#define __NR_geteuid 49
+#define __NR_getegid 50
 #define __NR_ioctl 54
 #define __NR_fcntl 55   
 #define __NR_setpgid 57
+#define __NR_umask 60
 #define __NR_dup2 63
 #define __NR_getppid 64
 #define __NR_getpgrp 65

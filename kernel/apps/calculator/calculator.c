@@ -162,10 +162,10 @@ error:
   _exit(-1); 
 }
 
-int exec(void *entry(char **), char *name, char **argv, int gid) {
+int exec(void *entry(char **), char *name, char **argv, int foreground_gid) {
   int pid = 0;
   if ((pid = fork()) == 0) {
-    setpgid(0, gid == -1 ? 0 : gid);
+    setpgid(0, foreground_gid == -1 ? 0 : foreground_gid);
 
     int foreground_pgrp = tcgetpgrp(STDIN_FILENO);
 
@@ -188,7 +188,7 @@ int exec(void *entry(char **), char *name, char **argv, int gid) {
     entry(argv);
     _exit(0);
   }
-  int id = gid == -1 ? pid : gid;
+  int id = foreground_gid == -1 ? pid : foreground_gid;
   setpgid(pid, id);
   
   return pid;
@@ -210,20 +210,20 @@ void ps() {
   dbg_ps();
 }
 
-int search_and_run(struct cmd_t *com, int gid) {
+int search_and_run(struct cmd_t *com, int foreground_gid) {
   int ret = -1;
   if (strcmp(com->cmd, "ls") == 0) {
-    ret = exec(ls, "ls", com->argv, gid);
+    ret = exec(ls, "ls", com->argv, foreground_gid);
   } else if (strcmp(com->cmd, "hello") == 0) {
-    ret = exec(hello, "hello", com->argv, gid);
+    ret = exec(hello, "hello", com->argv, foreground_gid);
   } else if (strcmp(com->cmd, "cat") == 0) {
-    ret = exec(cat, "cat", com->argv, gid);
+    ret = exec(cat, "cat", com->argv, foreground_gid);
   } else if (strcmp(com->cmd, "ps") == 0) {
-    ret = exec(ps, "ps", com->argv, gid);
+    ret = exec(ps, "ps", com->argv, foreground_gid);
   } else if (strcmp(com->cmd, "echo") == 0) {
-    ret = exec(echo, "echo", com->argv, gid);
+    ret = exec(echo, "echo", com->argv, foreground_gid);
   } else if (strcmp(com->cmd, "rm") == 0) {
-    ret = exec(rm, "rm", com->argv, gid);
+    ret = exec(rm, "rm", com->argv, foreground_gid);
   } else if (strcmp(com->cmd, "clear") == 0) {
     putchar(12);
   } else if (strcmp(com->cmd, "cd") == 0) {
@@ -284,7 +284,7 @@ bool interpret_line(char *line) {
     goto clean;
 
   //struct infop inop;
-  int gid = -1;
+  int foreground_gid = -1;
   int pid = -1;
   //struct process *shell_proc = get_current_process();
 
@@ -302,12 +302,12 @@ bool interpret_line(char *line) {
       continue;
     }
 
-    pid = search_and_run(com, gid);
+    pid = search_and_run(com, foreground_gid);
 
-    if (gid == -1)
-      gid = pid;
+    if (foreground_gid == -1)
+      foreground_gid = pid;
 
-    if (gid == -1)
+    if (foreground_gid == -1)
       goto clean;
   }
 
@@ -318,7 +318,7 @@ bool interpret_line(char *line) {
   }
 
   int shell_gid = getgid();
-  if (gid <= 0) {
+  if (shell_gid <= 0) {
     printf("\nInvalid gid");
   }
   

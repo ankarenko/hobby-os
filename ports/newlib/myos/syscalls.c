@@ -5,7 +5,7 @@
 #include <sys/errno.h>
 #include <sys/fcntl.h>
 #include <sys/signal.h>
-#include <kernel/util/ioctls.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <sys/time.h>
@@ -209,6 +209,10 @@ int stat(const char *path, struct stat *buf) {
 	SYSCALL_RETURN_ORIGINAL(syscall_stat(path, buf));
 }
 
+int lstat(const char *path, struct stat *buf) {
+	return stat(path, buf);
+}
+
 clock_t times(struct tms *buf) {
 }
 
@@ -242,9 +246,54 @@ int getgid() {
 	SYSCALL_RETURN_ORIGINAL(syscall_getgid());
 }
 
+_syscall0(getuid);
+int getuid() {
+	SYSCALL_RETURN_ORIGINAL(syscall_getuid());
+}
+
+_syscall1(setuid, uid_t);
+int setuid(uid_t uid) {
+	SYSCALL_RETURN(syscall_setuid(uid));
+}
+
+_syscall0(getegid);
+int getegid() {
+	SYSCALL_RETURN_ORIGINAL(syscall_getegid());
+}
+
+_syscall0(geteuid);
+int geteuid() {
+	SYSCALL_RETURN_ORIGINAL(syscall_geteuid());
+}
+
+_syscall1(pipe, int *);
+int pipe(int *fildes) {
+	SYSCALL_RETURN(syscall_pipe(fildes));
+}
+
+_syscall0(getpgrp);
+int getpgrp() {
+	SYSCALL_RETURN_ORIGINAL(syscall_getpgrp());
+}
+
 _syscall1(setgid, gid_t);
 int setgid(gid_t gid) {
 	SYSCALL_RETURN_ORIGINAL(syscall_setgid(gid));
+}
+
+_syscall1(umask, mode_t);
+mode_t umask(mode_t cmask) {
+	SYSCALL_RETURN_ORIGINAL(syscall_umask(cmask));
+}
+
+_syscall3(fcntl, int, int, unsigned long);
+int fcntl(int fd, int cmd, ...) {
+	va_list ap;
+	va_start(ap, cmd);
+	unsigned long arg = va_arg(ap, unsigned long);
+	va_end(ap);
+
+	SYSCALL_RETURN_ORIGINAL(syscall_fcntl(fd, cmd, arg));
 }
 
 _syscall2(mkdir, const char *, mode_t);
