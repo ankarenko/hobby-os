@@ -166,8 +166,8 @@ RUN \
 
 
 # ./configure --bindir=$PWD/bin --mandir=$PWD/man --host=i686-myos CPPFLAGS=-DHAVE_KILLPG=1
+# dash port
 ENV DASH=dash-0.5.12
-
 WORKDIR $SRC
 RUN \
   wget http://gondor.apana.org.au/\~herbert/dash/files/$DASH.tar.gz && \
@@ -177,6 +177,17 @@ RUN \
   ./configure --bindir=$BUILD/$DASH/bin --mandir=$BUILD/$DASH/man --host=i686-myos CPPFLAGS=-DHAVE_KILLPG=1 && \
   make && make install
 
+RUN apt install git -y
+
+# figlet port
+ENV FIGLET=figlet
+RUN \
+  git clone https://github.com/cmatsuoka/$FIGLET && \
+  cd $FIGLET && \
+  sed -i 's/gcc/i686-myos-gcc/g' Makefile #&& \
+  # fix not found arpa/inet.h error
+  sed -i 's/include <arpa\/inet.h>/define htonl(l) ((((l)\&0xFF) << 24) | (((l)\&0xFF00) << 8) | (((l)\&0xFF0000) >> 8) | (((l)\&0xFF000000) >> 24))/g' utf8.c && \
+  make prefix $BUILD/$FIGLET
 
 VOLUME /os
 #VOLUME /os/sysroot
