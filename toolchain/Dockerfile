@@ -166,11 +166,17 @@ RUN \
 
 
 # ./configure --bindir=$PWD/bin --mandir=$PWD/man --host=i686-myos CPPFLAGS=-DHAVE_KILLPG=1
+ENV DASH=dash-0.5.12
+
 WORKDIR $SRC
 RUN \
-  wget http://gondor.apana.org.au/\~herbert/dash/files/dash-0.5.12.tar.gz && \
-  tar xvf dash-0.5.12.tar.gz && \
-  rm -rf dash-0.5.12.tar.gz
+  wget http://gondor.apana.org.au/\~herbert/dash/files/$DASH.tar.gz && \
+  tar xvf $DASH.tar.gz && \
+  rm -rf $DASH.tar.gz && \
+  cd $DASH && \
+  ./configure --bindir=$BUILD/$DASH/bin --mandir=$BUILD/$DASH/man --host=i686-myos CPPFLAGS=-DHAVE_KILLPG=1 && \
+  make && make install
+
 
 VOLUME /os
 #VOLUME /os/sysroot

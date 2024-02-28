@@ -13,6 +13,10 @@
 #include "kernel/ipc/signal.h"
 #include "kernel/fs/poll.h"
 
+/*
+  https://filippo.io/linux-syscall-table/
+*/
+
 #define __NR_exit 1
 #define __NR_fork 2
 #define __NR_read 3
@@ -43,6 +47,7 @@
 #define __NR_ioctl 54
 #define __NR_fcntl 55   
 #define __NR_setpgid 57
+#define __NR_vfork 58
 #define __NR_umask 60
 #define __NR_dup2 63
 #define __NR_getppid 64
@@ -145,7 +150,7 @@ static int32_t sys_getcwd(char *buf, size_t size) {
   } else
     ret = -ERANGE;
 
-  return 0;
+  return buf;
 
   /*
   char *abs_path = kcalloc(MAXPATHLEN, sizeof(char));
@@ -180,6 +185,10 @@ static int32_t sys_exit() {
 static pid_t sys_fork() {
   struct process *parent = get_current_process();
   return process_fork(parent);
+}
+
+static pid_t sys_vfork() {
+  return sys_fork();
 }
 
 static int32_t sys_waitpid(pid_t pid, int *wstatus, int options) {
@@ -432,28 +441,33 @@ static int32_t sys_setgid(gid_t gid) {
 static int32_t sys_umask(mode_t cmask) {
   // TODO: MQ 2020-11-10 Implement umask
 
-  assert_not_implemented();
+  //assert_not_implemented();
   return 0;
 }
 
 static int32_t sys_getuid() {
-  assert_not_implemented();
+  //assert_not_implemented();
   return 0;
 }
 
 static int32_t sys_setuid(uid_t uid) {
-  assert_not_implemented();
+  //assert_not_implemented();
   return 0;
 }
 
 static int32_t sys_getegid() {
-  assert_not_implemented();
+  //assert_not_implemented();
   return 0;
 }
 
 static int32_t sys_geteuid() {
-  assert_not_implemented();
+  //assert_not_implemented();
   return 0;
+}
+
+static int32_t sys_sigsuspend(const sig_t *set) {
+  return 0;
+  //return do_sigsuspend(set);
 }
 
 static void *syscalls[] = {
@@ -495,8 +509,10 @@ static void *syscalls[] = {
   [__NR_getppid] = sys_getppid,
   [__NR_setsid] = sys_setsid,
   [__NR_umask] = sys_umask,
+  [__NR_sigsuspend] = sys_sigsuspend,
   [__NR_getsid] = sys_getsid,
   [__NR_getuid] = sys_getuid,
+  [__NR_vfork] = sys_vfork,
   [__NR_setuid] = sys_setuid,
   [__NR_getegid] = sys_getegid,
   [__NR_geteuid] = sys_geteuid,

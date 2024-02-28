@@ -15,7 +15,7 @@
 
 #include "_syscall.h"
 
-char **environ; /* pointer to array of char * strings that define the current environment variables */
+extern char **environ; /* pointer to array of char * strings that define the current environment variables */
 
 _syscall3(read, int, char *, size_t);
 uint32_t read(int fd, char *buf, size_t size) {
@@ -25,6 +25,26 @@ uint32_t read(int fd, char *buf, size_t size) {
 _syscall2(fstat, int32_t, struct stat *);
 int fstat(int fildes, struct stat *buf) {
   SYSCALL_RETURN_ORIGINAL(syscall_fstat(fildes, buf));
+}
+
+_syscall2(kill, pid_t, int);
+int kill(pid_t pid, int sig) {
+  SYSCALL_RETURN_ORIGINAL(syscall_kill(pid, sig));
+}
+
+
+
+_syscall1(sigsuspend, const sigset_t *);
+int sigsuspend(const sigset_t *mask) {
+	return errno = -syscall_sigsuspend(mask), -1;
+}
+
+int getgroups(int size, gid_t list[]) {
+  return 0;
+}
+
+int killpg(pid_t pid, int signal){
+  return kill(-pid, signal);
 }
 
 _syscall1(dup, int);
@@ -130,6 +150,11 @@ int fork() {
   SYSCALL_RETURN_ORIGINAL(syscall_fork());
 }
 
+_syscall0(vfork);
+int vfork() {
+  SYSCALL_RETURN_ORIGINAL(syscall_vfork());
+}
+
 int tcsetpgrp(int fd, pid_t pid) {
 	return ioctl(fd, TIOCSPGRP, (unsigned long)&pid);
 }
@@ -153,11 +178,12 @@ int isatty(int file) {
   return 1;
 }
 
-int kill(int pid, int sig) {
-}
-
 int link(char *old, char *new) {
 }
+
+pid_t wait3(int *wstatus, int options, struct rusage *rusage) {
+  return waitpid(-1, &wstatus, options);
+} 
 
 // int lseek(int file, int ptr, int dir); original
 _syscall3(lseek, int, off_t, int);
