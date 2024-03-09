@@ -163,6 +163,7 @@ error:
 }
 
 int exec_program(char* path, char **argv, int foreground_gid) {
+  printf("\n");
   int pid = 0;
   if ((pid = fork()) == 0) {
     setpgid(0, foreground_gid == -1 ? 0 : foreground_gid);
@@ -386,8 +387,10 @@ clean:
 }
 
 void main(int argc, char** argv) {
+  
+  /*
   int c;
-  char* argv_t[] = { "shell" };
+  char* argv_t[] = { "shell", "--" };
 
   printf("\nhello");
   //return 0;
@@ -395,26 +398,35 @@ void main(int argc, char** argv) {
 
   for (int i = 0; i < argc; ++i) {
     printf("%x", argv_t[i]);
-    printf("%s", argv_t[i]);
+    printf("v[%d]=%s", i, argv_t[i]);
+    printf("v[%d]=%s", i, argv[i]);
   }
+
+  
   while ((c = getopt(argc, argv_t, "abc")) != -1) {
     printf("bro");
     //printf("\nc = %d", c);
   }
 
   printf("\nend");
-
+  */
   //return 0;
 
   int size = N_TTY_BUF_SIZE - 1;
   char *line = calloc(size, sizeof(char));
   char path[20];
-  
+  bool start = true;
   while (true) {
     getcwd(&path, 20);
+    if (start) {
+      interpret_line("run figlet -- hobby-os");
+      start = false;
+      continue;
+    }
     printf("\n(%s)root@%s: ", "ext2", path);
     gets(line);
     //printf(line);
+    
     interpret_line(line);
   }
   free(line);

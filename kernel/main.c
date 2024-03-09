@@ -665,6 +665,8 @@ void init_process() {
 }
 
 void kernel_main(multiboot_info_t *mbd, uint32_t magic) {
+
+  
   char **argv = 0;
   int argc = 0;
 

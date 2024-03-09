@@ -94,7 +94,7 @@ static int32_t sys_dup(int oldfd) {
 }
 
 static int32_t sys_read(uint32_t fd, char *buf, size_t count) {
-  log("sys_read");
+  //log("sys_read");
 	return vfs_fread(fd, buf, count);
 }
 
@@ -113,7 +113,7 @@ static int32_t sys_write(uint32_t fd, char *buf, int32_t count) {
   if (count > 2147482620)
     return 0;
 
-  log("sys_write");
+  //log("sys_write");
 	return vfs_fwrite(fd, buf, count);
 }
 
@@ -123,7 +123,7 @@ static int32_t sys_waitid(id_type_t idtype, id_t id, struct infop *infop, int op
 }
 
 static void* sys_sbrk(size_t n) {
-  log("sys_sbrk");
+  //log("sys_sbrk");
   struct thread* th = get_current_thread();
   struct process* parent = th->proc;
   virtual_addr addr = sbrk(
