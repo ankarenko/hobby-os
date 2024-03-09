@@ -162,6 +162,33 @@ error:
   _exit(-1); 
 }
 
+int exec_program(char* path, char **argv, int foreground_gid) {
+  int pid = 0;
+  if ((pid = fork()) == 0) {
+    setpgid(0, foreground_gid == -1 ? 0 : foreground_gid);
+
+    int foreground_pgrp = tcgetpgrp(STDIN_FILENO);
+    int tmp = 0;
+    
+    if ((tmp = getgid()) < 0) {
+      printf("\n unable get gid");
+    }
+
+    if (foreground_pgrp != tmp && tcsetpgrp(STDIN_FILENO, tmp) < 0) {
+      printf("\nunable to set foreground process");
+    } else {
+      //printf("\nset foreground to %d", tmp);
+    }
+
+    execve(path, argv, NULL);
+    _exit(0);
+  }
+  int id = foreground_gid == -1 ? pid : foreground_gid;
+  setpgid(pid, id);
+  
+  return pid;
+}
+
 int exec(void *entry(char **), char *name, char **argv, int foreground_gid) {
   int pid = 0;
   if ((pid = fork()) == 0) {
@@ -169,7 +196,7 @@ int exec(void *entry(char **), char *name, char **argv, int foreground_gid) {
 
     int foreground_pgrp = tcgetpgrp(STDIN_FILENO);
 
-    printf("\n current foreground pgrp: %d", foreground_pgrp);
+    //printf("\n current foreground pgrp: %d", foreground_pgrp);
 
     int tmp = 0;
     
@@ -177,12 +204,12 @@ int exec(void *entry(char **), char *name, char **argv, int foreground_gid) {
       printf("\n unable get gid");
     }
 
-    printf("\n current gid: %d", tmp);
+    //printf("\n current gid: %d", tmp);
 
     if (foreground_pgrp != tmp && tcsetpgrp(STDIN_FILENO, tmp) < 0) {
       printf("\nunable to set foreground process");
     } else {
-      printf("\nset foreground to %d", tmp);
+      //printf("\nset foreground to %d", tmp);
     }
 
     entry(argv);
@@ -229,8 +256,15 @@ int search_and_run(struct cmd_t *com, int foreground_gid) {
   } else if (strcmp(com->cmd, "cd") == 0) {
     chdir(com->argv[0] == NULL? "." : com->argv[0]);
     //ret = exec(cd, "cd", com->argv, gid);
+  } else if (strcmp(com->cmd, "run") == 0) {
+    ret = exec_program(com->argv[0], com->argv, foreground_gid);
   } else {
-    printf("\nunknown program: %s", com->cmd);
+    struct stat st;
+    if (stat(com->cmd, &st) == 0) {
+      ret = exec_program(com->cmd, com->argv, foreground_gid);
+    } else {
+      printf("\nunknown program: %s", com->cmd);
+    }
   }
 clean:
   return ret;
@@ -314,7 +348,7 @@ bool interpret_line(char *line) {
   int status;
   int ret = -1;
   while ((ret = waitpid(-pid, &status, WEXITED | WSTOPPED)) > 0) {
-    printf("\nwaited for child, exiting");
+    //printf("\nwaited for child, exiting");
   }
 
   int shell_gid = getgid();
@@ -325,7 +359,7 @@ bool interpret_line(char *line) {
   if (tcsetpgrp(STDIN_FILENO, shell_gid) < 0) {
     printf("\nUnable to return foreground process to shell");
   } else {
-    printf("\n Return foreground to gid: %d", shell_gid);
+    //printf("\n Return foreground to gid: %d", shell_gid);
   }
 
 
@@ -352,6 +386,26 @@ clean:
 }
 
 void main(int argc, char** argv) {
+  int c;
+  char* argv_t[] = { "shell" };
+
+  printf("\nhello");
+  //return 0;
+  printf("\nargu,ents: %d", argc);
+
+  for (int i = 0; i < argc; ++i) {
+    printf("%x", argv_t[i]);
+    printf("%s", argv_t[i]);
+  }
+  while ((c = getopt(argc, argv_t, "abc")) != -1) {
+    printf("bro");
+    //printf("\nc = %d", c);
+  }
+
+  printf("\nend");
+
+  //return 0;
+
   int size = N_TTY_BUF_SIZE - 1;
   char *line = calloc(size, sizeof(char));
   char path[20];

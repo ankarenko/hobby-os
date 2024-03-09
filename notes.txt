@@ -4,3 +4,34 @@ cd diary && cd .. && cd ..
 pmemsave 0x674000 4096 out.mem
 
 echo "pmemsave 0x674000 4096 home/sergey/Desktop/os/out.mem" | sudo socat - unix-connect:qemu-monitor-socket
+
+
+// dirent
+https://www.reddit.com/r/osdev/comments/139pet/porting_newlib/
+
+
+// docker run
+docker run -it --rm -v $PWD/build:/src/build  -v $PWD:/os -v $PWD/ports/newlib/myos:/src/newlib-2.5.0/newlib/libc/sys/myos -v $PWD/sysroot/:/os/sysroot os_tools
+// docker build
+docker build -f ./toolchain/Dockerfile -t os_tools .
+
+
+// for signals
+https://github.com/eblot/newlib/blob/master/newlib/libc/signal/signal.c
+https://wiki.osdev.org/Porting_Newlib#Signal_handling
+https://github.com/stevej/osdev/blob/master/toolchain/patches/newlib/toaru/syscalls.c
+./configure --bindir=$PWD/bin --mandir=$PWD/man --host=i686-myos CPPFLAGS=-DHAVE_KILLPG=1
+
+
+https://forum.osdev.org/viewtopic.php?t=27005&p=226203
+
+https://www.gnu.org/software/make/manual/make.html#Directory-Variables
+
+// possible libc implementations 
+// dietlib ?????
+
+
+
+
+
+https://github.com/torvalds/linux/blob/e326df53af0021f48a481ce9d489efda636c2dc6/kernel/groups.c#L161???

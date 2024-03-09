@@ -58,7 +58,6 @@ int32_t vfs_fread(int32_t fd, char *buf, uint32_t count) {
 
 off_t vfs_generic_llseek(struct vfs_file *file, off_t offset, int whence) {
   struct process* cur_proc = get_current_process();
-  semaphore_down(cur_proc->files->lock);
   enter_critical_section();
 	struct vfs_inode *inode = file->f_dentry->d_inode;
 	off_t foffset;
@@ -70,13 +69,11 @@ off_t vfs_generic_llseek(struct vfs_file *file, off_t offset, int whence) {
 	else if (whence == SEEK_END)
 		foffset = inode->i_size + offset;
 	else {
-    semaphore_up(cur_proc->files->lock);
-		return -EINVAL;
+    return -EINVAL;
   }
 
 	file->f_pos = foffset;
 
-  semaphore_up(cur_proc->files->lock);
   leave_critical_section();
 	return foffset;
 }

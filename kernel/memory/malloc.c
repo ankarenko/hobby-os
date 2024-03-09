@@ -86,7 +86,7 @@ void *kalign_heap(size_t size) {
 
 	while (padding_size <= KERNEL_HEAP_TOP)
 	{
-    log("padding size: %d", padding_size);
+    //log("padding size: %d", padding_size);
 		if (padding_size > required_size)
 		{
 			struct block_meta *last = _kblocklist;

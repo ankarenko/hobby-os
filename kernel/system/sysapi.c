@@ -84,26 +84,36 @@ static int32_t sys_dbg_ps() {
 }
 
 static int32_t sys_dup2(int oldfd, int newfd) {
+  log("sys_dup2");
   return dup2(oldfd, newfd);
 }
 
 static int32_t sys_dup(int oldfd) {
+  log("sys_dup");
   return dup(oldfd);
 }
 
 static int32_t sys_read(uint32_t fd, char *buf, size_t count) {
+  log("sys_read");
 	return vfs_fread(fd, buf, count);
 }
 
 static int32_t sys_open(const char *path, int32_t flags, mode_t mode) {
+  log("sys_open");
   return vfs_open(path, flags, mode);
 }
 
 static int32_t sys_fstat(int32_t fd, struct kstat *stat) {
+  log("sys_fstat");
 	return vfs_fstat(fd, stat);
 }
 
-static int32_t sys_write(uint32_t fd, char *buf, size_t count) {
+static int32_t sys_write(uint32_t fd, char *buf, int32_t count) {
+  // TODO: bug; RESOLVE IT.
+  if (count > 2147482620)
+    return 0;
+
+  log("sys_write");
 	return vfs_fwrite(fd, buf, count);
 }
 
@@ -113,6 +123,7 @@ static int32_t sys_waitid(id_type_t idtype, id_t id, struct infop *infop, int op
 }
 
 static void* sys_sbrk(size_t n) {
+  log("sys_sbrk");
   struct thread* th = get_current_thread();
   struct process* parent = th->proc;
   virtual_addr addr = sbrk(
@@ -122,6 +133,7 @@ static void* sys_sbrk(size_t n) {
 }
 
 static int32_t sys_getdents(unsigned int fd, struct dirent *dirent, unsigned int count) {
+  log("sys_getdents");
   struct process *current_process = get_current_process();
   struct vfs_file *file = current_process->files->fd[fd];
 
@@ -135,7 +147,7 @@ static int32_t sys_getdents(unsigned int fd, struct dirent *dirent, unsigned int
 }
 
 static int32_t sys_getcwd(char *buf, size_t size) {
-  
+  log("sys_getcwd");
   if (!buf || !size)
     return -EINVAL;
   
@@ -169,6 +181,7 @@ static int32_t sys_getcwd(char *buf, size_t size) {
 }
 
 static int32_t sys_exit() {
+  log("sys_exit");
   do_kill(0, SIGQUIT);
   while (1) {}
   
@@ -183,15 +196,18 @@ static int32_t sys_exit() {
 }
 
 static pid_t sys_fork() {
+  log("sys_fork");
   struct process *parent = get_current_process();
   return process_fork(parent);
 }
 
 static pid_t sys_vfork() {
+  log("sys_vfork");
   return sys_fork();
 }
 
 static int32_t sys_waitpid(pid_t pid, int *wstatus, int options) {
+  log("sys_waitpid");
   id_type_t idtype;
   struct process *current_process = get_current_process();
 
@@ -243,14 +259,17 @@ static int32_t sys_nanosleep(const struct timespec *req, struct timespec *rem) {
 }
 
 static int32_t sys_lseek(int fd, off_t offset, int whence) {
+  log("sys_lseek");
 	return vfs_flseek(fd, offset, whence);
 }
 
 static int32_t sys_close(uint32_t fd) {
+  log("sys_close");
 	return vfs_close(fd);
 }
 
 static int32_t sys_time(time_t *tloc) {
+  log("sys_time");
 	time_t t = get_seconds(NULL);
 	if (tloc)
 		*tloc = t;
@@ -258,6 +277,7 @@ static int32_t sys_time(time_t *tloc) {
 }
 
 static int32_t sys_sigaction(int signum, const struct sigaction *act, struct sigaction *oldact) {
+  log("sys_sigaction");
   return do_sigaction(signum, act, oldact);
 }
 
@@ -266,6 +286,7 @@ static int32_t sys_sigprocmask(int how, const sig_t *set, sig_t *oldset) {
 }
 
 static int32_t sys_setpgid(pid_t pid, pid_t pgid) {
+  log("sys_setpid");log("sys_getcwd");
   return setpgid(pid, pgid);
 }
 
