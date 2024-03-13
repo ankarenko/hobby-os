@@ -1,7 +1,6 @@
 #ifndef IOCTL_H
 #define IOCTL_H
 
-
 #define TIOCSCTTY 0x5480 /* become controlling tty */
 #define TIOCGSOFTCAR 0x5481
 #define TIOCSSOFTCAR 0x5482
