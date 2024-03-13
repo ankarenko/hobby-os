@@ -8,6 +8,7 @@
 #include "kernel/memory/malloc.h"
 #include "kernel/util/fcntl.h"
 #include "kernel/system/sysapi.h"
+#include "kernel/util/limits.h"
 #include "kernel/system/time.h"
 #include "kernel/cpu/hal.h"
 #include "kernel/ipc/signal.h"
@@ -146,18 +147,21 @@ static int32_t sys_getdents(unsigned int fd, struct dirent *dirent, unsigned int
   return -ENOTDIR;
 }
 
+static char CWD_PATH[MAXPATHLEN];
+
 static int32_t sys_getcwd(char *buf, size_t size) {
   log("sys_getcwd");
   if (!buf || !size)
     return -EINVAL;
   
   struct process *proc = get_current_process();
-  char *path = proc->fs->d_root->d_name;
-
+  CWD_PATH[0] = '\0';
+  vfs_build_path_backward(proc->fs->d_root, &CWD_PATH);
+  
   int32_t ret = (int32_t)buf;
-  int plen = strlen(path);
+  int plen = strlen(CWD_PATH);
   if (plen < size) {
-    memcpy(buf, path, plen);
+    memcpy(buf, CWD_PATH, plen);
     buf[plen] = '\0';
   } else
     ret = -ERANGE;

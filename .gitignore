@@ -3,6 +3,7 @@
 isodir
 sysroot
 build
+shell
 *.bin
 fat32_floppy.img
 *.img

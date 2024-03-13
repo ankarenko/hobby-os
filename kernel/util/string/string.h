@@ -21,6 +21,7 @@ char *strncat(char *s1, const char *s2, size_t n);
 size_t strnlen(const char *str, size_t maxlen);
 int32_t strliof(const char *s1, const char *s2);
 char *strrstr(char *string, char *find);
+char *strcat(char *dest, const char *src);
 char *strstr(const char* haystack, const char* needle);
 
 char *strchrnul(const char *s, int c_in);

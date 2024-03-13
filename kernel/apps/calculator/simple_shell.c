@@ -419,11 +419,12 @@ void main(int argc, char** argv) {
   while (true) {
     getcwd(&path, 20);
     if (start) {
-      interpret_line("run figlet -- hobby-os");
+      printf("                                   welcome to");
+      interpret_line("run bin/figlet -c -k -- simple shell");
       start = false;
       continue;
     }
-    printf("\n(%s)root@%s: ", "ext2", path);
+    printf("\nroot@%s: ", path);
     gets(line);
     //printf(line);
     

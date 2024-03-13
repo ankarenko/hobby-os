@@ -257,7 +257,7 @@ void terminal_run() {
     pmm_load_PDBR(proc_child->pa_dir);
     char* argv[] = { proc_child->name, "--" };
     char* envp[] = {};
-    process_execve("calc.exe", &argv, NULL);
+    process_execve("bin/shell", &argv, NULL);
     
     //shell_start();
     assert_not_reached();
@@ -305,6 +305,10 @@ void terminal_run() {
           char c = kkybrd_key_to_ascii(ev.key);
           buf[0] = c;
           buf[1] = '\0';
+
+          if (c == 13) {
+            int a = 123;
+          }
 
           vfs_fwrite(stdout, buf, 1);
         } else {

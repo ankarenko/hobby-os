@@ -67,7 +67,7 @@ void semaphore_up(struct semaphore *sem) {
     thread_update(next->task, THREAD_READY);
     kfree(next);
     unlock_scheduler();
-    schedule();
+    //schedule();
   }
 
 }

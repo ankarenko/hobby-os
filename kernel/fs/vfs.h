@@ -226,6 +226,7 @@ off_t vfs_generic_llseek(struct vfs_file *file, off_t offset, int whence);
 
 // namei.c
 int vfs_unlink(const char *path, int flag);
+void vfs_build_path_backward(struct vfs_dentry *dentry, char *path);
 
 //cache.c
 int vfs_cache(struct vfs_dentry* dentry);

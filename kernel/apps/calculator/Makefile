@@ -18,10 +18,10 @@ CFLAGS1 := -g0
 %.o: %.s
 	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS1)
 
-calc.exe: $(OBJ)
+shell: $(OBJ)
 	$(CC)  -o  $@ $(CFLAGS1) $(OBJ)
 
-install: calc.exe
+install: shell
 test: install
 clean:
 	rm -rf *.exe

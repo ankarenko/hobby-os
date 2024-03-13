@@ -8,11 +8,6 @@
 
 #define isdigit(c) ((c) >= '0' && (c) <= '9')
 
-char *strcat(char *dest, const char *src) {
-	strcpy(dest + strlen(dest), src);
-	return dest;
-}
-
 char* __int_str(intmax_t i, char b[], int base, bool plusSignIfNeeded, bool spaceSignIfNeeded,
                 int paddingNo, bool justify, bool zeroPad) {
  
