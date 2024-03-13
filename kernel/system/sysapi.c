@@ -1,14 +1,14 @@
 #include <stdarg.h>
 
-#include "kernel/util/ctype.h"
+#include "kernel/include/ctype.h"
 #include "kernel/util/stdio.h"
-#include "kernel/util/errno.h"
+#include "kernel/include/errno.h"
 #include "kernel/proc/task.h"
 #include "kernel/cpu/idt.h"
 #include "kernel/memory/malloc.h"
-#include "kernel/util/fcntl.h"
+#include "kernel/include/fcntl.h"
 #include "kernel/system/sysapi.h"
-#include "kernel/util/limits.h"
+#include "kernel/include/limits.h"
 #include "kernel/system/time.h"
 #include "kernel/cpu/hal.h"
 #include "kernel/ipc/signal.h"

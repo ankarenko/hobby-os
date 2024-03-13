@@ -1,6 +1,6 @@
 #include <errno.h>
 #include "kernel/util/debug.h"
-#include "kernel/util/limits.h"
+#include "kernel/include/limits.h"
 #include "kernel/util/string/string.h"
 #include "kernel/util/path.h"
 #include "kernel/fs/vfs.h"

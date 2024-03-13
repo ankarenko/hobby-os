@@ -1,6 +1,6 @@
 #include <string.h>
 
-#include "kernel/util/ctype.h"
+#include "kernel/include/ctype.h"
 
 int strcasecmp(const char *s1, const char *s2)
 {

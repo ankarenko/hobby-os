@@ -1,7 +1,7 @@
 #ifndef LOCKING_SEMAPHORE_H
 #define LOCKING_SEMAPHORE_H
 
-#include "kernel/util/list.h"
+#include "kernel/include/list.h"
 
 struct semaphore; // opaque
 

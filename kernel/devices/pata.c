@@ -1,7 +1,7 @@
 #include "kernel/devices/pata.h"
 
 #include "kernel/cpu/hal.h"
-#include "kernel/util/errno.h"
+#include "kernel/include/errno.h"
 #include "kernel/proc/task.h"
 #include "kernel/util/string/string.h"
 

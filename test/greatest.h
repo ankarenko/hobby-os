@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
 #endif
 /*********************************************************************/
 
-#include <kernel/util/ctype.h>
+#include <kernel/include/ctype.h>
 #include <kernel/util/stdlib.h>
 #include <kernel/util/string/string.h>
 

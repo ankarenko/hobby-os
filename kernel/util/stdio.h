@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "kernel/util/list.h"
+#include "kernel/include/list.h"
 
 #define	EOF	(-1)
 #define stdin 0

@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#include "kernel/util/types.h"
+#include "kernel/include/types.h"
 #include "kernel/util/string/string.h"
 #include "kernel/cpu/idt.h"
 

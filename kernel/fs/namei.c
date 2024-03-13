@@ -1,11 +1,11 @@
 #include "kernel/fs/vfs.h"
 #include "kernel/proc/task.h"
-#include "kernel/util/errno.h"
-#include "kernel/util/fcntl.h"
+#include "kernel/include/errno.h"
+#include "kernel/include/fcntl.h"
 #include "kernel/memory/malloc.h"
-#include "kernel/util/limits.h"
+#include "kernel/include/limits.h"
 #include "kernel/util/path.h"
-#include "kernel/util/list.h"
+#include "kernel/include/list.h"
 
 static void vfs_build_path_backward_internal(struct vfs_dentry *dentry, char *path) {
   if (dentry->d_parent) {

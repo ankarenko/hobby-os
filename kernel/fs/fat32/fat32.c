@@ -3,9 +3,9 @@
 
 #include "kernel/util/string/string.h"
 #include "kernel/util/stdio.h"
-#include "kernel/util/errno.h"
-#include "kernel/util/fcntl.h"
-#include "kernel/util/ctype.h"
+#include "kernel/include/errno.h"
+#include "kernel/include/fcntl.h"
+#include "kernel/include/ctype.h"
 #include "kernel/util/math.h"
 #include "kernel/fs/bpb.h"
 #include "kernel/fs/vfs.h"

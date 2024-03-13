@@ -1,8 +1,8 @@
 #include <stdint.h>
 
-#include "kernel/util/limits.h"
+#include "kernel/include/limits.h"
 #include "kernel/util/stdio.h"
-#include "kernel/util/ctype.h"
+#include "kernel/include/ctype.h"
 #include "kernel/util/string/string.h"
 
 //! converts a string to a long

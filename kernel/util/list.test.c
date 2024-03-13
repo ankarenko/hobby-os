@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <test/greatest.h>
 
-#include "list.h"
+#include "kernel/include/list.h"
 
 // make sure data was not corrupted
 #define TEST_MAGIC 14235343

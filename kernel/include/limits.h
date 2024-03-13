@@ -1,5 +1,5 @@
-#ifndef INCLUDE_LIMITS_H
-#define INCLUDE_LIMITS_H
+#ifndef _KERNEL_INCLUDE_LIMITS_H
+#define _KERNEL_INCLUDE_LIMITS_H
 
 #include <stdint.h>
 

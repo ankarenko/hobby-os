@@ -3,9 +3,9 @@
 #include "kernel/util/string/string.h"
 #include "kernel/util/debug.h"
 #include "kernel/memory/vmm.h"
-#include "kernel/util/limits.h"
-#include "kernel/util/fcntl.h"
-#include "kernel/util/errno.h"
+#include "kernel/include/limits.h"
+#include "kernel/include/fcntl.h"
+#include "kernel/include/errno.h"
 
 #include "kernel/fs/ext2/ext2.h"
 

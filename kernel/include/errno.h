@@ -1,5 +1,5 @@
-#ifndef _UTIL_ERRNO_H
-#define _UTIL_ERRNO_H 1
+#ifndef _KERNEL_INCLUDE_ERRNO_H
+#define _KERNEL_INCLUDE_ERRNO_H 1
 
 #define EPERM 1	   /* Operation not permitted */
 #define ENOENT 2   /* No such file or directory */

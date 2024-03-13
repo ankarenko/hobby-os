@@ -5,7 +5,7 @@
 #include "kernel/cpu/tss.h"
 #include "kernel/util/string/string.h"
 #include "kernel/cpu/gdt.h"
-#include "kernel/util/errno.h"
+#include "kernel/include/errno.h"
 
 #include "kernel/ipc/signal.h"
 

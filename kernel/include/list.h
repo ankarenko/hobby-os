@@ -1,5 +1,5 @@
-#ifndef INCLUDE_LIST_H
-#define INCLUDE_LIST_H
+#ifndef _KERNEL_INCLUDE_LIST_H
+#define _KERNEL_INCLUDE_LIST_H
 
 #include <stdbool.h>
 

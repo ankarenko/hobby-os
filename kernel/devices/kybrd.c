@@ -1,11 +1,11 @@
-#include "kernel/util/ctype.h"
+#include "kernel/include/ctype.h"
 #include "kernel/cpu/hal.h"
 #include "kernel/fs/char_dev.h"
 #include "kernel/cpu/idt.h"
 #include "kernel/util/debug.h"
 #include "kernel/proc/wait.h"
 #include "kernel/fs/poll.h"
-#include "kernel/util/fcntl.h"
+#include "kernel/include/fcntl.h"
 #include "kybrd.h"
 #include "kernel/fs/vfs.h"
 

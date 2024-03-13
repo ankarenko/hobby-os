@@ -3,7 +3,7 @@
 #include "kernel/fs/vfs.h"
 #include "kernel/memory/vmm.h"
 #include "kernel/memory/malloc.h"
-#include "kernel/util/errno.h"
+#include "kernel/include/errno.h"
 #include "kernel/util/debug.h"
 #include "kernel/util/math.h"
 #include "kernel/proc/task.h"

@@ -1,5 +1,5 @@
 #include "kernel/fs/pipefs/pipe.h"
-#include "kernel/util/fcntl.h"
+#include "kernel/include/fcntl.h"
 #include "kernel/util/debug.h"
 #include "kernel/proc/task.h"
 

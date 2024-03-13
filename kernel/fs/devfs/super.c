@@ -1,7 +1,7 @@
 #include "kernel/fs/vfs.h"
 #include "kernel/memory/pmm.h"
 #include "kernel/util/debug.h"
-#include "kernel/util/fcntl.h"
+#include "kernel/include/fcntl.h"
 #include "kernel/util/string/string.h"
 
 #include "kernel/fs/devfs/devfs.h"

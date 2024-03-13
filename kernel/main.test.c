@@ -1,6 +1,6 @@
 #include <test/greatest.h>
 
-#include "kernel/util/ctype.h"
+#include "kernel/include/ctype.h"
 #include "kernel/util/math.h"
 #include "kernel/devices/terminal.h"
 #include "kernel/cpu/exception.h"

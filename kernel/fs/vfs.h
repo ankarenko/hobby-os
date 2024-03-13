@@ -5,12 +5,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "kernel/util/atomic.h"
-#include "kernel/util/stat.h"
-#include "kernel/util/ctype.h"
+#include "kernel/include/atomic.h"
+#include "kernel/include/stat.h"
+#include "kernel/include/ctype.h"
 #include "kernel/fs/pipefs/pipe.h"
 #include "kernel/system/time.h"
-#include "kernel/util/list.h"
+#include "kernel/include/list.h"
 
 #define DEVICE_MAX 26
 #define BYTES_PER_SECTOR 512 

@@ -1,8 +1,9 @@
-#ifndef _LIBC_SYS_STAT_H
-#define _LIBC_SYS_STAT_H 1
+#ifndef _KERNEL_INCLUDE_STAT_H
+#define _KERNEL_INCLUDE_STAT_H 1
 
-#include "kernel/util/types.h"
+#include "kernel/include/types.h"
 #include "kernel/system/time.h"
+
 #include <sys/stat.h> // to make sure stat structure is consistent with libc
 
 // file

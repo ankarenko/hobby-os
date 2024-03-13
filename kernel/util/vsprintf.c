@@ -1,7 +1,7 @@
 #include <sys/cdefs.h>
 
-#include "kernel/util/ctype.h"
-#include "kernel/util/limits.h"
+#include "kernel/include/ctype.h"
+#include "kernel/include/limits.h"
 
 #include "kernel/util/vsprintf.h"
 

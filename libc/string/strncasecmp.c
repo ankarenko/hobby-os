@@ -1,7 +1,7 @@
 #include <string.h>
 #include <strings.h>
 
-#include "kernel/util/ctype.h"
+#include "kernel/include/ctype.h"
 
 int strncasecmp(const char *s1, const char *s2, int n)
 {

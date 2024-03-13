@@ -2,8 +2,8 @@
 #define KERNEL_PROC_WAIT_H
 
 #include "kernel/util/debug.h"
-#include "kernel/util/list.h"
-#include "kernel/util/types.h"
+#include "kernel/include/list.h"
+#include "kernel/include/types.h"
 
 #define WNOHANG 0x00000001
 #define WUNTRACED 0x00000002

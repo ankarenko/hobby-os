@@ -1,7 +1,7 @@
 #include <stdint.h>
 
 #include "kernel/util/stdio.h"
-#include "kernel/util/list.h"
+#include "kernel/include/list.h"
 #include "kernel/util/debug.h"
 #include "../devices/terminal.h"
 #include "hal.h"

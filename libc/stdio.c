@@ -2,8 +2,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "kernel/util/fcntl.h"
-#include "kernel/util/list.h"
+#include "kernel/include/fcntl.h"
+#include "kernel/include/list.h"
 #include "stdio.h"
 
 #define MIN_WRITE_BUF_LEN 32

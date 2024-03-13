@@ -1,8 +1,8 @@
 #include "kernel/fs/pipefs/pipe.h"
 #include "kernel/util/debug.h"
-#include "kernel/util/errno.h"
+#include "kernel/include/errno.h"
 #include "kernel/proc/task.h"
-#include "kernel/util/fcntl.h"
+#include "kernel/include/fcntl.h"
 
 static int32_t pipe_read(struct vfs_file *file, uint8_t *buffer, uint32_t length, off_t ppos) {
   if (file->f_flags & O_WRONLY)

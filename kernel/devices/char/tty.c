@@ -6,9 +6,9 @@
 #include "kernel/memory/malloc.h"
 #include "kernel/proc/task.h"
 #include "kernel/util/debug.h"
-#include "kernel/util/errno.h"
-#include "kernel/util/fcntl.h"
-#include "kernel/util/ioctls.h"
+#include "kernel/include/errno.h"
+#include "kernel/include/fcntl.h"
+#include "kernel/include/ioctls.h"
 #include "kernel/util/string/string.h"
 #include "kernel/util/vsprintf.h"
 
@@ -318,7 +318,7 @@ void tty_init() {
   struct char_device *tty_cdev = alloc_chrdev("tty", TTYAUX_MAJOR, 0, 1, &tty_fops);
   register_chrdev(tty_cdev);
   // i don't see any sense
-  // vfs_mknod("/dev/tty", S_IFCHR, tty_cdev->dev);
+  //vfs_mknod("/dev/tty", S_IFCHR, tty_cdev->dev);
 
   log("TTY: Init pty");
   pty_init();

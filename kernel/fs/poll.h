@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "kernel/util/list.h"
+#include "kernel/include/list.h"
 #include "kernel/proc/wait.h"
 
 #define POLLIN 0x0001

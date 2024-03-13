@@ -3,10 +3,10 @@
 #include "kernel/memory/vmm.h"
 #include "kernel/proc/task.h"
 #include "kernel/proc/elf.h"
-#include "kernel/util/errno.h"
+#include "kernel/include/errno.h"
 #include "kernel/util/debug.h"
 #include "kernel/util/math.h"
-#include "kernel/util/types.h"
+#include "kernel/include/types.h"
 
 static void exit_mm(struct process *proc) {
   mm_struct_mos *iter, *next;

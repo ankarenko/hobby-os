@@ -1,5 +1,5 @@
-#ifndef UTIL_CTYPE_H
-#define UTIL_CTYPE_H 1
+#ifndef _KERNEL_INCLUDE_CTYPE_H
+#define _KERNEL_INCLUDE_CTYPE_H 1
 
 #define isspace(c) ((c) == ' ' || ((c) >= '\t' && (c) <= '\r'))
 #define isascii(c) (((c) & ~0x7f) == 0)

@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "kernel/util/list.h"
+#include "kernel/include/list.h"
 
 #define TIMER_MAGIC 0x4b87ad6e
 

@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include "kernel/util/string/string.h"
 
-#include "kernel/util/ctype.h"
+#include "kernel/include/ctype.h"
 #include "kernel/fs/bpb.h"
 #include "kernel/fs/flpydsk.h"
 #include "kernel/util/math.h"

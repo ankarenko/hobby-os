@@ -4,8 +4,8 @@
 #include "kernel/fs/vfs.h"
 #include "kernel/proc/task.h"
 #include "kernel/util/debug.h"
-#include "kernel/util/errno.h"
-#include "kernel/util/fcntl.h"
+#include "kernel/include/errno.h"
+#include "kernel/include/fcntl.h"
 #include "kernel/util/string/string.h"
 
 struct vfs_dentry *alloc_dentry(struct vfs_dentry *parent, char *name) {

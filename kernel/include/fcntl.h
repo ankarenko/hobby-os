@@ -1,5 +1,5 @@
-#ifndef _UTIL_FCNTL_H
-#define _UTIL_FCNTL_H 1
+#ifndef _KERNEL_INCLUDE_FCNTL_H
+#define _KERNEL_INCLUDE_FCNTL_H 1
 
 #define O_ACCMODE 0003
 #define O_RDONLY 00

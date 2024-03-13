@@ -15,7 +15,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "kernel/util/types.h"
+#include "kernel/include/types.h"
 
 #include "kernel/fs/vfs.h"
 

@@ -1,5 +1,5 @@
-#ifndef KERNEL_UTIL_ATOMIC_H
-#define KERNEL_UTIL_ATOMIC_H
+#ifndef _KERNEL_INCLUDE_ATOMIC_H
+#define _KERNEL_INCLUDE_ATOMIC_H
 
 typedef struct {
   volatile int counter;

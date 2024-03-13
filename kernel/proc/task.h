@@ -4,10 +4,10 @@
 
 #include <stdint.h>
 
-#include "kernel/util/types.h"
+#include "kernel/include/types.h"
 #include "kernel/ipc/signal.h"
 #include "kernel/locking/semaphore.h"
-#include "kernel/util/list.h"
+#include "kernel/include/list.h"
 #include "kernel/devices/char/tty.h"
 #include "kernel/proc/wait.h"
 #include "kernel/memory/vmm.h"

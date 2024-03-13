@@ -2,7 +2,7 @@
 
 #include "kernel/memory/malloc.h"
 #include "kernel/util/debug.h"
-#include "kernel/util/errno.h"
+#include "kernel/include/errno.h"
 #include "kernel/util/string/string.h"
 
 struct list_head devlist;

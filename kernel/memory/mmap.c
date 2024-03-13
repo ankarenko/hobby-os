@@ -3,7 +3,7 @@
 */
 
 #include "kernel/util/math.h"
-#include "kernel/util/list.h"
+#include "kernel/include/list.h"
 #include "kernel/proc/task.h"
 #include "kernel/memory/vmm.h"
 #include "kernel/memory/pmm.h"

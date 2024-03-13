@@ -7,8 +7,8 @@
 #include "kernel/memory/vmm.h"
 #include "kernel/proc/elf.h"
 #include "kernel/util/debug.h"
-#include "kernel/util/errno.h"
-#include "kernel/util/list.h"
+#include "kernel/include/errno.h"
+#include "kernel/include/list.h"
 #include "kernel/util/math.h"
 #include "kernel/util/string/string.h"
 

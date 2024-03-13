@@ -1,8 +1,8 @@
-#include "kernel/util/fcntl.h"
+#include "kernel/include/fcntl.h"
 
 #include "kernel/fs/vfs.h"
 #include "kernel/proc/task.h"
-#include "kernel/util/errno.h"
+#include "kernel/include/errno.h"
 
 int do_fcntl(int fd, int cmd, unsigned long arg) {
   struct process *current_process = get_current_process();

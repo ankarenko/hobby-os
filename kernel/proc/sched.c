@@ -7,7 +7,7 @@
 #include "kernel/proc/task.h"
 #include "kernel/system/timer.h"
 #include "kernel/util/debug.h"
-#include "kernel/util/list.h"
+#include "kernel/include/list.h"
 #include "kernel/util/math.h"
 
 struct list_head process_list;

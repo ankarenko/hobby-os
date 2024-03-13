@@ -1,5 +1,5 @@
-#ifndef KERNEL_UTIL_IOCTL_H
-#define KERNEL_UTIL_IOCTL_H
+#ifndef _KERNEL_INCLUDE_IOCTL_H
+#define _KERNEL_INCLUDE_IOCTL_H
 
 #define TIOCSCTTY 0x5480 /* become controlling tty */
 #define TIOCGSOFTCAR 0x5481

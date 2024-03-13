@@ -1,5 +1,5 @@
-#include "kernel/util/errno.h"
-#include "kernel/util/fcntl.h"
+#include "kernel/include/errno.h"
+#include "kernel/include/fcntl.h"
 #include "kernel/proc/task.h"
 #include "kernel/util/debug.h"
 

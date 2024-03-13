@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 
-#include "kernel/util/ctype.h"
+#include "kernel/include/ctype.h"
 #include "kernel/system/time.h"
-#include "kernel/util/types.h"
+#include "kernel/include/types.h"
 
 /*
 struct timespec {

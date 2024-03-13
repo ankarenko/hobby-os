@@ -8,9 +8,9 @@
 #include "kernel/proc/task.h"
 #include "kernel/system/time.h"
 #include "kernel/util/debug.h"
-#include "kernel/util/errno.h"
-#include "kernel/util/fcntl.h"
-#include "kernel/util/limits.h"
+#include "kernel/include/errno.h"
+#include "kernel/include/fcntl.h"
+#include "kernel/include/limits.h"
 #include "kernel/util/string/string.h"
 #include "kernel/fs/devfs/devfs.h"
 

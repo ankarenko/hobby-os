@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #include "kernel/devices/char/termios.h"
-#include "kernel/util/list.h"
+#include "kernel/include/list.h"
 #include "kernel/proc/wait.h"
 #include "kernel/fs/vfs.h"
 

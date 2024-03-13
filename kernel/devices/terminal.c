@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "kernel/util/string/string.h"
 
-#include "kernel/util/ctype.h"
+#include "kernel/include/ctype.h"
 #include "kernel/util/vsprintf.h"
 #include "kernel/fs/vfs.h"
 #include "kernel/util/debug.h"
@@ -12,7 +12,7 @@
 #include "kernel/fs/poll.h"
 #include "kernel/system/sysapi.h"
 #include "kernel/util/math.h"
-#include "kernel/util/fcntl.h"
+#include "kernel/include/fcntl.h"
 #include "kernel/cpu/hal.h"
 #include "kernel/memory/kernel_info.h"
 #include "kernel/devices/terminal.h"
@@ -255,7 +255,7 @@ void terminal_run() {
     proc_child->va_dir = vmm_create_address_space();
     proc_child->pa_dir = vmm_get_physical_address(proc_child->va_dir, false); 
     pmm_load_PDBR(proc_child->pa_dir);
-    char* argv[] = { proc_child->name, "--" };
+    char* argv[] = {  };
     char* envp[] = {};
     process_execve("bin/shell", &argv, NULL);
     

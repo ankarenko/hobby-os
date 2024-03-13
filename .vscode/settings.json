@@ -51,6 +51,7 @@
     "string": "c",
     "istream": "c",
     "msyscalls.h": "c",
-    "poll.h": "c"
+    "poll.h": "c",
+    "timer.h": "c"
   }
 }
