@@ -54,6 +54,10 @@
     "poll.h": "c",
     "timer.h": "c",
     "_default_fcntl.h": "c",
-    "fcntl.h": "c"
+    "fcntl.h": "c",
+    "_pthreadtypes.h": "c",
+    "math.h": "c",
+    "_stdint.h": "c",
+    "_types.h": "c"
   }
 }

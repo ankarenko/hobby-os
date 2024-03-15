@@ -288,7 +288,7 @@ int tty_register_driver(struct tty_driver *driver) {
   register_chrdev(cdev);
   driver->cdev = cdev;
 
-  if (!(driver->flags & TTY_DRIVER_NO_DEVFS)) {
+    if (!(driver->flags & TTY_DRIVER_NO_DEVFS)) {
     char name[sizeof(PATH_DEV) + SPECNAMELEN] = {0};
     for (int i = 0; i < driver->num; ++i) {
       memset(&name, 0, sizeof(name));
@@ -318,7 +318,7 @@ void tty_init() {
   struct char_device *tty_cdev = alloc_chrdev("tty", TTYAUX_MAJOR, 0, 1, &tty_fops);
   register_chrdev(tty_cdev);
   // i don't see any sense
-  //vfs_mknod("/dev/tty", S_IFCHR, tty_cdev->dev);
+  vfs_mknod("/dev/tty", S_IFCHR, tty_cdev->dev);
 
   log("TTY: Init pty");
   pty_init();

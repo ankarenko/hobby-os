@@ -242,8 +242,13 @@ void terminal_run() {
 
     dup2(slave_fd, stdin);
     dup2(slave_fd, stdout);
-    //dup2(stderr, stdout);
-
+    dup2(stdout, stderr);
+    
+    /*
+    vfs_close(stdin);
+    vfs_close(stdout);
+    vfs_close(stderr);
+    */
     if (slave_fd != stdin && slave_fd != stdout) {
       vfs_close(slave_fd);
     }
@@ -255,9 +260,9 @@ void terminal_run() {
     proc_child->va_dir = vmm_create_address_space();
     proc_child->pa_dir = vmm_get_physical_address(proc_child->va_dir, false); 
     pmm_load_PDBR(proc_child->pa_dir);
-    char* argv[] = {  };
+    char* argv[] = { };
     char* envp[] = {};
-    process_execve("bin/shell", &argv, NULL);
+    process_execve("bin/dash", &argv, NULL);
     
     //shell_start();
     assert_not_reached();
