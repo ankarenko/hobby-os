@@ -629,10 +629,12 @@ void shell_start() {
 void init_process() {
   struct process *parent = get_current_process();
 
+  /*
   if (process_spawn(parent) == 0) {
     get_current_process()->name = strdup("garbage");
     garbage_worker_task();  // 1
   }
+  */
 
   if (process_spawn(parent) == 0) {
     get_current_process()->name = strdup("idle");
@@ -665,8 +667,6 @@ void init_process() {
 }
 
 void kernel_main(multiboot_info_t *mbd, uint32_t magic) {
-
-  
   char **argv = 0;
   int argc = 0;
 

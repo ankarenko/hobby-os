@@ -27,6 +27,6 @@ void* krealloc(void *ptr, size_t size);
 void kfree(void *ptr);
 void* kcalloc_aligned(size_t n, size_t size, uint32_t alignment);
 void* kmalloc_aligned(size_t size, uint32_t alignment);
-void *kalign_heap(size_t size);
+void *kalign_heap(size_t size, bool with_meta);
 
 #endif

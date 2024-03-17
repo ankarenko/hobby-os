@@ -125,8 +125,7 @@ void handle_signal(interrupt_registers *regs, sig_t restored_sig) {
 		current_process->flags &= ~(SIGNAL_CONTINUED | SIGNAL_STOPED); // ?
 		current_thread->signaling = false;
 		sigemptyset(&current_thread->pending);
-    thread_mark_dead(current_thread);
-    schedule();
+    do_exit(signum);
   } else if (sig_user_defined(current_process, signum)) {
     // TODO: too complicated, can be simplified, simply can edit regs
     struct signal_frame *signal_frame = (char *)regs->useresp - sizeof(struct signal_frame);

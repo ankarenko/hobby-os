@@ -158,7 +158,7 @@ struct pdirectory *vmm_fork(struct pdirectory *va_dir) {
   lock_scheduler(); 
 
   struct pdirectory *forked_dir = vmm_create_address_space();
-  void *aligned = kalign_heap(PMM_FRAME_ALIGN);
+  void *aligned = kalign_heap(PMM_FRAME_ALIGN, false);
 
   uint32_t start_heap = (uint32_t)sbrk(0, NULL);
 

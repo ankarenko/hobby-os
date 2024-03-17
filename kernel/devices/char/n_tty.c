@@ -11,6 +11,7 @@
 static int ntty_open(struct tty_struct *tty) {
   tty->buffer = kcalloc(1, N_TTY_BUF_SIZE);
 
+  tty->separators = 0;
   tty->mutex = semaphore_alloc(1, 1);
   tty->to_read = semaphore_alloc(N_TTY_BUF_SIZE, 0);
   tty->to_write = semaphore_alloc(N_TTY_BUF_SIZE, N_TTY_BUF_SIZE);
@@ -66,22 +67,16 @@ static void ntty_pop_char_raw(struct tty_struct *tty, char *ch) {
 static uint32_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *buf, size_t nr) {
 
   int i = 0;
-  bool is_canon = L_ICANON(tty);
 
-  if (is_canon) {
+  // NOTE: needs to be protected with mutex?
+  if (L_ICANON(tty))
     wait_event(&tty->separator_wait, tty->separators > 0);
-  }
 
   do {
     ntty_pop_char_raw(tty, &buf[i]);
     wake_up(&tty->write_wait.list);
 
-    if (L_ICANON(tty) && LINE_SEPARATOR(tty, buf[i])) {
-      //--i;  // omit LINE_SEPARATOR;
-      break;
-    }
-
-    if (tty->read_head == tty->read_tail)
+    if ((L_ICANON(tty) && LINE_SEPARATOR(tty, buf[i])) || tty->read_head == tty->read_tail)
       break;
       
     ++i;
@@ -99,9 +94,8 @@ static uint32_t push_buf_raw(struct tty_struct *tty, char ch) {
   tty->buffer[tty->read_tail] = ch;
   tty->read_tail = N_TTY_BUF_ALIGN(tty->read_tail + 1);
 
-  if (LINE_SEPARATOR(tty, ch)) {
+  if (LINE_SEPARATOR(tty, ch))
     tty->separators++;
-  }
 
   semaphore_up(tty->mutex);
   semaphore_up(tty->to_read);
@@ -234,8 +228,6 @@ static unsigned int ntty_poll(struct tty_struct *tty, struct vfs_file *file, str
 
 	if (semaphore_get_val(tty->to_write))
 		mask |= POLLOUT | POLLWRNORM;
-
-  
 
 	return mask;
 }

@@ -62,15 +62,15 @@ static void exit_notify(struct process *proc) {
   log("done exit process");
 
   if (!proc->caused_signal)
-		proc->flags |= EXIT_TERMINATED;
+    proc->flags |= EXIT_TERMINATED;
   
   //proc->flags &= ~(SIGNAL_CONTINUED | SIGNAL_STOPED); // ?
-  proc->state |= EXIT_ZOMBIE;
+  //proc->state |= EXIT_ZOMBIE;
 
   if (proc->pid == proc->sid && proc->tty && proc->pid == proc->tty->session) {
 		proc->tty->session = 0;
 		proc->tty->pgrp = 0;
-		do_kill(-proc->tty->pgrp, SIGHUP);
+		//do_kill(-proc->tty->pgrp, SIGHUP);
 	}
 
   //do_kill(-proc->tty->pgrp, SIGHUP);
@@ -85,22 +85,9 @@ static void exit_notify(struct process *proc) {
   }
 }
 
-void exit_process(struct process *proc) {
-  log("exit process %d", proc->pid);
-  
-  exit_mm(proc);
-  exit_files(proc);
-  exit_notify(proc);
-
-  // kfree(proc->name);
-  kfree(proc->fs);
-  proc->fs = NULL;
-}
-
 // TODO: bug, when kill 2 times and then create
 // NOTE: threads are not allowed to create threads right now.
 int exit_thread(struct thread *th) {
-  log("exit thread");
   lock_scheduler();
 
   struct process *parent = th->proc;
@@ -137,10 +124,12 @@ int exit_thread(struct thread *th) {
 
   kfree(th);
 
+  /*
   if (atomic_read(&parent->thread_count) == 0) {
     log("All threads are killed, killing process with pid: %d", parent->pid);
     exit_process(parent);
   }
+  */
 
   unlock_scheduler();
 
@@ -170,9 +159,20 @@ void garbage_worker_task() {
 
 void do_exit(int code) {
   lock_scheduler();
+
+  struct process *proc = get_current_process();
+  log("Process: Exit %s(p%d)", proc->name, proc->pid);
+  exit_notify(proc);
+  exit_mm(proc);
+  exit_files(proc);
   
-  thread_signal(get_current_thread()->tid, SIGKILL);
-  
+  kfree(proc->fs);
+  proc->fs = NULL;
+
+  struct thread *th = get_current_thread();
+  thread_update(th, THREAD_TERMINATED);
+  exit_thread(th);
+
   unlock_scheduler();
   schedule();
 }
@@ -243,11 +243,10 @@ int32_t do_wait(id_type_t idtype, id_t id, struct infop *infop, int options) {
 		// NOTE: MQ 2020-11-25
 		// After waiting for terminated child, we remove it from parent
 		// the next waiting time, we don't find the same one again
-		if (pchild->state & EXIT_ZOMBIE != 0) {
-      list_del(&pchild->sibling);
-      list_del(&pchild->child);
-      kfree(pchild); // delete zombie process descriptor
-    }
+    list_del(&pchild->sibling);
+    list_del(&pchild->child);
+    kfree(pchild); // delete zombie process descriptor
+    
 		ret = 1;
 	}
 	else

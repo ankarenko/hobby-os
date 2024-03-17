@@ -90,7 +90,7 @@ void *malloc(size_t size) {
   struct block_meta *block;
 
   size = ALIGN_UP(size, BLOCK_ALIGNMENT);
-
+  
   if (_kblocklist) {
     struct block_meta *last = _kblocklist;
     block = find_free_block(&last, size);

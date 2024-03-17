@@ -204,7 +204,7 @@ next_thread:
   /*
     we can't kill treads with aquired locks, so we wait until they release them
   */
-
+  /*
   int lock_counter = atomic_read(&th->lock_counter);
   if (th->dead_mark && lock_counter == 0) {
     log("sched: thread with tid %d has released al its locks and about will be killed", th->tid);
@@ -215,10 +215,11 @@ next_thread:
     wake_up(&gw->wait_chld);
     goto next_thread;
   }
-
+  
   if (th->dead_mark && lock_counter != 0) {
     log("sched: thread tid:%d is keeping %d lock(s)", th->tid, lock_counter);
   }
+  */
 
   sched_push_queue(th);
 
@@ -230,6 +231,15 @@ do_switch:
   // tss_set_stack(KERNEL_DATA, th->kernel_esp);
   // log("sched: tid: %d, name: %s", th->tid, th->proc->name);
   switch_to_thread(th);
+  
+  // if thread has acuired some resources, it needs to release it first
+  if (siginmask(_current_thread->pending, SIG_KERNEL_ONLY_MASK)) {
+    log("\n HERERERE");
+    if (atomic_read(&_current_thread->lock_counter) > 0)
+      _current_thread->blocked |= SIG_KERNEL_ONLY_MASK;
+    else
+      _current_thread->blocked &= ~SIG_KERNEL_ONLY_MASK;
+  }
 
   if (_current_thread->pending /*&& !(_current_thread->flags & TIF_SIGNAL_MANUAL)*/) {
     //_current_thread->handles_signal = true;

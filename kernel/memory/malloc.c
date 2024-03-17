@@ -75,14 +75,14 @@ struct block_meta *request_space(struct block_meta *last, size_t size) {
 // ------------------- m - sizeof(struct block_meta)
 // |                 | empty object (>= 1)
 // ------------------- padding - sizeof(struct block_meta)
-void *kalign_heap(size_t size) {
+void *kalign_heap(size_t size, bool with_meta) {
 	uint32_t heap_addr = (uint32_t)sbrk(0, NULL);
   
-	if (heap_addr % size == 0)
+	if ((heap_addr + (with_meta? sizeof(struct block_meta) : 0)) % size == 0)
 		return NULL;
 
+  uint32_t required_size = sizeof(struct block_meta) * (with_meta? 2 : 1);
 	uint32_t padding_size = div_ceil(heap_addr, size) * size - heap_addr;
-	uint32_t required_size = sizeof(struct block_meta) * 2;
 
 	while (padding_size <= KERNEL_HEAP_TOP)
 	{
@@ -93,6 +93,7 @@ void *kalign_heap(size_t size) {
 			while (last->next)
 				last = last->next;
 			struct block_meta *block = request_space(last, padding_size - required_size);
+
 			return block + 1;
 		}
 		padding_size += size;
@@ -118,11 +119,13 @@ void kfree(void *ptr) {
 // TODO: make it more efficient, try to find an appropriate block among
 // kblocklist blocks first
 void* kmalloc_aligned(size_t size, uint32_t alignment) {
-  void* aligned = kalign_heap(alignment);
+  void* aligned = kalign_heap(alignment, true);
 
+  uint32_t heap_addr = (uint32_t)sbrk(0, NULL);
+  assert((heap_addr + sizeof(struct block_meta)) % alignment == 0);
+  
   size = ALIGN_UP(size, BLOCK_ALIGNMENT);
   struct block_meta *last = _kblocklist;
-
   while (last->next)
     last = last->next;
 
