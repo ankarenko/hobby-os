@@ -39,9 +39,9 @@ struct circular_buf_t *circular_buf_init(char *buffer, size_t size) {
   cbuf->buffer = buffer;
   cbuf->max = size;
   
-  cbuf->to_read = semaphore_alloc(size);
-  cbuf->to_write = semaphore_alloc(size);
-  cbuf->mutex = semaphore_alloc(1);
+  cbuf->to_read = semaphore_alloc(size, 0);
+  cbuf->to_write = semaphore_alloc(size, size);
+  cbuf->mutex = semaphore_alloc(1, 1);
 
   circular_buf_reset(cbuf);
 
@@ -63,9 +63,8 @@ void circular_buf_reset(struct circular_buf_t *cbuf) {
   cbuf->head = 0;
   cbuf->tail = 0;
   
-  semaphore_set_zero(cbuf->to_read);
   semaphore_free(cbuf->to_write);
-  cbuf->to_write = semaphore_alloc(cbuf->max);
+  cbuf->to_write = semaphore_alloc(cbuf->max, cbuf->max);
 
   semaphore_up(cbuf->mutex);
   leave_critical_section();

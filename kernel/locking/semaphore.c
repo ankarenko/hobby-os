@@ -72,25 +72,15 @@ void semaphore_up(struct semaphore *sem) {
 
 }
 
-
-void semaphore_set_zero(struct semaphore *sem) {
-  sem->count = 0;
-}
-
-void semaphore_up_val(struct semaphore *sem, int val) {
-  assert(val > 0);
-  sem->count += val - 1;
-  semaphore_up(sem);
-}
-
 uint32_t semaphore_get_val(struct semaphore *sem) {
   return sem->count;
 }
 
-struct semaphore* semaphore_alloc(int val) {
+struct semaphore* semaphore_alloc(int capacity, int init_value) {
+  assert(init_value <= capacity);
 	struct semaphore *sem = (struct semaphore *)kcalloc(1, sizeof(struct semaphore)); 
-  sem->capacity = val;
-  sem->count = val;
+  sem->capacity = capacity;
+  sem->count = init_value;
   INIT_LIST_HEAD(&sem->wait_list);
   return sem;
 }

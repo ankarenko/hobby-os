@@ -17,13 +17,11 @@ struct semaphore; // opaque
 #define INIT_MUTEX(name) \
 	struct semaphore name = __SEMAPHORE_INITIALIZER(name, 1)
 
-struct semaphore* semaphore_alloc(int val);
+struct semaphore* semaphore_alloc(int capacity, int init_value);
 
 void semaphore_up(struct semaphore *sem);
 int semaphore_free(struct semaphore *sem);
 void semaphore_down(struct semaphore *sem);
-void semaphore_set_zero(struct semaphore *sem);
-void semaphore_up_val(struct semaphore *sem, int val);
 uint32_t semaphore_get_val(struct semaphore *sem);
 
 #endif

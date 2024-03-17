@@ -11,13 +11,13 @@
 static int ntty_open(struct tty_struct *tty) {
   tty->buffer = kcalloc(1, N_TTY_BUF_SIZE);
 
-  tty->mutex = semaphore_alloc(1);
-  tty->to_read = semaphore_alloc(N_TTY_BUF_SIZE);
-  tty->to_write = semaphore_alloc(N_TTY_BUF_SIZE);
-  semaphore_set_zero(tty->to_read);
-
+  tty->mutex = semaphore_alloc(1, 1);
+  tty->to_read = semaphore_alloc(N_TTY_BUF_SIZE, 0);
+  tty->to_write = semaphore_alloc(N_TTY_BUF_SIZE, N_TTY_BUF_SIZE);
+  
   INIT_LIST_HEAD(&tty->read_wait.list);
   INIT_LIST_HEAD(&tty->write_wait.list);
+  INIT_LIST_HEAD(&tty->separator_wait.list);
 
   return 0;
 }
@@ -46,32 +46,36 @@ static uint32_t ntty_receive_room(struct tty_struct *tty) {
   return N_TTY_BUF_SIZE - ntty_available_to_read(tty);
 }
 
-static void ntty_pop_char(struct tty_struct *tty, char *ch) {
-  bool is_canon = L_ICANON(tty);
-
+static void ntty_pop_char_raw(struct tty_struct *tty, char *ch) {
   semaphore_down(tty->to_read);
   semaphore_down(tty->mutex);
   enter_critical_section();
   *ch = tty->buffer[tty->read_head];
   tty->read_head = N_TTY_BUF_ALIGN(tty->read_head + 1);
-  int to_write = !L_ICANON(tty)? 1 : 0;
-  if (L_ICANON(tty) && tty->read_head == tty->read_tail) {
-    to_write = N_TTY_BUF_SIZE;
+  
+  if (LINE_SEPARATOR(tty, *ch)) {
+    assert(tty->separators > 0);
+    tty->separators--;
   }
+
   semaphore_up(tty->mutex);
-  if (to_write > 0) {
-    semaphore_up_val(tty->to_write, to_write);
-    wake_up(&tty->write_wait.list);
-  }
+  semaphore_up(tty->to_write);
   leave_critical_section();
 }
 
 static uint32_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *buf, size_t nr) {
 
   int i = 0;
+  bool is_canon = L_ICANON(tty);
+
+  if (is_canon) {
+    wait_event(&tty->separator_wait, tty->separators > 0);
+  }
 
   do {
-    ntty_pop_char(tty, &buf[i]);
+    ntty_pop_char_raw(tty, &buf[i]);
+    wake_up(&tty->write_wait.list);
+
     if (L_ICANON(tty) && LINE_SEPARATOR(tty, buf[i])) {
       //--i;  // omit LINE_SEPARATOR;
       break;
@@ -83,53 +87,42 @@ static uint32_t ntty_read(struct tty_struct *tty, struct vfs_file *file, char *b
     ++i;
   } while (i < nr);
 
+
   return min(nr, i + 1);
 }
 
-static uint32_t push_buf_raw(struct tty_struct *tty, char c) {
+static uint32_t push_buf_raw(struct tty_struct *tty, char ch) {
   semaphore_down(tty->to_write);
   semaphore_down(tty->mutex);
   enter_critical_section();
 
-  tty->buffer[tty->read_tail] = c;
+  tty->buffer[tty->read_tail] = ch;
   tty->read_tail = N_TTY_BUF_ALIGN(tty->read_tail + 1);
+
+  if (LINE_SEPARATOR(tty, ch)) {
+    tty->separators++;
+  }
 
   semaphore_up(tty->mutex);
   semaphore_up(tty->to_read);
-  leave_critical_section();
-  wake_up(&tty->read_wait.list);
-}
-
-static uint32_t push_buf_canon(struct tty_struct *tty, char c) {
-  semaphore_down(tty->to_write);
-  semaphore_down(tty->mutex);
-  enter_critical_section();
-  tty->buffer[tty->read_tail] = c;
-  tty->read_tail = N_TTY_BUF_ALIGN(tty->read_tail + 1);
-
-  if (tty->read_head == tty->read_tail) {
-    tty->read_head = N_TTY_BUF_ALIGN(tty->read_head + 1);
-  }
-
-  int to_read = LINE_SEPARATOR(tty, c)? ntty_available_to_read(tty) : 0;
-  if (to_read > 0) 
-    semaphore_set_zero(tty->to_write);
-
-  semaphore_up(tty->mutex);
-  if (to_read > 0) {
-    semaphore_up_val(tty->to_read, to_read);
-    wake_up(&tty->read_wait.list);
-  }
   leave_critical_section();
 }
 
 static void eraser(struct tty_struct *tty, char ch) {
   semaphore_down(tty->mutex);
   enter_critical_section();
+  
   if (tty->read_tail != tty->read_head) {
-    tty->read_tail = N_TTY_BUF_ALIGN(tty->read_tail - 1);
+    uint16_t* tmp = tty->read_tail > tty->read_head? &tty->read_tail : &tty->read_head;
+
+    if (*tmp == 0)
+      *tmp = N_TTY_BUF_SIZE;
+
+    *tmp = *tmp - 1;
   }
+
   semaphore_up(tty->mutex);
+  semaphore_up(tty->to_write);
   leave_critical_section();
 }
 
@@ -179,12 +172,18 @@ static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
       if (EOF_CHAR(tty) == ch) {
         ch = __DISABLED_CHAR;
       }
-
-      push_buf_canon(tty, ch);
+      
+      push_buf_raw(tty, ch);
+      if (LINE_SEPARATOR(tty, ch)) { 
+        wake_up(&tty->separator_wait);
+        wake_up(&tty->read_wait.list);
+      }
     }
   } else {
-    for (int i = 0; i < nr; ++i)
+    for (int i = 0; i < nr; ++i) {
 		  push_buf_raw(tty, buf[i]);
+      wake_up(&tty->read_wait.list);
+    }
   }
 }
 
@@ -224,10 +223,19 @@ static unsigned int ntty_poll(struct tty_struct *tty, struct vfs_file *file, str
 	poll_wait(file, &tty->read_wait, ptable);
 	poll_wait(file, &tty->write_wait, ptable);
   
-	if (semaphore_get_val(tty->to_read))
+  bool is_canon = L_ICANON(tty);
+
+	if (semaphore_get_val(tty->to_read)) {
 		mask |= POLLIN | POLLRDNORM;
+
+    if (L_ICANON(tty) && tty->separators == 0)
+      mask = 0;
+  }
+
 	if (semaphore_get_val(tty->to_write))
 		mask |= POLLOUT | POLLWRNORM;
+
+  
 
 	return mask;
 }

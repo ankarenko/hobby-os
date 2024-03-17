@@ -290,7 +290,7 @@ static int32_t sys_sigprocmask(int how, const sig_t *set, sig_t *oldset) {
 }
 
 static int32_t sys_setpgid(pid_t pid, pid_t pgid) {
-  log("sys_setpid");log("sys_getcwd");
+  log("sys_setgpid");log("sys_getcwd");
   return setpgid(pid, pgid);
 }
 
@@ -298,6 +298,7 @@ static int32_t sys_setpgid(pid_t pid, pid_t pgid) {
  * NOTE: incorrect implementation, go to man setsid for more details
 */
 static int32_t sys_setsid() {
+  log("sys_setsid");
   struct process *current_process = get_current_process();
   
   if (current_process->pid == current_process->gid)

@@ -25,6 +25,10 @@
 
 FILE* stream;
 
+void signal_handler_SIGHUP(int signum) {
+  printf("\nSIGHUP: %d", signum);
+} 
+
 void custom_signal_handler_SIGTRAP(int signum) {
   fputs("signal SIGTRAP handler: block SIGALRMP! \n!", stream);
   sigset_t msk = 1 << (SIGALRM - 1);
@@ -387,6 +391,16 @@ clean:
 }
 
 void main(int argc, char** argv) {
+  struct sigaction new_action, old_action;
+
+  new_action.sa_handler = signal_handler_SIGHUP;
+  sigemptyset(&new_action.sa_mask);
+  new_action.sa_flags = 0;
+  
+  sigaction(SIGHUP, NULL, &old_action);
+  if (old_action.sa_handler != SIG_IGN) {
+    sigaction(SIGHUP, &new_action, NULL);
+  }
   
   /*
   int c;
@@ -425,8 +439,9 @@ void main(int argc, char** argv) {
       continue;
     }
     printf("\nroot@%s: ", path);
+    //dprintf(2, "\nget liune");
     gets(line);
-    //printf(line);
+    dprintf(2, "line: %s", line);
     
     interpret_line(line);
   }

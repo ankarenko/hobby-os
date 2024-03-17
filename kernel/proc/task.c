@@ -293,7 +293,7 @@ static files_struct *create_files_descriptors() {
     files->fd[i] = NULL;
   }
 
-  files->lock = semaphore_alloc(1);
+  files->lock = semaphore_alloc(1, 1);
   return files;
 }
 

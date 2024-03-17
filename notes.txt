@@ -35,3 +35,12 @@ https://www.gnu.org/software/make/manual/make.html#Directory-Variables
 
 
 https://github.com/torvalds/linux/blob/e326df53af0021f48a481ce9d489efda636c2dc6/kernel/groups.c#L161???
+
+THERE IS A BUG WITH WAKING UP A THREAD THAT HAS 
+ACQUIRED SOME LOCK BUT NEEDS TO HANDLE SIGNAL!
+
+
+
+
+// void
+setjobctl(int on)

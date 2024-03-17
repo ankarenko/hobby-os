@@ -242,13 +242,12 @@ void terminal_run() {
 
     dup2(slave_fd, stdin);
     dup2(slave_fd, stdout);
-    dup2(stdout, stderr);
+    //dup2(slave_fd, stderr);
     
-    /*
-    vfs_close(stdin);
-    vfs_close(stdout);
-    vfs_close(stderr);
-    */
+    //vfs_close(stdin);
+    //vfs_close(stdout);
+    //vfs_close(stderr);
+    
     if (slave_fd != stdin && slave_fd != stdout) {
       vfs_close(slave_fd);
     }
@@ -262,7 +261,7 @@ void terminal_run() {
     pmm_load_PDBR(proc_child->pa_dir);
     char* argv[] = { };
     char* envp[] = {};
-    process_execve("bin/dash", &argv, NULL);
+    process_execve("bin/shell", &argv, NULL);
     
     //shell_start();
     assert_not_reached();

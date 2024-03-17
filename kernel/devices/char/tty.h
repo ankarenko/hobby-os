@@ -193,9 +193,14 @@ struct tty_struct {
 	pid_t pgrp;
 	pid_t session;
 
+  uint32_t separators;
+
   struct semaphore *to_read;
   struct semaphore *to_write;
   struct semaphore *mutex;
+
+
+  struct wait_queue_head separator_wait;
 
   // used by poll methods
   struct wait_queue_head write_wait;

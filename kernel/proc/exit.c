@@ -44,23 +44,6 @@ static void exit_files(struct process *proc) {
 }
 
 static void exit_notify(struct process *proc) {
-}
-
-void exit_process(struct process *proc) {
-  log("exit process %d", proc->pid);
-  
-  exit_mm(proc);
-  exit_files(proc);
-  exit_notify(proc);
-
-  // kfree(proc->name);
-  kfree(proc->fs);
-  proc->fs = NULL;
-
-  proc->flags |= SIGNAL_TERMINATED; 
-  proc->flags &= ~(SIGNAL_CONTINUED | SIGNAL_STOPED); // ?
-  proc->state |= EXIT_ZOMBIE;
-
   /*
     For a process to be completely released it needs to be 'waited' by its parent,
     othewise a process descriptor will stay in the memory with ZOMBIE_STATE assigned to it
@@ -77,6 +60,41 @@ void exit_process(struct process *proc) {
     iter->parent = init_proc;
   }
   log("done exit process");
+
+  if (!proc->caused_signal)
+		proc->flags |= EXIT_TERMINATED;
+  
+  //proc->flags &= ~(SIGNAL_CONTINUED | SIGNAL_STOPED); // ?
+  proc->state |= EXIT_ZOMBIE;
+
+  if (proc->pid == proc->sid && proc->tty && proc->pid == proc->tty->session) {
+		proc->tty->session = 0;
+		proc->tty->pgrp = 0;
+		do_kill(-proc->tty->pgrp, SIGHUP);
+	}
+
+  //do_kill(-proc->tty->pgrp, SIGHUP);
+
+  //do_kill(proc->parent->pid, SIGCHLD);
+  if (proc->parent != NULL) {
+    log("waking up parent with id %d", proc->parent->pid);
+    //parent->parent->tty->pgrp = parent->parent->gid;
+    wake_up(&proc->parent->wait_chld);
+  } else  {
+    log("no parent to wake up");
+  }
+}
+
+void exit_process(struct process *proc) {
+  log("exit process %d", proc->pid);
+  
+  exit_mm(proc);
+  exit_files(proc);
+  exit_notify(proc);
+
+  // kfree(proc->name);
+  kfree(proc->fs);
+  proc->fs = NULL;
 }
 
 // TODO: bug, when kill 2 times and then create
@@ -125,13 +143,6 @@ int exit_thread(struct thread *th) {
   }
 
   unlock_scheduler();
-  if (parent->parent != NULL) {
-    log("waking up parent with id %d", parent->parent->pid);
-    //parent->parent->tty->pgrp = parent->parent->gid;
-    wake_up(&parent->parent->wait_chld);
-  } else  {
-    log("no parent to wake up");
-  }
 
   return true;
 }
@@ -161,7 +172,7 @@ void do_exit(int code) {
   lock_scheduler();
   
   thread_signal(get_current_thread()->tid, SIGKILL);
-
+  
   unlock_scheduler();
   schedule();
 }
