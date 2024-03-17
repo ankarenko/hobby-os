@@ -27,7 +27,8 @@ static inline void sema_init(struct semaphore *sem, int val) {
 void semaphore_down(struct semaphore *sem) {
   lock_scheduler();
   struct thread *cur_thread = get_current_thread();
-  
+  atomic_inc(&cur_thread->lock_counter);
+
   if (sem->count > 0) {
     sem->count -= 1;
     unlock_scheduler();
@@ -55,6 +56,7 @@ int semaphore_free(struct semaphore *sem) {
 void semaphore_up(struct semaphore *sem) {
   lock_scheduler();
   struct thread *cur_thread = get_current_thread();
+  atomic_dec(&cur_thread->lock_counter);
 
   if (list_empty(&sem->wait_list)) {
     sem->count = min(sem->capacity, sem->count + 1);
@@ -63,6 +65,7 @@ void semaphore_up(struct semaphore *sem) {
     struct sem_waiter *next = list_first_entry(
       &sem->wait_list, struct sem_waiter, sibling
     );
+
     list_del(&next->sibling);
     thread_update(next->task, THREAD_READY);
     kfree(next);
