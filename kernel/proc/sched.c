@@ -205,26 +205,6 @@ next_thread:
   if (th->state != THREAD_READY)
     goto next_thread;
 
-  /* 
-    we can't kill treads with aquired locks, so we wait until they release them
-  */
-  /*
-  int lock_counter = atomic_read(&th->lock_counter);
-  if (th->dead_mark && lock_counter == 0) {
-    log("sched: thread with tid %d has released al its locks and about will be killed", th->tid);
-    th->state = THREAD_TERMINATED;
-    sched_push_queue(th);
-    struct process* gw = get_garbage_worker();
-    assert(gw != NULL);
-    wake_up(&gw->wait_chld);
-    goto next_thread;
-  }
-  
-  if (th->dead_mark && lock_counter != 0) {
-    log("sched: thread tid:%d is keeping %d lock(s)", th->tid, lock_counter);
-  }
-  */
-
   sched_push_queue(th);
 
 do_switch:
@@ -236,7 +216,6 @@ do_switch:
   
   // if thread has acuired some resources, it needs to release it first
   if (siginmask(_current_thread->pending, SIG_KERNEL_ONLY_MASK)) {
-    log("\n HERERERE");
     if (atomic_read(&_current_thread->lock_counter) > 0)
       _current_thread->blocked |= SIG_KERNEL_ONLY_MASK;
     else

@@ -5,5 +5,8 @@ void wake_up(struct wait_queue_head *hq) {
 	list_for_each_entry_safe(iter, next, &hq->list, sibling) {
     assert(iter->callback);
 		iter->callback(iter->th);
+    // NOTE: does not have to be like that
+    if (iter == next)
+      break;
 	}
 }

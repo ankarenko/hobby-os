@@ -29,6 +29,10 @@ void signal_handler_SIGHUP(int signum) {
   printf("\nSIGHUP: %d", signum);
 } 
 
+void signal_handler_SIGCHLD(int signum) {
+  printf("\nchild exited", signum);
+} 
+
 void custom_signal_handler_SIGTRAP(int signum) {
   fputs("signal SIGTRAP handler: block SIGALRMP! \n!", stream);
   sigset_t msk = 1 << (SIGALRM - 1);
@@ -401,6 +405,15 @@ void main(int argc, char** argv) {
   if (old_action.sa_handler != SIG_IGN) {
     sigaction(SIGHUP, &new_action, NULL);
   }
+
+  new_action.sa_handler = signal_handler_SIGCHLD;
+  sigemptyset(&new_action.sa_mask);
+  new_action.sa_flags = 0;
+  sigaction(SIGCHLD, NULL, &old_action);
+  if (old_action.sa_handler != SIG_IGN) {
+    sigaction(SIGCHLD, &new_action, NULL);
+  }
+
   
   /*
   int c;

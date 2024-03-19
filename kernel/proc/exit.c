@@ -71,12 +71,12 @@ static void exit_notify(struct process *proc) {
   if (proc->pid == proc->sid && proc->tty && proc->pid == proc->tty->session) {
 		proc->tty->session = 0;
 		proc->tty->pgrp = 0;
-		//do_signal(-proc->tty->pgrp, SIGHUP);
+		do_signal(-proc->tty->pgrp, SIGHUP);
 	}
 
   //do_signal(-proc->tty->pgrp, SIGHUP);
 
-  //do_signal(proc->parent->pid, SIGCHLD);
+  do_signal(proc->parent->pid, SIGCHLD);
   if (proc->parent != NULL) {
     log("waking up parent with id %d", proc->parent->pid);
     //parent->parent->tty->pgrp = parent->parent->gid;
