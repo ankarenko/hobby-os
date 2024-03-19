@@ -203,7 +203,8 @@ bool create_user_stack(
 );
 
 #define process_for_each_entry(iter) \
-  list_for_each_entry(iter, get_proc_list(), sibling)
+  struct process *next; \
+  list_for_each_entry_safe(iter, next, get_proc_list(), sibling)
 
 // sched.c
 void lock_scheduler();
@@ -224,6 +225,7 @@ struct list_head* get_waiting_threads();
 files_struct *clone_file_descriptor_table(files_struct *fs_src);
 
 // exit.c
+void thread_remove(struct thread* t);
 void garbage_worker_task();
 void do_exit(int code);
 int exit_thread(struct thread* th);

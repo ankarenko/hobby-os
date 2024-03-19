@@ -3,6 +3,7 @@
 #include "kernel/memory/vmm.h"
 #include "kernel/proc/task.h"
 #include "kernel/proc/elf.h"
+#include "kernel/include/list.h"
 #include "kernel/include/errno.h"
 #include "kernel/util/debug.h"
 #include "kernel/util/math.h"
@@ -70,12 +71,12 @@ static void exit_notify(struct process *proc) {
   if (proc->pid == proc->sid && proc->tty && proc->pid == proc->tty->session) {
 		proc->tty->session = 0;
 		proc->tty->pgrp = 0;
-		//do_kill(-proc->tty->pgrp, SIGHUP);
+		//do_signal(-proc->tty->pgrp, SIGHUP);
 	}
 
-  //do_kill(-proc->tty->pgrp, SIGHUP);
+  //do_signal(-proc->tty->pgrp, SIGHUP);
 
-  //do_kill(proc->parent->pid, SIGCHLD);
+  //do_signal(proc->parent->pid, SIGCHLD);
   if (proc->parent != NULL) {
     log("waking up parent with id %d", proc->parent->pid);
     //parent->parent->tty->pgrp = parent->parent->gid;
@@ -85,6 +86,21 @@ static void exit_notify(struct process *proc) {
   }
 }
 
+void _exit_wait(struct thread* th, struct wait_queue_head *ls) {
+  struct wait_queue_entry *iter, *next;
+  list_for_each_entry_safe(iter, next, &ls->list, sibling) {
+    if (iter->th->tid == th->tid) {
+      list_del(&iter->sibling);
+    }
+  }
+}
+
+void exit_wait(struct thread *th) {
+  _exit_wait(th, &th->proc->tty->read_wait);
+  _exit_wait(th, &th->proc->tty->write_wait);
+  _exit_wait(th, &th->proc->tty->separator_wait);
+}
+
 // TODO: bug, when kill 2 times and then create
 // NOTE: threads are not allowed to create threads right now.
 int exit_thread(struct thread *th) {
@@ -92,7 +108,7 @@ int exit_thread(struct thread *th) {
 
   struct process *parent = th->proc;
 
-  assert(th->state == THREAD_TERMINATED);
+  //assert(th->state == THREAD_TERMINATED);
   assert(atomic_read(&th->lock_counter) == 0, "freeing thread which holds locks is forbidden");
   log("Killing thread tid: %d that belongs to process with pid:%d", th->tid, parent->pid);
   assert(parent != NULL, "zombie threads are not allowed!");
@@ -114,22 +130,24 @@ int exit_thread(struct thread *th) {
 
   kfree(th->kernel_esp - KERNEL_STACK_SIZE);
   atomic_dec(&parent->thread_count);
-  list_del(&th->child);
-  list_del(&th->sibling);
+  
 
   // clear userstack
   if (is_user) {
     // free kernel stack
   }
 
+  list_del(&th->child);
+  list_del(&th->sibling);
+  list_del(&th->sched_sibling);
   kfree(th);
 
-  /*
+
+  
   if (atomic_read(&parent->thread_count) == 0) {
     log("All threads are killed, killing process with pid: %d", parent->pid);
-    exit_process(parent);
+    list_del(&parent->sibling);
   }
-  */
 
   unlock_scheduler();
 
@@ -165,15 +183,15 @@ void do_exit(int code) {
   exit_notify(proc);
   exit_mm(proc);
   exit_files(proc);
-  
   kfree(proc->fs);
   proc->fs = NULL;
 
   struct thread *th = get_current_thread();
-  thread_update(th, THREAD_TERMINATED);
+  exit_wait(th);
   exit_thread(th);
 
   unlock_scheduler();
+
   schedule();
 }
 

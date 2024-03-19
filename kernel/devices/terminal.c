@@ -255,7 +255,6 @@ void terminal_run() {
     proc_child->name = strdup("shell");
 
     // dirty way to load a program in a userspace
-    
     proc_child->va_dir = vmm_create_address_space();
     proc_child->pa_dir = vmm_get_physical_address(proc_child->va_dir, false); 
     pmm_load_PDBR(proc_child->pa_dir);

@@ -184,10 +184,10 @@ static int32_t sys_getcwd(char *buf, size_t size) {
   */
 }
 
-static int32_t sys_exit() {
+static int32_t sys_exit(int status) {
   log("sys_exit");
-  do_kill(0, SIGQUIT);
-  while (1) {}
+  do_exit(status);
+  assert_not_reached("exit does not return!");
   
   /*
   struct thread* cur_thread = get_current_thread();
@@ -375,7 +375,7 @@ static int32_t sys_poll(struct pollfd *fds, uint32_t nfds, int timeout) {
 }
 
 static int32_t sys_kill(pid_t pid, int sig) {
-  return do_kill(pid, sig);
+  return do_signal(pid, sig);
 }
 
 static int32_t sys_times(struct tms *buffer) {

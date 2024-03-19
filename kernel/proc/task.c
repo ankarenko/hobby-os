@@ -590,6 +590,8 @@ pid_t process_spawn(struct process *parent) {
 
 // probably it's better to rename the kernel fork to spawn
 pid_t process_fork(struct process *parent) {
+  log("fork");
+  //log("parent addrL %x", parent);
   lock_scheduler();
 
   bool is_kernel = vmm_is_kernel_directory(parent->va_dir);

@@ -15,8 +15,8 @@ struct list_head process_list;
 extern uint32_t DEBUG_LAST_TID;
 
 struct list_head ready_threads;
-struct list_head waiting_threads;
-struct list_head terminated_threads;
+//struct list_head waiting_threads;
+//struct list_head terminated_threads;
 
 // TODO: put it in th kernel stack, it's is more efficient
 struct thread* _current_thread = NULL;
@@ -40,16 +40,7 @@ void unlock_scheduler() {
 }
 
 static struct list_head* sched_get_list(enum thread_state state) {
-  switch (state) {
-    case THREAD_TERMINATED:
-      return &terminated_threads;
-    case THREAD_READY:
-      return &ready_threads;
-    case THREAD_WAITING:
-      return &waiting_threads;
-    default:
-      return NULL;
-  }
+  return &ready_threads;
 }
 
 static struct thread* get_next_thread_from_list(enum thread_state state) {
@@ -102,9 +93,11 @@ struct list_head* get_ready_threads() {
   return &ready_threads;
 }
 
+/*
 struct list_head* get_waiting_threads() {
   return &waiting_threads;
 }
+*/
 
 void scheduler_tick() {
   make_schedule();
@@ -121,6 +114,14 @@ void schedule() {
 
 void thread_set_state(struct thread* t, enum thread_state state) {
   t->state = state;
+}
+
+void thread_remove(struct thread* t) {
+  lock_scheduler();
+
+  sched_remove_queue(t);
+
+  unlock_scheduler();
 }
 
 void thread_update(struct thread* t, enum thread_state state) {
@@ -199,9 +200,12 @@ void thread_mark_dead(struct thread* th) {
 
 void make_schedule() {
 next_thread:
-
   struct thread* th = pop_next_thread_to_run();
-  /*
+  
+  if (th->state != THREAD_READY)
+    goto next_thread;
+
+  /* 
     we can't kill treads with aquired locks, so we wait until they release them
   */
   /*
@@ -224,9 +228,7 @@ next_thread:
   sched_push_queue(th);
 
 do_switch:
-  if (th->tid == 7) {
-    log("calc.exe");
-  }
+
   // INFO: SA switch to trhead invokes tss_set_stack implicitly
   // tss_set_stack(KERNEL_DATA, th->kernel_esp);
   // log("sched: tid: %d, name: %s", th->tid, th->proc->name);
@@ -251,8 +253,8 @@ do_switch:
 }
 
 void sched_init() {
-  INIT_LIST_HEAD(&waiting_threads);
+  //INIT_LIST_HEAD(&waiting_threads);
   INIT_LIST_HEAD(&ready_threads);
-  INIT_LIST_HEAD(&terminated_threads);
+  //INIT_LIST_HEAD(&terminated_threads);
   INIT_LIST_HEAD(&process_list);
 }

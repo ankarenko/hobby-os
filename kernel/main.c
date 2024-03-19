@@ -108,14 +108,17 @@ void ps(char **argv) {
   struct thread *th = NULL;
   kprintf("\nthreads ready: [ ");
   list_for_each_entry(th, get_ready_threads(), sched_sibling) {
-    kprintf("%d ", th->tid);
+    kprintf("%d(%d)", th->tid, th->state);
   }
   kprintf("]");
+  
+  /*
   kprintf("\nthreads waiting: [ ");
   list_for_each_entry(th, get_waiting_threads(), sched_sibling) {
     kprintf("%d ", th->tid);
   }
   kprintf("]");
+  */
 
   kprintf("\nprocesses:");
   struct process *proc = NULL;

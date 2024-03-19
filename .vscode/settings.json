@@ -58,6 +58,7 @@
     "_pthreadtypes.h": "c",
     "math.h": "c",
     "_stdint.h": "c",
-    "_types.h": "c"
+    "_types.h": "c",
+    "_sigset.h": "c"
   }
 }

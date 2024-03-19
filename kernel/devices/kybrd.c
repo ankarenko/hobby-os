@@ -514,7 +514,7 @@ char kkybrd_key_to_ascii(enum KEYCODE code) {
       if (key >= 'a' && key <= 'z')
         key -= 32;
     
-    // todo: change it, just hardcoded it to test do_kill
+    // todo: change it, just hardcoded it to test do_signal
     if (key == '\003') {
       return 0;
     }
