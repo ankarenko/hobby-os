@@ -242,7 +242,7 @@ void terminal_run() {
 
     dup2(slave_fd, stdin);
     dup2(slave_fd, stdout);
-    //dup2(slave_fd, stderr);
+    dup2(slave_fd, stderr);
     
     //vfs_close(stdin);
     //vfs_close(stdout);
@@ -260,7 +260,7 @@ void terminal_run() {
     pmm_load_PDBR(proc_child->pa_dir);
     char* argv[] = { };
     char* envp[] = {};
-    process_execve("bin/shell", &argv, NULL);
+    process_execve("bin/dash", &argv, NULL);
     
     //shell_start();
     assert_not_reached();

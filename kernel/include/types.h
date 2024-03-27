@@ -3,7 +3,7 @@
 
 #include <sys/types.h>
 
-typedef unsigned int sig_t;
+typedef unsigned long int sig_t;
 typedef int id_type_t;
 
 #endif

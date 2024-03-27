@@ -81,7 +81,7 @@ typedef uint32_t virtual_addr;
 //! directory table represents 4gb address space
 #define DTABLE_ADDR_SPACE_SIZE 0x100000000
 
-#define KERNEL_STACK_SIZE (0x1000)
+#define KERNEL_STACK_SIZE (0x40000)
 #define USER_STACK_SIZE 0x1000
 #define USER_HEAP_SIZE 0xA00000 // 10mb TODO: increase it
 

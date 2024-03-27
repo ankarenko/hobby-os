@@ -16,6 +16,7 @@ int do_fcntl(int fd, int cmd, unsigned long arg) {
       if ((ret = find_unused_fd_slot(arg)) < 0)
 			  return -EMFILE;
 		  current_process->files->fd[ret] = filp;
+      atomic_inc(&filp->f_count);
       break;
     case F_GETFD:
       ret = filp->f_flags;

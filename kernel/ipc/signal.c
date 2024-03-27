@@ -49,7 +49,7 @@ int do_sigaction(int signum, const struct sigaction *action, struct sigaction *o
 
 int do_sigprocmask(int how, const sig_t *set, sig_t *oldset) {
   struct thread *current_thread = get_current_thread();
-
+  // 4294967295
   if (oldset)
     *oldset = current_thread->blocked;
 

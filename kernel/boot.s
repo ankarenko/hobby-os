@@ -7,7 +7,7 @@
 
 .set KERNEL_VIRTUAL_BASE, 0xC0000000                  # 3GB
 .set KERNEL_PAGE_NUMBER, (KERNEL_VIRTUAL_BASE >> 22)  # Page directory index of kernel's 4MB PTE. 768
-.set KERNEL_STACK_SIZE, 0x4000 												# reserve initial kernel stack space -- that's 16k.
+.set KERNEL_STACK_SIZE, 0x4000 												# reserve initial kernel stack space -- that's 256k.
 
 # Declare a header as in the Multiboot Standard.
 .section .multiboot
@@ -33,7 +33,7 @@ boot_page_directory:
 .section .stack
 .align 16
 stack_bottom:
-.skip KERNEL_STACK_SIZE # 16 KiB
+.skip KERNEL_STACK_SIZE # 256 KiB
 stack_top:
 
 # The kernel entry point.

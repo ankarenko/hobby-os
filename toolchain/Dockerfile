@@ -169,12 +169,17 @@ RUN \
 # dash port
 ENV DASH=dash-0.5.12
 WORKDIR $SRC
+
+# DOWNLOAD
 RUN \
   wget http://gondor.apana.org.au/\~herbert/dash/files/$DASH.tar.gz && \
   tar xvf $DASH.tar.gz && \
-  rm -rf $DASH.tar.gz && \
+  rm -rf $DASH.tar.gz
+
+# BUILD
+RUN \
   cd $DASH && \
-  ./configure --bindir=$BUILD/$DASH/bin --mandir=$BUILD/$DASH/man --host=i686-myos CPPFLAGS=-DHAVE_KILLPG=1 && \
+  ./configure --bindir=$BUILD/$DASH/bin --mandir=$BUILD/$DASH/man --host=i686-myos CPPFLAGS='-DHAVE_KILLPG=1 -DDEBUG=2' && \
   make && make install
 
 RUN apt install git -y

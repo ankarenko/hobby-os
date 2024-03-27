@@ -1,7 +1,8 @@
 #include "kernel/devices/char/tty.h"
 #include "kernel/cpu/hal.h"
+#include "kernel/util/vsprintf.h"
 
-static int serports[] = {0x3f8/*, 0x2f8, 0x3e8, 0x2e8*/};
+static int serports[] = {0x3f8, 0x2f8/*, 0x3e8, 0x2e8*/};
 struct tty_driver *serial_driver;
 
 static int serial_transmit_empty(int port) {
@@ -32,7 +33,16 @@ static int serial_open(struct tty_struct *tty, struct vfs_file *filp) {
 }
 
 static int serial_write(struct tty_struct *tty, const char *buf, int count) {
+  char prefix[20];
+  
+  /*
+  sprintf(prefix, "[SERIAL %d]", tty->index);
+  */
   int port = serports[tty->index];
+  /*
+  for (int i = 0; i < strlen(prefix); ++i)
+    serial_output(port, prefix[i]);
+*/
   for (int i = 0; i < count; ++i)
     serial_output(port, buf[i]);
   return 0;

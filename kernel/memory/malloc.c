@@ -114,6 +114,7 @@ void kfree(void *ptr) {
   struct block_meta *block = get_block_ptr(ptr);
   assert_kblock_valid(block);
   block->free = true;
+  //log("free: 0x%x", ptr);
 }
 
 // TODO: make it more efficient, try to find an appropriate block among
@@ -176,6 +177,7 @@ void *kmalloc(size_t size) {
 
   assert_kblock_valid(block);
 
+  //log("alloc: 0x%x", block + 1);
   return block ? block + 1 : NULL;
 }
 

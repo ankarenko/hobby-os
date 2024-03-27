@@ -218,7 +218,7 @@ int exec(void *entry(char **), char *name, char **argv, int foreground_gid) {
     if (foreground_pgrp != tmp && tcsetpgrp(STDIN_FILENO, tmp) < 0) {
       printf("\nunable to set foreground process");
     } else {
-      //printf("\nset foreground to %d", tmp);
+      printf("\nset foreground to %d", tmp);
     }
 
     entry(argv);

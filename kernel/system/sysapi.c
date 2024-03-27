@@ -74,6 +74,8 @@
 // debug
 #define __NR_dbg_ps 512
 
+#define sysapi_log(param) log param
+
 static int32_t sys_pipe(int32_t *fd) {
   return do_pipe(fd);
 }
@@ -85,27 +87,27 @@ static int32_t sys_dbg_ps() {
 }
 
 static int32_t sys_dup2(int oldfd, int newfd) {
-  log("sys_dup2");
+  sysapi_log(("sys_dup2"));
   return dup2(oldfd, newfd);
 }
 
 static int32_t sys_dup(int oldfd) {
-  log("sys_dup");
+  sysapi_log(("sys_dup"));
   return dup(oldfd);
 }
 
 static int32_t sys_read(uint32_t fd, char *buf, size_t count) {
-  //log("sys_read");
+  //sysapi_log("sys_read");
 	return vfs_fread(fd, buf, count);
 }
 
 static int32_t sys_open(const char *path, int32_t flags, mode_t mode) {
-  log("sys_open");
+  sysapi_log(("sys_open"));
   return vfs_open(path, flags, mode);
 }
 
 static int32_t sys_fstat(int32_t fd, struct kstat *stat) {
-  log("sys_fstat");
+  sysapi_log(("sys_fstat"));
 	return vfs_fstat(fd, stat);
 }
 
@@ -114,7 +116,7 @@ static int32_t sys_write(uint32_t fd, char *buf, int32_t count) {
   if (count > 2147482620)
     return 0;
 
-  //log("sys_write");
+  //sysapi_log("sys_write");
 	return vfs_fwrite(fd, buf, count);
 }
 
@@ -124,7 +126,7 @@ static int32_t sys_waitid(id_type_t idtype, id_t id, struct infop *infop, int op
 }
 
 static void* sys_sbrk(size_t n) {
-  //log("sys_sbrk");
+  //sysapi_log(("sys_sbrk"));
   struct thread* th = get_current_thread();
   struct process* parent = th->proc;
   virtual_addr addr = sbrk(
@@ -134,7 +136,7 @@ static void* sys_sbrk(size_t n) {
 }
 
 static int32_t sys_getdents(unsigned int fd, struct dirent *dirent, unsigned int count) {
-  log("sys_getdents");
+  sysapi_log(("sys_getdents"));
   struct process *current_process = get_current_process();
   struct vfs_file *file = current_process->files->fd[fd];
 
@@ -150,7 +152,7 @@ static int32_t sys_getdents(unsigned int fd, struct dirent *dirent, unsigned int
 static char CWD_PATH[MAXPATHLEN];
 
 static int32_t sys_getcwd(char *buf, size_t size) {
-  log("sys_getcwd");
+  sysapi_log(("sys_getcwd"));
   if (!buf || !size)
     return -EINVAL;
   
@@ -185,7 +187,7 @@ static int32_t sys_getcwd(char *buf, size_t size) {
 }
 
 static int32_t sys_exit(int status) {
-  log("sys_exit");
+  sysapi_log(("sys_exit"));
   do_exit(status);
   assert_not_reached("exit does not return!");
   
@@ -200,18 +202,18 @@ static int32_t sys_exit(int status) {
 }
 
 static pid_t sys_fork() {
-  log("sys_fork");
+  sysapi_log(("sys_fork"));
   struct process *parent = get_current_process();
   return process_fork(parent);
 }
 
 static pid_t sys_vfork() {
-  log("sys_vfork");
+  sysapi_log(("sys_vfork"));
   return sys_fork();
 }
 
 static int32_t sys_waitpid(pid_t pid, int *wstatus, int options) {
-  log("sys_waitpid");
+  sysapi_log(("sys_waitpid"));
   id_type_t idtype;
   struct process *current_process = get_current_process();
 
@@ -263,17 +265,17 @@ static int32_t sys_nanosleep(const struct timespec *req, struct timespec *rem) {
 }
 
 static int32_t sys_lseek(int fd, off_t offset, int whence) {
-  log("sys_lseek");
+  //sysapi_log(("sys_lseek"));
 	return vfs_flseek(fd, offset, whence);
 }
 
 static int32_t sys_close(uint32_t fd) {
-  log("sys_close");
+  sysapi_log(("sys_close"));
 	return vfs_close(fd);
 }
 
 static int32_t sys_time(time_t *tloc) {
-  log("sys_time");
+  sysapi_log(("sys_time"));
 	time_t t = get_seconds(NULL);
 	if (tloc)
 		*tloc = t;
@@ -281,16 +283,17 @@ static int32_t sys_time(time_t *tloc) {
 }
 
 static int32_t sys_sigaction(int signum, const struct sigaction *act, struct sigaction *oldact) {
-  log("sys_sigaction");
+  sysapi_log(("sys_sigaction"));
   return do_sigaction(signum, act, oldact);
 }
 
 static int32_t sys_sigprocmask(int how, const sig_t *set, sig_t *oldset) {
+  sysapi_log(("sys_procmask"));
   return do_sigprocmask(how, set, oldset);
 }
 
 static int32_t sys_setpgid(pid_t pid, pid_t pgid) {
-  log("sys_setgpid");log("sys_getcwd");
+  sysapi_log(("sys_setgpid"));
   return setpgid(pid, pgid);
 }
 
@@ -298,7 +301,7 @@ static int32_t sys_setpgid(pid_t pid, pid_t pgid) {
  * NOTE: incorrect implementation, go to man setsid for more details
 */
 static int32_t sys_setsid() {
-  log("sys_setsid");
+  sysapi_log(("sys_setsid"));
   struct process *current_process = get_current_process();
   
   if (current_process->pid == current_process->gid)
@@ -332,6 +335,7 @@ static int32_t sys_chdir(const char *path) {
 } 
 
 static int32_t sys_getpgid(pid_t pid) {
+  sysapi_log(("sys_getpid"));
   struct process *current_process = get_current_process();
   if (!pid)
     return current_process->gid;
@@ -344,6 +348,7 @@ static int32_t sys_getpgid(pid_t pid) {
 }
 
 static int32_t sys_getsid() {
+  sysapi_log(("sys_getsid"));
   return get_current_process()->sid;
 }
 
@@ -356,9 +361,10 @@ static int32_t sys_getpid() {
 }
 
 static int32_t sys_ioctl(int fd, unsigned int cmd, unsigned long arg) {
+  sysapi_log(("sys_ioctl"));
   struct process *current_process = get_current_process();
   struct vfs_file *file = current_process->files->fd[fd];
-
+  
   if (file && file->f_op->ioctl)
     return file->f_op->ioctl(file->f_dentry->d_inode, file, cmd, arg);
 
@@ -367,10 +373,12 @@ static int32_t sys_ioctl(int fd, unsigned int cmd, unsigned long arg) {
 
 
 static int32_t sys_execve(const char *pathname, char *const argv[], char *const envp[]) {
+  sysapi_log(("sys_execve"));
   return process_execve(pathname, argv, envp);
 }
 
 static int32_t sys_poll(struct pollfd *fds, uint32_t nfds, int timeout) {
+  sysapi_log(("sys_poll"));
   return do_poll(fds, nfds, timeout);
 }
 
@@ -379,7 +387,7 @@ static int32_t sys_kill(pid_t pid, int sig) {
 }
 
 static int32_t sys_times(struct tms *buffer) {
-  assert_not_implemented("sys_times");
+  assert_not_implemented(("sys_times"));
 }
 
 static int32_t sys_stat(const char *path, struct kstat *stat) {
@@ -428,6 +436,7 @@ static int32_t sys_mknodat(int fd, const char *path, mode_t mode, dev_t dev) {
 }
 
 static int32_t sys_mknod(const char *path, mode_t mode, dev_t dev) {
+
   return vfs_mknod(path, mode, dev);
 }
 
@@ -554,9 +563,8 @@ static void *syscalls[] = {
 };
 
 static int32_t syscall_dispatcher(interrupt_registers *regs) {
-
   int idx = regs->eax;
-
+  
   uint32_t (*func)(unsigned int, ...) = syscalls[idx];
 
   if (!func)

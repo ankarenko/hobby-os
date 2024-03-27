@@ -3,6 +3,7 @@
 #include "kernel/util/stdio.h"
 #include "kernel/cpu/exception.h"
 #include "kernel/cpu/hal.h"
+#include "kernel/proc/task.h"
 #include "kernel/cpu/idt.h"
 #include "kernel/cpu/gdt.h"
 #include "kernel/ipc/signal.h"
@@ -92,13 +93,13 @@ void general_protection_fault(struct interrupt_registers *registers) {
 }
 
 //! page fault
-void page_fault(interrupt_registers *registers, uint32_t faultAddr) {
+void page_fault_print(interrupt_registers *registers, uint32_t faultAddr) {
   //_asm cli _asm sub ebp, 4
 
   int error_code = registers->err_code;
 
 
-  assert_not_reached("\nPage Fault at 0x%d\nReason: %s, %s, %s%s%s",
+  log("\nPage Fault at 0x%d\nReason: %s, %s, %s%s%s",
     faultAddr,
     error_code & 0b1 ? "protection violation" : "non-present page",
     error_code & 0b10 ? "write" : "read",
@@ -106,6 +107,7 @@ void page_fault(interrupt_registers *registers, uint32_t faultAddr) {
     error_code & 0b1000 ? ", reserved" : "",
     error_code & 0b10000 ? ", instruction fetch" : ""
   );
+
 }
 
 //! Floating Point Unit (FPU) error
@@ -138,6 +140,8 @@ int32_t thread_page_fault(interrupt_registers *regs) {
 	 										 "mov %%eax, %0			\n"
 	 										 : "=r"(faultAddr));
 
+  page_fault_print(regs, faultAddr);
+
 	if (regs->cs == USER_CODE && faultAddr == (uint32_t)sigreturn) {
 		log("Page Fault: From userspace at 0x%x", faultAddr);
 
@@ -150,8 +154,10 @@ int32_t thread_page_fault(interrupt_registers *regs) {
 		sigreturn(regs);
     
 		return IRQ_HANDLER_STOP;
-	} else {
-    page_fault(regs, faultAddr);
+	} else if (regs->cs == USER_CODE) {
+    do_exit(0);
+  } else {
+    assert_not_reached("Panic");
   }
 
 	assert_not_reached();

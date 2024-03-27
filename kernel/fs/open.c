@@ -9,7 +9,9 @@
 #include "kernel/util/string/string.h"
 
 struct vfs_dentry *alloc_dentry(struct vfs_dentry *parent, char *name) {
+  
   struct vfs_dentry *d = kcalloc(1, sizeof(struct vfs_dentry));
+  log("allocated dentry: %x", d);
   d->d_name = strdup(name);
   d->d_parent = parent;
   INIT_LIST_HEAD(&d->d_subdirs);
@@ -24,8 +26,12 @@ int32_t find_unused_fd_slot() {
   struct process* proc = get_current_process();
 
   for (uint32_t i = 0; i < MAX_FD; ++i)
-    if (!proc->files->fd[i])
+    if (!proc->files->fd[i]) {
+      if (i == 5 || i == 6) {
+        int as = 12;
+      }
       return i;
+    }
 
   return -1;
 }
@@ -53,6 +59,7 @@ int32_t vfs_close(int32_t fd) {
 			if (file->f_op && file->f_op->release)
 				ret = file->f_op->release(file->f_dentry->d_inode, file);
 			kfree(file);
+      memset(file, 0, sizeof(struct vfs_file));
 		}
   } else {
     ret = -EBADF;

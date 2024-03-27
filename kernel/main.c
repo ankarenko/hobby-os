@@ -31,6 +31,8 @@
 #include "multiboot.h"
 #include "test/greatest.h"
 
+extern int DEBUG_GLOBAL_DENTRY = -1;
+
 extern struct vfs_file_system_type ext2_fs_type;
 
 void cmd_init();
