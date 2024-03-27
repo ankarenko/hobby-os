@@ -35,14 +35,14 @@ static int serial_open(struct tty_struct *tty, struct vfs_file *filp) {
 static int serial_write(struct tty_struct *tty, const char *buf, int count) {
   char prefix[20];
   
-  /*
-  sprintf(prefix, "[SERIAL %d]", tty->index);
-  */
+  
+  sprintf(prefix, YEL"[SERIAL %d]"COLOR_RESET, tty->index);
+  
   int port = serports[tty->index];
-  /*
+  
   for (int i = 0; i < strlen(prefix); ++i)
     serial_output(port, prefix[i]);
-*/
+
   for (int i = 0; i < count; ++i)
     serial_output(port, buf[i]);
   return 0;

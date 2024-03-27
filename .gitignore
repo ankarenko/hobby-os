@@ -3,7 +3,6 @@
 isodir
 sysroot
 build
-shell
 *.bin
 fat32_floppy.img
 *.img
@@ -29,3 +28,4 @@ zshrc
 cross-compile-tips.txt
 hint.txt
 test.txt
+kernel/apps/**/bin/*

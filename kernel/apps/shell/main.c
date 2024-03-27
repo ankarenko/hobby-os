@@ -109,7 +109,7 @@ void rm(char **argv) {
     printf("\nfile or directory not found");
   }
 }
-
+/*
 int ls(char **argv) {
   DIR* dirp;
   bool has_arg = argv[0] != NULL;
@@ -169,7 +169,7 @@ int ls(char **argv) {
 error:
   _exit(-1); 
 }
-
+*/
 int exec_program(char* path, char **argv, int foreground_gid) {
   printf("\n");
   int pid = 0;
@@ -248,31 +248,34 @@ void ps() {
 
 int search_and_run(struct cmd_t *com, int foreground_gid) {
   int ret = -1;
-  if (strcmp(com->cmd, "ls") == 0) {
-    ret = exec(ls, "ls", com->argv, foreground_gid);
-  } else if (strcmp(com->cmd, "hello") == 0) {
-    ret = exec(hello, "hello", com->argv, foreground_gid);
+  if (strcmp(com->cmd, "hello") == 0) {
+    ret = exec(hello, "hello", &com->argv[1], foreground_gid);
   } else if (strcmp(com->cmd, "cat") == 0) {
-    ret = exec(cat, "cat", com->argv, foreground_gid);
+    ret = exec(cat, "cat", &com->argv[1], foreground_gid);
   } else if (strcmp(com->cmd, "ps") == 0) {
-    ret = exec(ps, "ps", com->argv, foreground_gid);
+    ret = exec(ps, "ps", &com->argv[1], foreground_gid);
   } else if (strcmp(com->cmd, "echo") == 0) {
-    ret = exec(echo, "echo", com->argv, foreground_gid);
+    ret = exec(echo, "echo", &com->argv[1], foreground_gid);
   } else if (strcmp(com->cmd, "rm") == 0) {
-    ret = exec(rm, "rm", com->argv, foreground_gid);
+    ret = exec(rm, "rm", &com->argv[1], foreground_gid);
   } else if (strcmp(com->cmd, "clear") == 0) {
     putchar(12);
   } else if (strcmp(com->cmd, "cd") == 0) {
-    chdir(com->argv[0] == NULL? "." : com->argv[0]);
+    chdir(com->argc == 1? "." : com->argv[1]);
     //ret = exec(cd, "cd", com->argv, gid);
-  } else if (strcmp(com->cmd, "run") == 0) {
-    ret = exec_program(com->argv[0], com->argv, foreground_gid);
   } else {
     struct stat st;
     if (stat(com->cmd, &st) == 0) {
       ret = exec_program(com->cmd, com->argv, foreground_gid);
     } else {
-      printf("\nunknown program: %s", com->cmd);
+      char concat[100] = "/bin/";
+      strcat(&concat, com->cmd);
+      concat[strlen(com->cmd) + 5] = '\0';
+      if (stat(concat, &st) == 0) {
+        ret = exec_program(concat, com->argv, foreground_gid);
+      } else {
+        printf("\nunknown program: %s", com->cmd);
+      }
     }
   }
 clean:
@@ -295,8 +298,9 @@ bool interpret_line(char *line) {
     if (parse_command) {
       command_i++;
       commands[command_i].cmd = strdup(token);
-      param_i = 0;
+      param_i = 1;
       parse_command = false;
+      commands[command_i].argv[0] = strdup(token);
       continue;
     }
 
@@ -447,14 +451,15 @@ void main(int argc, char** argv) {
     getcwd(&path, 20);
     if (start) {
       printf("                                   welcome to");
-      interpret_line("run bin/figlet -c -k -- simple shell");
+      interpret_line("figlet -c -k -- simple shell");
       start = false;
       continue;
     }
     printf("\nroot@%s: ", path);
+    //line[0] = '\0';
     //dprintf(2, "\nget liune");
     gets(line);
-    dprintf(2, "line: %s", line);
+    //dprintf(2, "line: %s", line);
     
     interpret_line(line);
   }

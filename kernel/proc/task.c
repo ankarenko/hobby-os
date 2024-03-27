@@ -64,8 +64,7 @@ bool create_kernel_stack(virtual_addr *kernel_stack) {
   /* moving pointer to the top of the stack */
   *kernel_stack += KERNEL_STACK_SIZE;
 
-  log("Kernel stack created: [0x%x-0x%x]", kernel_stack, kernel_stack - KERNEL_STACK_SIZE);
-
+  
   return true;
 }
 
@@ -180,7 +179,7 @@ static int32_t empack_params(char **_argv) {
   char *path = parent->name;
 
   uint32_t argc = count_array_of_pointers(_argv);
-
+  
   char **argv = (char **)sbrk(
     sizeof(uint32_t) * argc,
     parent->mm_mos
@@ -703,11 +702,21 @@ int32_t process_execve(const char *path, char *const argv[], char *const envp[])
   current_process->name = strdup(path);
 
   int argv_length = count_array_of_pointers(argv);
+
+  // TODO: change
+  /*
+  if (strcmp("/bin/dash", path) == 0) {
+    argv_length = 0;
+  }
+  */
 	char **kernel_argv = kcalloc(argv_length + 1, sizeof(char *));
 	for (int i = 0; i < argv_length; ++i) {
-		int ilength = strlen(argv[i]);
+    // argv[0] - executable name
+    //char *tmp = i == 0? path : argv[i - 1];
+    char *tmp = argv[i];
+		int ilength = strlen(tmp);
 		kernel_argv[i] = kcalloc(ilength + 1, sizeof(char));
-		memcpy(kernel_argv[i], argv[i], ilength);
+		memcpy(kernel_argv[i], tmp, ilength);
 	}
   kernel_argv[argv_length] = 0;
 

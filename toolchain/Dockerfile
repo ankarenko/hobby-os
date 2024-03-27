@@ -196,7 +196,7 @@ RUN \
 
 RUN \
   cd $FIGLET && \
-  sed -i 's/\$(prefix)\/share\/figlet/fonts/g' Makefile && \
+  sed -i 's/\$(prefix)\/share\/figlet/\/fonts/g' Makefile && \
   make prefix=$BUILD/$FIGLET
 
 VOLUME /os

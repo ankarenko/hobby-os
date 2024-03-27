@@ -14,6 +14,8 @@
 #include "kernel/ipc/signal.h"
 #include "kernel/fs/poll.h"
 
+#define sysapi_log(param) //log param
+
 /*
   https://filippo.io/linux-syscall-table/
 */
@@ -73,8 +75,6 @@
 #define __NR_unlinkat 301
 // debug
 #define __NR_dbg_ps 512
-
-#define sysapi_log(param) log param
 
 static int32_t sys_pipe(int32_t *fd) {
   return do_pipe(fd);

@@ -11,7 +11,7 @@
 struct vfs_dentry *alloc_dentry(struct vfs_dentry *parent, char *name) {
   
   struct vfs_dentry *d = kcalloc(1, sizeof(struct vfs_dentry));
-  log("allocated dentry: %x", d);
+  //log("allocated dentry: %x", d);
   d->d_name = strdup(name);
   d->d_parent = parent;
   INIT_LIST_HEAD(&d->d_subdirs);

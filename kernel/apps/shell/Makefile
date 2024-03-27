@@ -11,19 +11,18 @@ ASM_OBJ = ${ASM_SOURCES:.s=.o}
 # -fno-builtin not sure
 CFLAGS1 := -g0
 
-
 %.o: %.c
 	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS1) 
 
 %.o: %.s
 	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS1)
 
-shell: $(OBJ)
+bin/shell: $(OBJ)
 	$(CC)  -o  $@ $(CFLAGS1) $(OBJ)
 
-install: shell
+install: bin/shell
 test: install
 clean:
-	rm -rf *.exe
+	rm -rf bin/*
 
 install-headers:
