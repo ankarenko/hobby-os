@@ -33,6 +33,7 @@ static int serial_open(struct tty_struct *tty, struct vfs_file *filp) {
 }
 
 static int serial_write(struct tty_struct *tty, const char *buf, int count) {
+  disable_interrupts();
   char prefix[20];
   
   
@@ -45,6 +46,7 @@ static int serial_write(struct tty_struct *tty, const char *buf, int count) {
 
   for (int i = 0; i < count; ++i)
     serial_output(port, buf[i]);
+  enable_interrupts();
   return 0;
 }
 

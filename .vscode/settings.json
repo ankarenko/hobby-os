@@ -59,6 +59,8 @@
     "math.h": "c",
     "_stdint.h": "c",
     "_types.h": "c",
-    "_sigset.h": "c"
+    "_sigset.h": "c",
+    "cmath": "c",
+    "complex": "c"
   }
 }

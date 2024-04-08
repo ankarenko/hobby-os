@@ -5,6 +5,8 @@
 #include "kernel/include/errno.h"
 
 int do_fcntl(int fd, int cmd, unsigned long arg) {
+  if (fd < 0)
+    return -EBADF;
   struct process *current_process = get_current_process();
   struct vfs_file *filp = current_process->files->fd[fd];
   if (!filp)

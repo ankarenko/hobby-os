@@ -5,6 +5,16 @@
 #include "kernel/include/list.h"
 #include "kernel/include/types.h"
 
+/* A status looks like:
+      <1 byte info> <1 byte code>
+
+      <code> == 0, child has exited, info is the exit value
+      <code> == 1..7e, child has exited, info is the signal number.
+      <code> == 7f, child has stopped, info was the signal number.
+      <code> == 80, there was a core dump.
+*/
+   
+   
 #define WNOHANG 0x00000001
 #define WUNTRACED 0x00000002
 #define WSTOPPED WUNTRACED

@@ -141,7 +141,7 @@ static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
         
         int32_t sig = -1;
         if (INTR_CHAR(tty) == ch)
-          sig = SIGINT;
+          sig = SIGKILL; // SIGINT;
         else if (QUIT_CHAR(tty) == ch)
           sig = SIGQUIT;
         else if (SUSP_CHAR(tty) == ch)

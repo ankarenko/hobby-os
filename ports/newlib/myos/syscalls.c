@@ -141,8 +141,22 @@ int ioctl(int fd, unsigned int cmd, ...) {
 	va_list ap;
 	va_start(ap, cmd);
 	unsigned long arg = va_arg(ap, unsigned long);
-	va_end(ap);
-	SYSCALL_RETURN_ORIGINAL(syscall_ioctl(fd, cmd, arg));
+  int ret = syscall_ioctl(fd, cmd, arg);
+  va_end(ap);
+  SYSCALL_RETURN_ORIGINAL(ret);
+}
+
+static char debug_buffer[1024] = {0};
+
+_syscall1(dbg_log, char*);
+int dbg_log(char* fmt, ...) {
+  //return 0;
+  va_list args;
+	va_start(args, fmt);
+  vsprintf(debug_buffer, fmt, args);
+  int ret = syscall_dbg_log(debug_buffer);
+  va_end(args);
+  SYSCALL_RETURN(ret);
 }
 
 _syscall0(fork);
@@ -317,9 +331,9 @@ int fcntl(int fd, int cmd, ...) {
 	va_list ap;
 	va_start(ap, cmd);
 	unsigned long arg = va_arg(ap, unsigned long);
-	va_end(ap);
-
-	SYSCALL_RETURN_ORIGINAL(syscall_fcntl(fd, cmd, arg));
+	int ret = syscall_fcntl(fd, cmd, arg);
+  va_end(ap);
+  SYSCALL_RETURN_ORIGINAL(ret);
 }
 
 _syscall2(mkdir, const char *, mode_t);

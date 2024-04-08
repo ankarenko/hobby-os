@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 void main(int argc, char** argv) {
+  dbg_log("\nHello %s", "my friend");
   DIR* dirp;
   bool has_arg = argc > 1;
   int size = 128;

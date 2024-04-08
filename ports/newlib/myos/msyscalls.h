@@ -8,5 +8,6 @@
 */
 
 int dbg_ps();
+int dbg_log(char* fmt, ...);
 
 #endif

@@ -57,6 +57,7 @@
 #define __NR_mknodat 297
 #define __NR_unlinkat 301
 // debug
+#define __NR_dbg_log  511
 #define __NR_dbg_ps 512
 
 #define _syscall0(name)                       \
@@ -112,12 +113,12 @@
     return ret;                                                                                      \
   }
 
-#define SYSCALL_RETURN(expr) ({ int ret = expr; if (ret < 0) { return errno = -ret, -1; } return 0; })
-#define SYSCALL_RETURN_ORIGINAL(expr) ({ int ret = expr; if (ret < 0) { return errno = -ret, -1; } return ret; })
+#define SYSCALL_RETURN(expr) ({ int _ret = expr; if (_ret < 0) { return errno = -_ret, -1; } return 0; })
+#define SYSCALL_RETURN_ORIGINAL(expr) ({ int _ret = expr; if (_ret < 0) { return errno = -_ret, -1; } return _ret; })
 // NOTE: MQ 2020-12-02
 // if syscall is succeeded, returned address is always in userspace (0 <= addr < 0xc000000)
 // on failure, returned value is in [-1024, -1] which translates to (0xfffffc00 <= addr <= 0xffffffff) -> always in kernelspace
 #define HIGHER_HALF_ADDRESS 0xc000000
-#define SYSCALL_RETURN_POINTER(expr) ({ int ret = expr; if ((int)HIGHER_HALF_ADDRESS < ret && ret < 0) { return errno = -ret, NULL; } return (void *)ret; })
+#define SYSCALL_RETURN_POINTER(expr) ({ int _ret = expr; if ((int)HIGHER_HALF_ADDRESS < _ret && _ret < 0) { return errno = -_ret, NULL; } return (void *)_ret; })
 
 #endif

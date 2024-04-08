@@ -217,6 +217,7 @@ int32_t do_wait(id_type_t idtype, id_t id, struct infop *infop, int options) {
     // maybe it makes sense to disable schedule
     lock_scheduler();
     list_for_each_entry_safe(iter, tmp, &current_process->childrens, child) {
+      log("JUST WAIT");
       if (!(
         (idtype == P_PID && iter->pid == id) ||
         (idtype == P_PGID && iter->gid == id) ||
@@ -227,7 +228,7 @@ int32_t do_wait(id_type_t idtype, id_t id, struct infop *infop, int options) {
         
       child_exist = true;
       if ((options & WEXITED && (iter->flags & SIGNAL_TERMINATED || iter->flags & EXIT_TERMINATED)) ||
-          (options & WSTOPPED && iter->flags & SIGNAL_STOPED) ||
+          (options & WUNTRACED && (iter->flags & SIGNAL_STOPED || iter->flags & EXIT_TERMINATED)) ||
           (options & WCONTINUED && iter->flags & SIGNAL_CONTINUED)) {
         pchild = iter;
         break;
@@ -235,6 +236,8 @@ int32_t do_wait(id_type_t idtype, id_t id, struct infop *infop, int options) {
     }
     unlock_scheduler();
 
+    // if WHOHANG param is specified, 
+    // the calling process is not blocked
     if (!child_exist || pchild || options & WNOHANG)
       break;
     

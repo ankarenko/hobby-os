@@ -14,7 +14,7 @@
 #include "kernel/ipc/signal.h"
 #include "kernel/fs/poll.h"
 
-#define sysapi_log(param) //log param
+#define sysapi_log(param) log param
 
 /*
   https://filippo.io/linux-syscall-table/
@@ -74,7 +74,8 @@
 #define __NR_mknodat 297
 #define __NR_unlinkat 301
 // debug
-#define __NR_dbg_ps 512
+#define __NR_dbg_ps   512
+#define __NR_dbg_log  511
 
 static int32_t sys_pipe(int32_t *fd) {
   return do_pipe(fd);
@@ -103,6 +104,11 @@ static int32_t sys_read(uint32_t fd, char *buf, size_t count) {
 
 static int32_t sys_open(const char *path, int32_t flags, mode_t mode) {
   sysapi_log(("sys_open"));
+  // TODO: hack
+  if (strcmp(path, "./trace") == 0) {
+    log("changing log file from %s to /dev/serial0", path);
+    path = "/dev/serial0";
+  }
   return vfs_open(path, flags, mode);
 }
 
@@ -239,12 +245,9 @@ static int32_t sys_waitpid(pid_t pid, int *wstatus, int options) {
     return ret;
 
   if (wstatus) {
-    /*
     if (ifp.si_code & CLD_ED)
       *wstatus = WSED | (ifp.si_status << 8);
-    else
-    */ 
-    if (ifp.si_code & CLD_KILLED || ifp.si_code & CLD_DUMPED) {
+    else if (ifp.si_code & CLD_KILLED || ifp.si_code & CLD_DUMPED) {
       *wstatus = WSSIGNALED;
       if (ifp.si_code & CLD_KILLED)
         *wstatus |= (ifp.si_status << 8);
@@ -505,6 +508,10 @@ static int32_t sys_sigsuspend(const sig_t *set) {
   //return do_sigsuspend(set);
 }
 
+static int sys_dbg_log(const char *fmt) {
+  log(fmt);
+}
+
 static void *syscalls[] = {
   [__NR_exit] = sys_exit,
   [__NR_nanosleep] = sys_nanosleep,
@@ -559,6 +566,7 @@ static void *syscalls[] = {
   [__NR_fcntl] = sys_fcntl,
   [__NR_sigaction] = sys_sigaction,
   [__NR_sigprocmask] = sys_sigprocmask,
+  [__NR_dbg_log] = sys_dbg_log,
   0
 };
 

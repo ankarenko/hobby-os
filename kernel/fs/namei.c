@@ -30,9 +30,17 @@ void vfs_build_path_backward(struct vfs_dentry *dentry, char *path) {
   if (!simplify_path(path, &tmp)) {
     warn("unable to simplify path");
   }
+
   int tmp_len = strlen(tmp);
-  memcpy(path, tmp, tmp_len);
-  path[tmp_len] = '\0';
+
+  int i = 0;
+  while (i < tmp_len - 1 && (tmp[i] == '\/' || tmp[i] == '.')) {
+    i++;
+  }
+
+  memcpy(path, &tmp[i], tmp_len - i);
+  path[tmp_len - i] = '\0';
+  
   kfree(tmp);
 }
 
