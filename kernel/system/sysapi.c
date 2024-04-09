@@ -103,12 +103,13 @@ static int32_t sys_read(uint32_t fd, char *buf, size_t count) {
 }
 
 static int32_t sys_open(const char *path, int32_t flags, mode_t mode) {
-  sysapi_log(("sys_open"));
+  
   // TODO: hack
   if (strcmp(path, "./trace") == 0) {
     log("changing log file from %s to /dev/serial0", path);
     path = "/dev/serial0";
   }
+  sysapi_log(("sys_open: %s", path));
   return vfs_open(path, flags, mode);
 }
 
@@ -118,11 +119,12 @@ static int32_t sys_fstat(int32_t fd, struct kstat *stat) {
 }
 
 static int32_t sys_write(uint32_t fd, char *buf, int32_t count) {
+
   // TODO: bug; RESOLVE IT.
   if (count > 2147482620)
     return 0;
 
-  //sysapi_log("sys_write");
+  sysapi_log(("sys_write %s to %d", buf, fd));
 	return vfs_fwrite(fd, buf, count);
 }
 
@@ -236,7 +238,7 @@ static int32_t sys_waitpid(pid_t pid, int *wstatus, int options) {
 
   if (options & WUNTRACED) {
     options &= ~WUNTRACED;
-    options |= /*WED |*/ WSTOPPED;
+    options |= WSEXITED | WSTOPPED;
   }
 
   struct infop ifp;
@@ -245,9 +247,10 @@ static int32_t sys_waitpid(pid_t pid, int *wstatus, int options) {
     return ret;
 
   if (wstatus) {
-    if (ifp.si_code & CLD_ED)
-      *wstatus = WSED | (ifp.si_status << 8);
-    else if (ifp.si_code & CLD_KILLED || ifp.si_code & CLD_DUMPED) {
+    
+    if (ifp.si_code & CLD_EXITED)
+			*wstatus = WSEXITED | (ifp.si_status << 8);
+		else if (ifp.si_code & CLD_KILLED || ifp.si_code & CLD_DUMPED) {
       *wstatus = WSSIGNALED;
       if (ifp.si_code & CLD_KILLED)
         *wstatus |= (ifp.si_status << 8);
@@ -394,6 +397,7 @@ static int32_t sys_times(struct tms *buffer) {
 }
 
 static int32_t sys_stat(const char *path, struct kstat *stat) {
+  sysapi_log(("sys_stat: %s", path));
   return vfs_stat(path, stat);
 }
 
@@ -495,7 +499,7 @@ static int32_t sys_setuid(uid_t uid) {
 
 static int32_t sys_getegid() {
   //assert_not_implemented();
-  return 0;
+  return sys_getgid();
 }
 
 static int32_t sys_geteuid() {

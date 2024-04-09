@@ -187,6 +187,8 @@ void do_exit(int code) {
   proc->fs = NULL;
 
   struct thread *th = get_current_thread();
+  proc->exit_code = code;
+  proc->caused_signal = 0;
   exit_wait(th);
   exit_thread(th);
 

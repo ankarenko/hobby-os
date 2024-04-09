@@ -15,7 +15,6 @@
 
 #include "_syscall.h"
 
-extern char **environ; /* pointer to array of char * strings that define the current environment variables */
 
 _syscall3(read, int, char *, size_t);
 uint32_t read(int fd, char *buf, size_t size) {
@@ -196,7 +195,7 @@ int link(char *old, char *new) {
 }
 
 pid_t wait3(int *wstatus, int options, struct rusage *rusage) {
-  return waitpid(-1, &wstatus, options);
+  return waitpid(-1, wstatus, options);
 } 
 
 // int lseek(int file, int ptr, int dir); original

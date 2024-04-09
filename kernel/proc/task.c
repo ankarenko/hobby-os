@@ -173,29 +173,22 @@ static struct thread *thread_create(
   return th;
 }
 
-static int32_t empack_params(char **_argv) {
+static int32_t empack_params(char **_argv, char **_envp) {
   struct thread *th = get_current_thread();
   struct process *parent = th->proc;
   char *path = parent->name;
 
   uint32_t argc = count_array_of_pointers(_argv);
-  
   char **argv = (char **)sbrk(
-    sizeof(uint32_t) * argc,
+    sizeof(uint32_t) * (argc + 1),
     parent->mm_mos
   );
 
-  // add path
-  /*
-  uint32_t len = strlen(path) + 1;
-  char *arg_path = sbrk(
-    len,
+  uint32_t envp_count = count_array_of_pointers(_envp);
+  char **envp = (char **)sbrk(
+    sizeof(uint32_t) * (envp_count + 1),
     parent->mm_mos
   );
-  memcpy(arg_path, path, len);
-  arg_path[len] = '\0';
-  argv[0] = arg_path;
-  */
 
   for (int i = 0; i < argc; ++i) {
     int len = strlen(_argv[i]) + 1;
@@ -206,11 +199,24 @@ static int32_t empack_params(char **_argv) {
     param[len] = '\0';
     argv[i] = param;
   }
+  argv[argc] = 0;
 
-  uint32_t params[3] = {
-      PROCESS_TRAPPED_PAGE_FAULT,
-      argc,
-      argv,
+  for (int i = 0; i < envp_count; ++i) {
+    int len = strlen(_envp[i]) + 1;
+    char *param = sbrk(
+        len,
+        parent->mm_mos);
+    memcpy(param, _envp[i], len);
+    param[len] = '\0';
+    envp[i] = param;
+  }
+  envp[envp_count] = 0;
+
+  uint32_t params[4] = {
+    PROCESS_TRAPPED_PAGE_FAULT,
+    argc,
+    argv,
+    envp
   };
   int len = sizeof(params);
   memcpy(th->user_esp - len, params, len);
@@ -270,7 +276,7 @@ static void user_thread_elf_entry(struct thread *th, virtual_addr eip, char **ar
   th->user_ss = USER_DATA;
   th->user_esp = layout.stack_bottom;
 
-  if (empack_params(argv) < 0) {
+  if (empack_params(argv, NULL) < 0) {
     assert_not_reached("Cannot empack params");
   }
 
@@ -703,22 +709,24 @@ int32_t process_execve(const char *path, char *const argv[], char *const envp[])
 
   int argv_length = count_array_of_pointers(argv);
 
-  // TODO: change
-  /*
-  if (strcmp("/bin/dash", path) == 0) {
-    argv_length = 0;
-  }
-  */
 	char **kernel_argv = kcalloc(argv_length + 1, sizeof(char *));
 	for (int i = 0; i < argv_length; ++i) {
-    // argv[0] - executable name
-    //char *tmp = i == 0? path : argv[i - 1];
     char *tmp = argv[i];
 		int ilength = strlen(tmp);
 		kernel_argv[i] = kcalloc(ilength + 1, sizeof(char));
 		memcpy(kernel_argv[i], tmp, ilength);
 	}
   kernel_argv[argv_length] = 0;
+
+  int envp_length = count_array_of_pointers(envp);
+  char **kernel_envp = kcalloc(envp_length + 1, sizeof(char *));
+  for (int i = 0; i < envp_length; ++i) {
+    char *tmp = envp[i];
+		int ilength = strlen(tmp);
+		kernel_envp[i] = kcalloc(ilength + 1, sizeof(char));
+		memcpy(kernel_envp[i], tmp, ilength);
+	}
+  kernel_envp[envp_length] = 0;
 
   if (elf_unload(NULL) < 0) {
     assert_not_reached("Unablt to unload elf");
@@ -732,7 +740,7 @@ int32_t process_execve(const char *path, char *const argv[], char *const envp[])
   th->user_ss = USER_DATA;
   th->user_esp = layout.stack_bottom;
 
-  if (empack_params(kernel_argv) < 0) {
+  if (empack_params(kernel_argv, kernel_envp) < 0) {
     assert_not_reached("Cannot empack params");
   }
 

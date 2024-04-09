@@ -244,13 +244,22 @@ void terminal_run() {
     dup2(slave_fd, stdout);
     dup2(slave_fd, stderr);
     
+    
     //vfs_close(stdin);
     //vfs_close(stdout);
     //vfs_close(stderr);
     
-    if (slave_fd != stdin && slave_fd != stdout) {
+    if (slave_fd != stdin || slave_fd != stdout) {
       vfs_close(slave_fd);
     }
+    /*
+    int error_fd;
+    vfs_close(stderr);
+    if ((error_fd = vfs_open("/dev/serial0", O_RDONLY)) < 0) {
+      err("Cannot open serial0");
+    }
+    assert(error_fd == stderr);
+    */
 
     proc_child->name = strdup("shell");
 
@@ -259,8 +268,8 @@ void terminal_run() {
     proc_child->pa_dir = vmm_get_physical_address(proc_child->va_dir, false); 
     pmm_load_PDBR(proc_child->pa_dir);
     char* argv[] = {};
-    char* envp[] = {};
-    process_execve("/bin/dash", &argv, NULL);
+    char* envp[] = { "ENV=/etc/profile" };
+    process_execve("/bin/dash", &argv, &envp);
     
     //shell_start();
     assert_not_reached();

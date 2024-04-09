@@ -3,6 +3,8 @@
 
 #include <errno.h>
 
+extern char **environ; /* pointer to array of char * strings that define the current environment variables */
+
 #define __NR_exit 1
 #define __NR_fork 2
 #define __NR_read 3

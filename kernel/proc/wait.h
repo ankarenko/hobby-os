@@ -5,16 +5,7 @@
 #include "kernel/include/list.h"
 #include "kernel/include/types.h"
 
-/* A status looks like:
-      <1 byte info> <1 byte code>
 
-      <code> == 0, child has exited, info is the exit value
-      <code> == 1..7e, child has exited, info is the signal number.
-      <code> == 7f, child has stopped, info was the signal number.
-      <code> == 80, there was a core dump.
-*/
-   
-   
 #define WNOHANG 0x00000001
 #define WUNTRACED 0x00000002
 #define WSTOPPED WUNTRACED
@@ -33,7 +24,18 @@
 #define P_PID 1
 #define P_PGID 2
 
-#define WSEXITED 0x0001
+
+/* A status looks like:
+      <1 byte info> <1 byte code>
+
+      <code> == 0, child has exited, info is the exit value
+      <code> == 1..7e, child has exited, info is the signal number.
+      <code> == 7f, child has stopped, info was the signal number.
+      <code> == 80, there was a core dump.
+*/
+   
+   
+#define WSEXITED 0x0000 // TODO: was 0x0001 which is stange
 #define WSSIGNALED 0x0002
 #define WSCOREDUMP 0x0004
 #define WSSTOPPED 0x0008
