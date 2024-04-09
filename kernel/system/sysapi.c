@@ -78,6 +78,7 @@
 #define __NR_dbg_log  511
 
 static int32_t sys_pipe(int32_t *fd) {
+  sysapi_log(("sys_do_pipe"));
   return do_pipe(fd);
 }
 
@@ -122,10 +123,11 @@ static int32_t sys_write(uint32_t fd, char *buf, int32_t count) {
 
   // TODO: bug; RESOLVE IT.
   if (count >= INT32_MAX)
-    return -ENAVAIL;
+    return 0; // -ENAVAIL;
 
   sysapi_log(("sys_write %s to %d", buf, fd));
-	return vfs_fwrite(fd, buf, count);
+  // TODO: I dont't know if that is ok
+	return min(count, vfs_fwrite(fd, buf, count));
 }
 
 static int32_t sys_waitid(id_type_t idtype, id_t id, struct infop *infop, int options) {
@@ -196,6 +198,9 @@ static int32_t sys_getcwd(char *buf, size_t size) {
 
 static int32_t sys_exit(int status) {
   sysapi_log(("sys_exit"));
+  
+  get_current_process()->exit_code = EXIT_TERMINATED;
+  
   do_exit(status);
   assert_not_reached("exit does not return!");
   
@@ -253,7 +258,11 @@ static int32_t sys_waitpid(pid_t pid, int *wstatus, int options) {
 		else if (ifp.si_code & CLD_KILLED || ifp.si_code & CLD_DUMPED) {
       *wstatus = WSSIGNALED;
       if (ifp.si_code & CLD_KILLED)
-        *wstatus |= (ifp.si_status << 8);
+        // TODO: NOTE:
+        // i dont know why, but newlib (linux) looks for first byte, 
+        // not the seconds one
+        *wstatus = (ifp.si_status);
+        //*wstatus |= (ifp.si_status << 8);
       if (ifp.si_code & CLD_DUMPED)
         *wstatus |= WSCOREDUMP;
     } else if (ifp.si_code & CLD_STOPPED)

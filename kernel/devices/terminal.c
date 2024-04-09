@@ -268,7 +268,7 @@ void terminal_run() {
     proc_child->pa_dir = vmm_get_physical_address(proc_child->va_dir, false); 
     pmm_load_PDBR(proc_child->pa_dir);
     char* argv[] = {};
-    char* envp[] = { "ENV=/etc/profile" };
+    char* envp[] = { "ENV1=/etc/profile", "HOME=/" };
     process_execve("/bin/dash", &argv, &envp);
     
     //shell_start();

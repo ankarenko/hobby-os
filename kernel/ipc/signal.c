@@ -122,7 +122,7 @@ void handle_signal(interrupt_registers *regs, sig_t restored_sig) {
     assert(sig_fatal(current_process, signum));
     current_process->caused_signal = signum;
     current_process->flags |= SIGNAL_TERMINATED;
-    current_process->flags &= ~(SIGNAL_CONTINUED | SIGNAL_STOPED);  // ?
+    current_process->flags &= ~(SIGNAL_CONTINUED | SIGNAL_STOPED);
     current_thread->signaling = false;
     sigemptyset(&current_thread->pending);
     do_exit(signum);

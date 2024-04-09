@@ -1,1 +1,1 @@
-PROJECTS="kernel kernel/apps/ls kernel/apps/shell"
+PROJECTS="kernel kernel/apps/ls kernel/apps/shell kernel/apps/*"

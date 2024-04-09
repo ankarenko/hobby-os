@@ -518,6 +518,7 @@ char kkybrd_key_to_ascii(enum KEYCODE code) {
     if (key == '\003') {
       return 0;
     }
+    
     if (key == 'c' && _ctrl) {
       return '\003';
     }
@@ -531,6 +532,10 @@ char kkybrd_key_to_ascii(enum KEYCODE code) {
 
     if (_shift && key == KEY_BAR) {
       return '|';
+    }
+
+    if (_shift && key == '#') {
+      return '$';
     }
 
     if (_shift && !_capslock)
