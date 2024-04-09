@@ -230,7 +230,7 @@ int32_t do_wait(id_type_t idtype, id_t id, struct infop *infop, int options) {
         
       child_exist = true;
       if ((options & WEXITED && (iter->flags & SIGNAL_TERMINATED || iter->flags & EXIT_TERMINATED)) ||
-          (options & WUNTRACED && (iter->flags & SIGNAL_STOPED || iter->flags & EXIT_TERMINATED)) ||
+          (options & WUNTRACED && (iter->flags & SIGNAL_STOPED || iter->flags & SIGNAL_TERMINATED || iter->flags & EXIT_TERMINATED)) ||
           (options & WCONTINUED && iter->flags & SIGNAL_CONTINUED)) {
         pchild = iter;
         break;

@@ -122,7 +122,7 @@ static int32_t sys_write(uint32_t fd, char *buf, int32_t count) {
 
   // TODO: bug; RESOLVE IT.
   if (count > 2147482620)
-    return 0;
+    return -ENAVAIL;
 
   sysapi_log(("sys_write %s to %d", buf, fd));
 	return vfs_fwrite(fd, buf, count);
@@ -504,7 +504,7 @@ static int32_t sys_getegid() {
 
 static int32_t sys_geteuid() {
   //assert_not_implemented();
-  return 0;
+  return sys_getuid();
 }
 
 static int32_t sys_sigsuspend(const sig_t *set) {
