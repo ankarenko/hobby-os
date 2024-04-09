@@ -121,7 +121,7 @@ static int32_t sys_fstat(int32_t fd, struct kstat *stat) {
 static int32_t sys_write(uint32_t fd, char *buf, int32_t count) {
 
   // TODO: bug; RESOLVE IT.
-  if (count > 2147482620)
+  if (count >= INT32_MAX)
     return -ENAVAIL;
 
   sysapi_log(("sys_write %s to %d", buf, fd));
