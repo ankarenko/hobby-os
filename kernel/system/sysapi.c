@@ -78,7 +78,8 @@
 #define __NR_dbg_log  511
 
 static int32_t sys_pipe(int32_t *fd) {
-  sysapi_log(("sys_do_pipe"));
+  sysapi_log(("sys_do_pipe: pid %d", get_current_process()->pid));
+  
   return do_pipe(fd);
 }
 
@@ -90,6 +91,9 @@ static int32_t sys_dbg_ps() {
 
 static int32_t sys_dup2(int oldfd, int newfd) {
   sysapi_log(("sys_dup2"));
+  
+  sysapi_log(("pid %d duplicate %d to %d", get_current_process()->pid, oldfd, newfd));
+
   return dup2(oldfd, newfd);
 }
 
@@ -199,8 +203,9 @@ static int32_t sys_getcwd(char *buf, size_t size) {
 static int32_t sys_exit(int status) {
   sysapi_log(("sys_exit"));
   
-  get_current_process()->exit_code = EXIT_TERMINATED;
-  
+  struct process *proc = get_current_process();
+  proc->flags |= EXIT_TERMINATED;
+
   do_exit(status);
   assert_not_reached("exit does not return!");
   
@@ -243,6 +248,10 @@ static int32_t sys_waitpid(pid_t pid, int *wstatus, int options) {
 
   if (options & WUNTRACED) {
     options &= ~WUNTRACED;
+    options |= WSEXITED | WSTOPPED;
+  }
+
+  if (options == 0) {
     options |= WSEXITED | WSTOPPED;
   }
 

@@ -120,6 +120,36 @@ static void eraser(struct tty_struct *tty, char ch) {
   leave_critical_section();
 }
 
+static uint32_t ntty_write(struct tty_struct *tty, struct vfs_file *file, const char *buf, size_t nr) {
+	if (O_OPOST(tty)) {
+    char *wbuf = kcalloc(1, N_TTY_BUF_SIZE);
+    char *ibuf = wbuf;
+    int wlength = 0;
+
+    for (int i = 0; i < nr; ++i) {
+      char ch = buf[i];
+      if (O_ONLCR(tty) && ch == '\n') {
+        *ibuf++ = '\r';
+        *ibuf++ = ch;
+        wlength += 2;
+      } else if (O_OCRNL(tty) && ch == '\r') {
+        *ibuf++ = '\n';
+        wlength++;
+      } else {
+        *ibuf++ = O_OLCUC(tty) ? toupper(ch) : ch;
+        wlength++;
+      }
+    }
+
+    tty->driver->tops->write(tty, wbuf, wlength);
+    kfree(wbuf);
+    return wlength;
+  } else {
+    tty->driver->tops->write(tty, buf, nr);
+		return nr;
+	}
+}
+
 static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
   if (L_ICANON(tty)) {
     for (int i = 0; i < nr; ++i) {
@@ -171,6 +201,7 @@ static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
         wake_up(&tty->separator_wait);
         wake_up(&tty->read_wait.list);
       }
+      
     }
   } else {
     for (int i = 0; i < nr; ++i) {
@@ -178,36 +209,6 @@ static void ntty_receive_buf(struct tty_struct *tty, const char *buf, int nr) {
       wake_up(&tty->read_wait.list);
     }
   }
-}
-
-static uint32_t ntty_write(struct tty_struct *tty, struct vfs_file *file, const char *buf, size_t nr) {
-	if (O_OPOST(tty)) {
-    char *wbuf = kcalloc(1, N_TTY_BUF_SIZE);
-    char *ibuf = wbuf;
-    int wlength = 0;
-
-    for (int i = 0; i < nr; ++i) {
-      char ch = buf[i];
-      if (O_ONLCR(tty) && ch == '\n') {
-        *ibuf++ = '\r';
-        *ibuf++ = ch;
-        wlength += 2;
-      } else if (O_OCRNL(tty) && ch == '\r') {
-        *ibuf++ = '\n';
-        wlength++;
-      } else {
-        *ibuf++ = O_OLCUC(tty) ? toupper(ch) : ch;
-        wlength++;
-      }
-    }
-
-    tty->driver->tops->write(tty, wbuf, wlength);
-    kfree(wbuf);
-    return wlength;
-  } else {
-    tty->driver->tops->write(tty, buf, nr);
-		return nr;
-	}
 }
 
 static unsigned int ntty_poll(struct tty_struct *tty, struct vfs_file *file, struct poll_table *ptable) {

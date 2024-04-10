@@ -284,6 +284,9 @@ void terminal_run() {
     err("Cannot open keyboard descriptor");
   }
   
+  // stdin = ptmx
+  // stdout = ptmx
+
   while (true) {
   newline:
     char key;

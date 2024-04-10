@@ -75,14 +75,14 @@ static void exit_notify(struct process *proc) {
 	}
 
   //do_signal(-proc->tty->pgrp, SIGHUP);
-
-  do_signal(proc->parent->pid, SIGCHLD);
-  if (proc->parent != NULL) {
+  if (proc->parent != NULL && proc->parent->pid > 0) {
     log("waking up parent with id %d", proc->parent->pid);
     //parent->parent->tty->pgrp = parent->parent->gid;
+    do_signal(proc->parent->pid, SIGCHLD);
     wake_up(&proc->parent->wait_chld);
   } else  {
-    log("no parent to wake up");
+    
+    log("no parent to wake up let init process to handle it");
   }
 }
 
@@ -230,7 +230,8 @@ int32_t do_wait(id_type_t idtype, id_t id, struct infop *infop, int options) {
       }
         
       child_exist = true;
-      if ((options & WEXITED && (iter->flags & SIGNAL_TERMINATED || iter->flags & EXIT_TERMINATED)) ||
+      if (
+          (options & WEXITED && (iter->flags & SIGNAL_TERMINATED || iter->flags & EXIT_TERMINATED)) ||
           (options & WUNTRACED && (iter->flags & SIGNAL_STOPED || iter->flags & SIGNAL_TERMINATED || iter->flags & EXIT_TERMINATED)) ||
           (options & WCONTINUED && iter->flags & SIGNAL_CONTINUED)) {
         pchild = iter;
