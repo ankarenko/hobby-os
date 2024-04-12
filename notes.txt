@@ -104,3 +104,9 @@ opentrace(void)
 	fputs("\nTracing started.\n", tracefile);
 }
 #endif /* DEBUG */
+
+
+
+[BUGS]
+1. what happens if a first process in a pipe 
+calls exit before the initialization of the second one?

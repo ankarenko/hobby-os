@@ -118,12 +118,13 @@ static void thread_wakeup_timer(struct sleep_timer *timer) {
 }
 
 struct process *find_process_by_pid(pid_t pid) {
+  disable_interrupts();
   struct process *iter;
   process_for_each_entry(iter) {
     if (iter->pid == pid)
       return iter;
   }
-
+  enable_interrupts();
   return NULL;
 }
 
@@ -316,11 +317,11 @@ struct process *get_init_proc() {
 
 static struct process *create_process(struct process *parent, char *name, struct pdirectory *pdir) {
   lock_scheduler();
-
   struct process *proc = kcalloc(1, sizeof(struct process));
 
   list_add(&proc->sibling, get_proc_list());
   proc->pid = next_pid++;
+
   proc->gid = proc->pid;
 
   atomic_set(&proc->thread_count, 0);
@@ -351,6 +352,7 @@ static struct process *create_process(struct process *parent, char *name, struct
     list_add_tail(&proc->child, &parent->childrens);
   }
 
+  log("Creating process pid: %d", proc->pid);
   unlock_scheduler();
 
   return proc;
@@ -649,6 +651,7 @@ pid_t process_fork(struct process *parent) {
   memcpy((char *)th->esp, &stf, sizeof(trap_frame));
 
   sched_push_queue(th);
+  log("[FORK] Creating process pid: %d, gid: %d, sid: %d", proc->pid, proc->gid, proc->sid);
   unlock_scheduler();
 
   return proc->pid;
@@ -674,10 +677,13 @@ int32_t setpgid(pid_t pid, pid_t pgid) {
   struct process *l = !pgid ? p : find_process_by_pid(pgid);
 
   // TODO: rewrite this hack
-  if (l->sid != p->sid) {
+  // case when group leader is dead needs to be handled properly
+  if (!l || l->sid != p->sid) {
+    log("pid: %d sid :%d is different from pid: %d sid: %d", l->pid, l->sid, p->pid, p->sid);
+    //p->gid = pgid;
+    return -1;
+    
     log("Unable to find process groupd: %d", pgid);
-    p->gid = pgid;
-    return 0;
     return -1;
   }
 

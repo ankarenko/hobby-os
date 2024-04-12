@@ -129,7 +129,11 @@ static int32_t sys_write(uint32_t fd, char *buf, int32_t count) {
   if (count >= INT32_MAX)
     return 0; // -ENAVAIL;
 
-  sysapi_log(("sys_write %s to %d", buf, fd));
+  if (get_current_process()->pid == 5) {
+    int a = 1;
+  }
+
+  //sysapi_log(("sys_write %s to %d", buf, fd));
   // TODO: I dont't know if that is ok
 	return min(count, vfs_fwrite(fd, buf, count));
 }
@@ -201,9 +205,9 @@ static int32_t sys_getcwd(char *buf, size_t size) {
 }
 
 static int32_t sys_exit(int status) {
-  sysapi_log(("sys_exit"));
-  
   struct process *proc = get_current_process();
+  sysapi_log(("sys_exit: pid %d", proc->pid));
+
   proc->flags |= EXIT_TERMINATED;
 
   do_exit(status);
@@ -294,7 +298,7 @@ static int32_t sys_lseek(int fd, off_t offset, int whence) {
 }
 
 static int32_t sys_close(uint32_t fd) {
-  sysapi_log(("sys_close"));
+  sysapi_log(("sys_close fd:%d", fd));
 	return vfs_close(fd);
 }
 
@@ -317,7 +321,7 @@ static int32_t sys_sigprocmask(int how, const sig_t *set, sig_t *oldset) {
 }
 
 static int32_t sys_setpgid(pid_t pid, pid_t pgid) {
-  sysapi_log(("sys_setgpid"));
+  sysapi_log(("sys_setgpid pid: %d, pgid: %d", pid, pgid));
   return setpgid(pid, pgid);
 }
 

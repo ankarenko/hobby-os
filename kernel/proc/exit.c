@@ -180,6 +180,24 @@ void do_exit(int code) {
 
   struct process *proc = get_current_process();
   log("Process: Exit %s(p%d)", proc->name, proc->pid);
+
+  // NOTE: little hack, if the process is the leader and it's not the last in th group,
+  // then just ignore it
+  if (proc->pid == proc->gid) {
+    int count = 0;
+    struct process *iter;
+    process_for_each_entry(iter) {
+      if (iter->gid == proc->gid)
+        ++count;
+    }
+
+    if (count > 1) {
+      log("gid: %d has %d members, cant remove leader", proc->gid, count);
+      schedule();
+    }
+    log("Process kill continue");
+  }
+
   exit_notify(proc);
   exit_mm(proc);
   exit_files(proc);

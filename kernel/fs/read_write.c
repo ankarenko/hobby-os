@@ -79,10 +79,14 @@ off_t vfs_generic_llseek(struct vfs_file *file, off_t offset, int whence) {
 }
 
 off_t vfs_flseek(int32_t fd, off_t offset, int whence) {
+  if (fd == -1)
+    return -EBADF;
+
   struct process* proc = get_current_process();
   semaphore_down(proc->files->lock);
   enter_critical_section();
   struct vfs_file* file = proc->files->fd[fd];
+
   int ret = 0;
 
   if (fd < 0 || !file)
@@ -98,6 +102,9 @@ off_t vfs_flseek(int32_t fd, off_t offset, int whence) {
 }
 
 uint32_t vfs_fwrite(int32_t fd, char* buf, int32_t count) {
+  if (fd < 0)
+    return -EBADF;
+
   struct process* cur_proc = get_current_process();
   semaphore_down(cur_proc->files->lock);
   enter_critical_section();

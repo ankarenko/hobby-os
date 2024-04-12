@@ -45,8 +45,14 @@ struct vfs_file *alloc_vfs_file() {
 }
 
 int32_t vfs_close(int32_t fd) {
+  if (fd < 0)
+    return -EBADF;
+
   struct process* cur_proc = get_current_process();
   struct vfs_file *file = cur_proc->files->fd[fd];
+
+  if (file == NULL)
+    return -EBADF;
 
   semaphore_down(cur_proc->files->lock);
   enter_critical_section();
